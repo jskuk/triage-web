@@ -1,0 +1,3166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triage</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F6F4F0;
+    --surface: #FFFFFF;
+    --ink: #1A1A1A;
+    --ink-muted: #7A756E;
+    --accent: #D4642A;
+    --accent-hover: #BF5520;
+    --inbox: #D4642A;
+    --thisweek: #2D7D6F;
+    --someday: #6B6099;
+    --waiting: #B8860B;
+    --done: #4A9B5A;
+    --border: #E8E4DE;
+    --danger: #C0392B;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  header {
+    padding: 40px 40px 0;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.4rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  header p.subtitle {
+    color: var(--ink-muted);
+    margin-top: 6px;
+    font-size: 0.95rem;
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .stat-number {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  /* ── Tabs ── */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 10px 18px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab:hover { color: var(--ink); }
+
+  .tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  .tab-count {
+    font-size: 0.72rem;
+    background: var(--border);
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-weight: 700;
+  }
+
+  .tab.active .tab-count {
+    background: var(--accent);
+    color: white;
+  }
+
+  /* ── Add form ── */
+  .add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .add-form-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .add-form input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.92rem;
+    background: var(--surface);
+    transition: border-color 0.15s;
+  }
+
+  .add-form input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .add-form input::placeholder { color: #B5B0A8; }
+
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  .btn-small {
+    padding: 5px 12px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+  }
+
+  .btn-ghost {
+    background: none;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    background: var(--border);
+    color: var(--ink);
+  }
+
+  .btn-done {
+    background: var(--done);
+    color: white;
+  }
+
+  .btn-done:hover { background: #3d8549; }
+
+  /* ── Items ── */
+  .item-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    box-shadow: var(--shadow);
+    transition: all 0.15s ease;
+    animation: slideIn 0.2s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .item:hover { box-shadow: var(--shadow-lg); }
+
+  .item-content { flex: 1; min-width: 0; }
+
+  .item-text {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+
+  .item-next-step {
+    font-size: 0.84rem;
+    line-height: 1.5;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: #FFF8F0;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    color: var(--ink);
+  }
+
+  .item-next-step strong {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .item-url {
+    font-size: 0.78rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 4px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .item-url:hover { text-decoration: underline; }
+
+  .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .item-date {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+  }
+
+  .stale-badge {
+    font-size: 0.7rem;
+    background: #FFF3E0;
+    color: #E65100;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+
+  .item-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .item:hover .item-actions { opacity: 1; }
+
+  .move-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    transition: all 0.12s;
+    position: relative;
+  }
+
+  .move-btn:hover {
+    background: var(--border);
+    color: var(--ink);
+  }
+
+  .move-btn .tooltip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: white;
+    font-size: 0.68rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+
+  .move-btn:hover .tooltip { opacity: 1; }
+
+  .done-btn:hover { border-color: var(--done); color: var(--done); }
+  .delete-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--ink-muted);
+  }
+
+  .empty-state .icon {
+    font-size: 2.4rem;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  /* ── Triage Mode ── */
+  .triage-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .triage-overlay.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .triage-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 560px;
+    width: 90vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: cardIn 0.25s ease;
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .triage-progress {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .triage-progress-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    flex: 1;
+    margin-left: 16px;
+  }
+
+  .triage-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  .triage-item-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+
+  .triage-item-nextstep {
+    font-size: 0.92rem;
+    padding: 12px 16px;
+    background: #FFF8F0;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .triage-item-nextstep strong {
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .triage-item-url {
+    font-size: 0.82rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .triage-item-url:hover { text-decoration: underline; }
+
+  .triage-item-age {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 28px;
+  }
+
+  .triage-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .triage-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 14px 12px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    text-align: center;
+  }
+
+  .triage-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .triage-btn-thisweek { border-color: var(--thisweek); color: var(--thisweek); }
+  .triage-btn-thisweek:hover { background: var(--thisweek); color: white; }
+
+  .triage-btn-someday { border-color: var(--someday); color: var(--someday); }
+  .triage-btn-someday:hover { background: var(--someday); color: white; }
+
+  .triage-btn-waiting { border-color: var(--waiting); color: var(--waiting); }
+  .triage-btn-waiting:hover { background: var(--waiting); color: white; }
+
+  .triage-btn-done { border-color: var(--done); color: var(--done); }
+  .triage-btn-done:hover { background: var(--done); color: white; }
+
+  .triage-btn-skip { border-color: var(--border); color: var(--ink-muted); }
+  .triage-btn-skip:hover { background: var(--border); color: var(--ink); }
+
+  .triage-btn-delete { border-color: var(--danger); color: var(--danger); }
+  .triage-btn-delete:hover { background: var(--danger); color: white; }
+
+  .triage-day-picker {
+    margin-top: 20px;
+    animation: slideIn 0.2s ease;
+  }
+
+  .triage-day-picker p {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .triage-days {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .triage-day-btn {
+    flex: 1;
+    min-width: 60px;
+    padding: 12px 8px;
+    border: 2px solid var(--thisweek);
+    border-radius: var(--radius);
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--thisweek);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  .triage-day-btn:hover {
+    background: var(--thisweek);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .triage-day-btn .day-name {
+    display: block;
+    font-size: 0.72rem;
+    opacity: 0.7;
+    margin-bottom: 2px;
+  }
+
+  .triage-day-btn.today {
+    border-width: 3px;
+    font-weight: 700;
+  }
+
+  .triage-back-btn {
+    margin-top: 12px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  .triage-back-btn:hover {
+    background: var(--border);
+    color: var(--ink);
+  }
+
+  .triage-done-screen {
+    text-align: center;
+    padding: 20px 0;
+  }
+
+  .triage-done-screen .done-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.6;
+  }
+
+  .triage-done-screen h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  .triage-done-screen p {
+    color: var(--ink-muted);
+    font-size: 0.92rem;
+    margin-bottom: 24px;
+  }
+
+  .footer-actions {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Tab Sweep ── */
+  .tabs-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .tabs-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .tabs-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+  }
+
+  .tabs-header .tab-count {
+    font-size: 0.72rem;
+    background: var(--someday);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 700;
+  }
+
+  .tabs-header .sweep-btn {
+    margin-left: auto;
+  }
+
+  .tab-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    box-shadow: var(--shadow);
+    transition: all 0.15s ease;
+    animation: slideIn 0.2s ease;
+  }
+
+  .tab-item:hover { box-shadow: var(--shadow-lg); }
+
+  .tab-item-content { flex: 1; min-width: 0; }
+
+  .tab-item-url {
+    font-size: 0.82rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .tab-item-url:hover { text-decoration: underline; }
+
+  .tab-item-memo {
+    font-size: 0.82rem;
+    color: var(--ink);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  .tab-item-memo-placeholder {
+    font-size: 0.78rem;
+    color: #C4BEB6;
+    font-style: italic;
+    margin-top: 4px;
+    cursor: pointer;
+  }
+
+  .tab-item-memo-placeholder:hover { color: var(--ink-muted); }
+
+  .tab-item-meta {
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    margin-top: 4px;
+  }
+
+  .tab-item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .tab-item:hover .tab-item-actions { opacity: 1; }
+
+  .tab-memo-edit {
+    display: none;
+    margin-top: 4px;
+    gap: 6px;
+  }
+
+  .tab-memo-edit.active { display: flex; }
+
+  .tab-memo-edit input {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid var(--someday);
+    border-radius: 5px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    background: #F5F3FA;
+  }
+
+  .tab-memo-edit input:focus { outline: none; }
+
+  .tab-memo-edit button {
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: none;
+    font-family: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+
+  .promote-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .triage-btn-promote { border-color: var(--accent); color: var(--accent); }
+  .triage-btn-promote:hover { background: var(--accent); color: white; }
+
+  .triage-btn-keep { border-color: var(--someday); color: var(--someday); }
+  .triage-btn-keep:hover { background: var(--someday); color: white; }
+
+  .triage-btn-save { border-color: var(--thisweek); color: var(--thisweek); }
+  .triage-btn-save:hover { background: var(--thisweek); color: white; }
+
+  .triage-item-memo {
+    font-size: 0.92rem;
+    padding: 12px 16px;
+    background: #F5F3FA;
+    border-left: 3px solid var(--someday);
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+
+  .triage-item-memo strong {
+    color: var(--someday);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .tabs-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--ink-muted);
+    font-size: 0.88rem;
+  }
+
+  /* ── Saved References ── */
+  .saved-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .saved-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .saved-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+  }
+
+  .saved-header .tab-count {
+    font-size: 0.72rem;
+    background: var(--thisweek);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 700;
+  }
+
+  .saved-search {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.88rem;
+    background: var(--surface);
+    margin-bottom: 16px;
+  }
+
+  .saved-search:focus {
+    outline: none;
+    border-color: var(--thisweek);
+  }
+
+  .saved-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid #F0ECE6;
+  }
+
+  .saved-item-content { flex: 1; min-width: 0; }
+
+  .saved-item-title {
+    font-size: 0.82rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .saved-item-title:hover { text-decoration: underline; }
+
+  .saved-item-memo {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  .saved-item-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .saved-item:hover .saved-item-actions { opacity: 1; }
+
+  .saved-no-results {
+    text-align: center;
+    padding: 20px;
+    color: #C4BEB6;
+    font-size: 0.85rem;
+  }
+
+  /* ── Journal ── */
+  .journal-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .journal-section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+
+  .journal-section .journal-subtitle {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-bottom: 16px;
+  }
+
+  .journal-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .journal-input-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.88rem;
+    background: var(--surface);
+  }
+
+  .journal-input-row input:focus {
+    outline: none;
+    border-color: var(--ink-muted);
+  }
+
+  .journal-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .journal-entry {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid #F0ECE6;
+    animation: slideIn 0.2s ease;
+  }
+
+  .journal-time {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+    min-width: 52px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .journal-text {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .journal-age {
+    font-size: 0.72rem;
+    color: #C4BEB6;
+    white-space: nowrap;
+  }
+
+  .journal-entry.fading {
+    opacity: 0.45;
+  }
+
+  /* ── Editable next-step ── */
+  .item-next-step-edit {
+    display: none;
+    margin-top: 6px;
+    gap: 6px;
+  }
+
+  .item-next-step-edit.active {
+    display: flex;
+  }
+
+  .item-next-step-edit input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 0.82rem;
+    background: #FFF8F0;
+  }
+
+  .item-next-step-edit input:focus { outline: none; }
+
+  .item-next-step-edit button {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    font-family: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+  }
+
+  .nextstep-edit-btn {
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 0;
+    font-weight: 500;
+  }
+
+  .nextstep-edit-btn:hover { text-decoration: underline; }
+
+  /* ── Help section ── */
+  .help-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .help-section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    margin-bottom: 16px;
+  }
+
+  .help-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .help-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+  }
+
+  .help-card h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .help-card p, .help-card code {
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--ink-muted);
+  }
+
+  .help-card code {
+    background: #F0ECE6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+  }
+
+  .help-card .voice-example {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #F8F6F2;
+    border-radius: 6px;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--ink);
+  }
+
+  /* ── Domain toggle (work/life/all) ── */
+  .domain-toggle { display: inline-flex; gap: 0; margin: 4px 0 14px; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: var(--surface); }
+  .domain-toggle button {
+    border: none; background: transparent; font-family: inherit; font-size: 0.82rem;
+    padding: 5px 16px; cursor: pointer; color: var(--ink-muted); font-weight: 600;
+  }
+  .domain-toggle button.active { background: var(--accent); color: #fff; }
+  .travel-btn {
+    margin-left: 12px; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 20px; padding: 5px 14px; font-family: inherit; font-size: 0.82rem;
+    font-weight: 600; color: var(--ink-muted); cursor: pointer;
+  }
+  .travel-btn.on { background: var(--thisweek); color: #fff; border-color: var(--thisweek); }
+  .domain-chip {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 17px; height: 17px; border-radius: 5px; font-size: 0.62rem; font-weight: 700;
+    cursor: pointer; margin-left: 6px; vertical-align: middle; user-select: none;
+    border: 1px solid var(--border);
+  }
+  .domain-chip.work { background: rgba(45,125,111,0.14); color: var(--thisweek); }
+  .domain-chip.life { background: rgba(184,134,11,0.14); color: var(--waiting); }
+  .domain-chip.none { background: var(--bg); color: var(--ink-muted); }
+
+  /* ── Morning brief panel ── */
+  .brief-panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .brief-panel h1 { font-family: 'DM Serif Display', serif; font-size: 1.25rem; margin-bottom: 8px; }
+  .brief-panel h2 { font-size: 0.92rem; margin: 12px 0 4px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .brief-panel ul { list-style: none; margin: 0; }
+  .brief-panel li { padding: 2px 0; font-size: 0.9rem; }
+  .brief-panel em { color: var(--ink-muted); font-style: italic; font-size: 0.85rem; }
+  .brief-panel .brief-dismiss { float: right; font-size: 0.78rem; }
+
+  /* ── Deadlines ── */
+  .deadlines-section { margin-top: 32px; }
+  .deadlines-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .deadlines-header h2 { font-family: 'DM Serif Display', serif; }
+  .deadline-add-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .deadline-add-form input, .deadline-add-form select {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem;
+  }
+  .deadline-add-form #dl-title { flex: 1; min-width: 200px; }
+  .deadline-item {
+    display: flex; align-items: center; gap: 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 16px; margin-bottom: 8px;
+  }
+  .deadline-item.proposed { border-style: dashed; border-color: var(--accent); background: rgba(212,100,42,0.04); }
+  .deadline-main { flex: 1; min-width: 0; }
+  .deadline-title { font-weight: 600; }
+  .deadline-meta { font-size: 0.8rem; color: var(--ink-muted); margin-top: 3px; }
+  .dl-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .dl-badge.far { background: var(--bg); color: var(--ink-muted); }
+  .dl-badge.open { background: rgba(184,134,11,0.15); color: var(--waiting); }
+  .dl-badge.soon { background: rgba(192,57,43,0.13); color: var(--danger); }
+
+  /* ── Health strip ── */
+  .health-strip {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
+    padding: 10px 14px; margin-bottom: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    font-size: 0.86rem; color: var(--ink-muted);
+  }
+  .health-strip .health-item strong { color: var(--ink); font-weight: 600; }
+  .health-strip .health-warn strong { color: var(--waiting); }
+  .health-strip .health-sep { color: var(--border); }
+  .health-strip .catchup-btn { margin-left: auto; }
+
+  /* ── Recipes ── */
+  .recipes-section, .sparks-section { margin-top: 40px; }
+  .recipes-header, .sparks-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .recipes-header h2, .sparks-header h2 { font-family: 'DM Serif Display', serif; }
+  .recipes-filters { display: flex; gap: 8px; margin-bottom: 14px; }
+  .recipes-filters input { flex: 1; }
+  .recipes-filters input, .recipes-filters select, .sparks-section > input {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 0.9rem; background: var(--surface);
+  }
+  .sparks-section > input { width: 100%; margin-bottom: 12px; }
+  .recipe-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+  }
+  .recipe-row { display: flex; align-items: flex-start; gap: 12px; }
+  .recipe-btns { display: flex; flex-direction: column; gap: 4px; }
+  .recipe-card .recipe-main { flex: 1; min-width: 0; }
+  .recipe-caption { margin-top: 10px; }
+  .recipe-caption summary { cursor: pointer; font-size: 0.8rem; color: var(--accent); list-style: none; }
+  .recipe-caption summary::-webkit-details-marker { display: none; }
+  .recipe-caption summary::before { content: '▸ '; }
+  .recipe-caption[open] summary::before { content: '▾ '; }
+  .recipe-caption .cap-body {
+    white-space: pre-wrap; font-size: 0.86rem; color: var(--ink);
+    margin-top: 8px; max-height: 300px; overflow-y: auto;
+    padding: 10px 12px; background: var(--bg); border-radius: 8px;
+  }
+  .recipe-title { font-weight: 600; color: var(--ink); }
+  .recipe-title a { color: inherit; text-decoration: none; }
+  .recipe-title a:hover { color: var(--accent); }
+  .recipe-meta { font-size: 0.8rem; color: var(--ink-muted); margin-top: 4px; }
+  .recipe-meta .dot { margin: 0 6px; opacity: 0.5; }
+  .tier-badge {
+    display: inline-block; font-size: 0.68rem; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 2px 7px; border-radius: 20px; font-weight: 600;
+  }
+  .tier-full { background: rgba(45,125,111,0.13); color: var(--thisweek); }
+  .tier-bookmark { background: rgba(107,96,153,0.13); color: var(--someday); }
+  .recipe-cooked-badge { font-size: 0.75rem; color: var(--done); white-space: nowrap; }
+  .recipe-card .cook-btn { white-space: nowrap; }
+
+  /* ── Sparks ── */
+  .sparks-subtitle { color: var(--ink-muted); font-size: 0.88rem; margin-bottom: 10px; }
+  .spark-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--someday); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .spark-reaction { color: var(--ink); font-size: 0.94rem; }
+  .spark-link { display: block; font-size: 0.8rem; color: var(--accent); text-decoration: none; margin-top: 4px; word-break: break-all; }
+  .spark-date { font-size: 0.74rem; color: var(--ink-muted); margin-top: 4px; }
+
+  /* ── Plan This Week modal ── */
+  .plan-card {
+    background: var(--surface); border-radius: 14px; padding: 28px;
+    max-width: 620px; width: 92%; max-height: 86vh; overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  .plan-card h2 { font-family: 'DM Serif Display', serif; margin-bottom: 4px; }
+  .plan-card .plan-sub { color: var(--ink-muted); font-size: 0.86rem; margin-bottom: 16px; }
+  .plan-constraints { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .plan-constraints input, .plan-constraints select {
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit;
+  }
+  .plan-pick {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px;
+  }
+  .plan-pick .pick-main { flex: 1; min-width: 0; }
+  .plan-grocery { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .plan-grocery h3 { font-size: 0.95rem; margin-bottom: 8px; }
+  .plan-grocery ul { list-style: none; }
+  .plan-grocery li { padding: 3px 0; font-size: 0.9rem; border-bottom: 1px dashed var(--border); }
+  .plan-grocery .approx-note { color: var(--waiting); font-size: 0.82rem; }
+  .enrich-q { background: rgba(212,100,42,0.07); border: 1px solid rgba(212,100,42,0.25);
+    border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+  .enrich-q input { width: 100%; margin-top: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; }
+  .presort-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .presort-row select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; }
+  .presort-row .p-theme { font-size: 0.72rem; color: var(--ink-muted); background: var(--bg); padding: 2px 6px; border-radius: 10px; }
+  .unsorted-flag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+    background: rgba(184,134,11,0.15); color: var(--waiting); padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
+
+  @media (max-width: 640px) {
+    .help-grid { grid-template-columns: 1fr; }
+    header, main { padding-left: 20px; padding-right: 20px; }
+    header h1 { font-size: 1.8rem; }
+    .stats-bar { gap: 16px; flex-wrap: wrap; }
+    .item-actions { opacity: 1; }
+    .add-form-row { flex-direction: column; }
+    .triage-card { padding: 24px; }
+    .triage-actions { flex-direction: column; }
+    .triage-btn { min-width: auto; }
+    .recipes-filters { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Triage</h1>
+  <p class="subtitle">Capture everything. Decide once a week. Close the loops.</p>
+  <div class="domain-toggle" id="domain-toggle">
+    <button data-domain="work">Work</button>
+    <button data-domain="life">Life</button>
+    <button data-domain="all">All</button>
+  </div>
+  <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
+  <div class="stats-bar">
+    <div class="stat">
+      <span class="stat-number" id="stat-total">0</span>
+      <span class="stat-label">Open</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" style="color:var(--inbox)" id="stat-inbox">0</span>
+      <span class="stat-label">Inbox</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" style="color:var(--thisweek)" id="stat-thisweek">0</span>
+      <span class="stat-label">This Week</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" style="color:var(--waiting)" id="stat-waiting">0</span>
+      <span class="stat-label">Waiting</span>
+    </div>
+    <div class="stat">
+      <span class="stat-number" style="color:var(--done)" id="stat-done-week">0</span>
+      <span class="stat-label">Done this week</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Morning brief panel (shows when fresh) -->
+  <div class="brief-panel" id="brief-panel" style="display:none"></div>
+
+  <!-- System health strip -->
+  <div class="health-strip" id="health-strip" style="display:none"></div>
+
+  <!-- Task Section -->
+  <div class="tab-bar">
+    <button class="tab active" data-list="inbox">Inbox <span class="tab-count" id="count-inbox">0</span></button>
+    <button class="tab" data-list="thisweek">This Week <span class="tab-count" id="count-thisweek">0</span></button>
+    <button class="tab" data-list="someday">Someday <span class="tab-count" id="count-someday">0</span></button>
+    <button class="tab" data-list="waiting">Waiting <span class="tab-count" id="count-waiting">0</span></button>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-small" id="review-someday-btn" style="margin-bottom:6px; margin-right:6px;">Review Someday</button>
+    <button class="btn btn-primary btn-small" id="triage-start-btn" style="margin-bottom:6px;">Triage Inbox</button>
+  </div>
+
+  <div class="add-form">
+    <div class="add-form-row">
+      <input type="text" id="add-input" placeholder="What do you need to capture?">
+      <input type="text" id="add-url" placeholder="URL (optional)" style="max-width: 220px;">
+      <button class="btn btn-primary" id="add-btn">Capture</button>
+    </div>
+    <div class="add-form-row">
+      <input type="text" id="add-nextstep" placeholder="Next step — what specifically needs to happen? (optional)">
+    </div>
+  </div>
+
+  <div class="item-list" id="item-list"></div>
+
+  <!-- Deadlines ledger -->
+  <div class="deadlines-section" id="deadlines-section" style="display:none">
+    <div class="deadlines-header">
+      <h2>Deadlines</h2>
+      <span class="tab-count" id="deadlines-count">0</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-small" id="deadline-add-btn" onclick="toggleDeadlineAdd()">+ Add</button>
+    </div>
+    <div class="deadline-add-form" id="deadline-add-form" style="display:none">
+      <div style="display:flex; gap:8px; width:100%; margin-bottom:8px">
+        <input type="text" id="dl-freeform" style="flex:1" placeholder="Just type it: “referee report JPE due Aug 15” or “rec letter for Kim by next Friday”"
+               onkeydown="if(event.key==='Enter')quickAddDeadline()">
+        <button class="btn btn-primary btn-small" onclick="quickAddDeadline()">Add</button>
+      </div>
+      <div style="width:100%; font-size:0.78rem; color:var(--ink-muted); margin-bottom:6px">…or fill the fields:</div>
+      <input type="text" id="dl-title" placeholder="Title (e.g. Referee report — JPE)">
+      <input type="date" id="dl-due">
+      <select id="dl-type">
+        <option value="referee">Referee (14d)</option>
+        <option value="recletter">Rec letter (7d)</option>
+        <option value="rnr">R&amp;R (42d)</option>
+        <option value="grant">Grant (30d)</option>
+        <option value="conference">Conference (21d)</option>
+        <option value="teaching">Teaching (7d)</option>
+        <option value="other">Other (14d)</option>
+      </select>
+      <button class="btn btn-ghost btn-small" onclick="addDeadline()">Add</button>
+    </div>
+    <div id="deadlines-list"></div>
+  </div>
+
+  <!-- Tab Sweep Section -->
+  <div class="tabs-section" id="tabs-section">
+    <div class="tabs-header">
+      <h2>Tab Sweep</h2>
+      <span class="tab-count" id="tabs-count">0</span>
+      <button class="btn btn-primary btn-small sweep-btn" id="sweep-start-btn">Sweep</button>
+    </div>
+    <div id="tabs-list"></div>
+  </div>
+
+  <!-- Saved References -->
+  <div class="saved-section" id="saved-section">
+    <div class="saved-header">
+      <h2>Saved</h2>
+      <span class="tab-count" id="saved-count">0</span>
+    </div>
+    <input type="text" class="saved-search" id="saved-search" placeholder="Search saved links...">
+    <div id="saved-list"></div>
+  </div>
+
+  <!-- Recipes -->
+  <div class="recipes-section" id="recipes-section" style="display:none">
+    <div class="recipes-header">
+      <h2>Recipes</h2>
+      <span class="tab-count" id="recipes-count">0</span>
+      <div style="flex:1"></div>
+      <label style="font-size:0.8rem;color:var(--ink-muted);display:none;align-items:center;gap:4px" id="show-hidden-wrap"><input type="checkbox" id="show-hidden"> show hidden</label>
+      <button class="btn btn-ghost btn-small" id="purge-hidden-btn" style="display:none"></button>
+      <button class="btn btn-primary btn-small" id="plan-week-btn">Plan This Week</button>
+    </div>
+    <div class="recipes-filters">
+      <input type="text" id="recipes-search" placeholder="Search title, cuisine, ingredient, tag...">
+      <select id="recipes-tier">
+        <option value="">All tiers</option>
+        <option value="full">Full</option>
+        <option value="bookmark">Bookmark</option>
+      </select>
+      <select id="recipes-status">
+        <option value="active">Active</option>
+        <option value="backlog">Backlog</option>
+        <option value="all">All</option>
+      </select>
+      <select id="recipes-time">
+        <option value="">Any time</option>
+        <option value="20">≤ 20 min</option>
+        <option value="30">≤ 30 min</option>
+        <option value="45">≤ 45 min</option>
+        <option value="60">≤ 60 min</option>
+      </select>
+      <label id="hide-baby-wrap" style="display:none;font-size:0.82rem;color:var(--ink-muted);align-items:center;gap:4px;white-space:nowrap"><input type="checkbox" id="hide-baby"> hide baby food</label>
+    </div>
+    <div id="recipes-list"></div>
+  </div>
+
+  <!-- Sparks -->
+  <div class="sparks-section" id="sparks-section" style="display:none">
+    <div class="sparks-header">
+      <h2>Sparks</h2>
+      <span class="tab-count" id="sparks-count">0</span>
+    </div>
+    <p class="sparks-subtitle">Things you saw + what you thought. A permanent commonplace log.</p>
+    <input type="text" id="sparks-search" placeholder="Search sparks...">
+    <div id="sparks-list"></div>
+  </div>
+
+  <div class="journal-section">
+    <h2>Journal</h2>
+    <p class="journal-subtitle">What are you doing right now? Where did you leave off? Entries fade after 48 hours.</p>
+    <div class="journal-input-row">
+      <input type="text" id="journal-input" placeholder="Stopped grading at student #7, need to email TA about extensions...">
+      <button class="btn btn-ghost btn-small" id="journal-btn">Log</button>
+    </div>
+    <div class="journal-entries" id="journal-entries"></div>
+  </div>
+
+  <div class="help-section">
+    <h2>Quick Reference</h2>
+    <div class="help-grid">
+      <div class="help-card">
+        <h3>Capture from your phone</h3>
+        <p>Share sheet or Home Screen → <strong>Capture</strong> shortcut. First option is <strong>Just capture</strong> — no filing decision needed; it lands in Inbox flagged <em>unsorted</em>.</p>
+        <p style="margin-top:8px">Or file directly as Task, Vault, Spark, or Recipe. Files sync via Dropbox and route within ~3 min.</p>
+      </div>
+      <div class="help-card">
+        <h3>Sparks &amp; Recipes</h3>
+        <p><strong>Spark</strong> = a link + your one-sentence reaction (permanent commonplace log).</p>
+        <p style="margin-top:8px"><strong>Recipe</strong> = paste a link; scrapeable pages become full recipes, Instagram/Threads become bookmarks. Drop Osta PDFs in <code>recipes/raw/</code>. Use <strong>Plan This Week</strong> for a grocery list.</p>
+      </div>
+      <div class="help-card">
+        <h3>Task Triage shortcuts</h3>
+        <p>
+          <code>1</code>/<code>w</code> This Week (then <code>1-7</code> to pick day)<br>
+          <code>2</code>/<code>s</code> Someday &nbsp;
+          <code>3</code>/<code>a</code> Waiting<br>
+          <code>4</code>/<code>d</code> Done &nbsp;
+          <code>Space</code> Skip &nbsp;
+          <code>x</code> Delete
+        </p>
+      </div>
+      <div class="help-card">
+        <h3>Tab Sweep shortcuts</h3>
+        <p>
+          <code>1</code>/<code>k</code> Keep &nbsp;
+          <code>2</code>/<code>s</code> Save<br>
+          <code>3</code>/<code>t</code> Make Task &nbsp;
+          <code>4</code>/<code>d</code> Done Reading<br>
+          <code>x</code> Delete &nbsp;
+          <code>Space</code> Skip &nbsp;
+          <code>Esc</code> Close
+        </p>
+      </div>
+      <div class="help-card">
+        <h3>Someday Review shortcuts</h3>
+        <p>
+          <code>1</code>/<code>k</code> Keep &nbsp;
+          <code>2</code>/<code>w</code> Promote (then pick day)<br>
+          <code>x</code> Delete &nbsp;
+          <code>Space</code> Skip &nbsp;
+          <code>Esc</code> Close
+        </p>
+        <p style="margin-top:8px">Items in Someday for 90+ days get a "consider deleting" hint.</p>
+      </div>
+      <div class="help-card">
+        <h3>Edge Extension (Tab Sweep)</h3>
+        <p>Click the Capture to Triage extension icon on any page. Add a memo about where you left off, hit Save. Then close the tab.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-actions">
+    <button class="btn btn-ghost btn-small" onclick="exportJSON()">Export JSON</button>
+    <button class="btn btn-ghost btn-small" onclick="document.getElementById('import-file').click()">Import JSON</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-ghost btn-small" onclick="exportMarkdown()">Export Markdown</button>
+  </div>
+</main>
+
+<!-- Triage Mode Overlay -->
+<div class="triage-overlay" id="triage-overlay">
+  <div class="triage-card" id="triage-card"></div>
+</div>
+
+<!-- Plan This Week / Pre-sort Overlay -->
+<div class="triage-overlay" id="plan-overlay">
+  <div class="plan-card" id="plan-card"></div>
+</div>
+
+<script>
+  const API = window.location.origin;
+  const LISTS = ['inbox', 'thisweek', 'someday', 'waiting'];
+
+  // At home (localhost) → the local Python server. Hosted (GitHub Pages) →
+  // talk to Dropbox directly from the browser via dbx.js. Same JSON either way.
+  const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+  async function apiFetch(url, opts) {
+    if (LOCAL) return fetch(url, opts);
+    const path = url.replace(location.origin, '');   // '/api/…'
+    if (typeof DBX === 'undefined') return { ok: false, status: 503, json: async () => ({}) };
+    return DBX.handle(path, opts);                    // Response-compatible
+  }
+
+  let currentList = 'inbox';
+  let items = [];
+
+  // ── Domain lens (work / life / all) ──
+  // Default is single-domain, never the mixed pile: weekday→work, weekend→life.
+  let currentDomain = localStorage.getItem('triage-domain')
+    || ([0, 6].includes(new Date().getDay()) ? 'life' : 'work');
+  // An unclassified item (no domain) shows in BOTH work and life views.
+  function inDomain(item) {
+    return currentDomain === 'all' || !item.domain || item.domain === currentDomain;
+  }
+  function domainChip(item) {
+    const d = item.domain === 'work' ? 'work' : (item.domain === 'life' ? 'life' : 'none');
+    const label = d === 'work' ? 'W' : (d === 'life' ? 'L' : '?');
+    const title = d === 'none' ? 'Unclassified — click to set Work' : `${item.domain} — click to flip`;
+    return `<span class="domain-chip ${d}" title="${title}" onclick="event.stopPropagation(); flipDomain('${item.id}')">${label}</span>`;
+  }
+  async function flipDomain(id) {
+    const it = items.find(i => i.id === id);
+    const next = (it && it.domain === 'work') ? 'life' : 'work';
+    await apiFetch(`${API}/api/set-domain`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, domain: next })
+    });
+    await fetchItems();
+  }
+  function setDomain(d) {
+    currentDomain = d;
+    localStorage.setItem('triage-domain', d);
+    document.querySelectorAll('#domain-toggle button').forEach(b =>
+      b.classList.toggle('active', b.dataset.domain === d));
+    render(); renderTabs && renderTabs();
+    if (typeof renderDeadlines === 'function') renderDeadlines();
+    fetchHealth();
+  }
+  document.querySelectorAll('#domain-toggle button').forEach(b =>
+    b.addEventListener('click', () => setDomain(b.dataset.domain)));
+  document.querySelectorAll('#domain-toggle button').forEach(b =>
+    b.classList.toggle('active', b.dataset.domain === currentDomain));
+
+  // ── API calls ──
+
+  let journalEntries = [];
+
+  async function fetchItems() {
+    const res = await apiFetch(`${API}/api/items`);
+    items = await res.json();
+    render();
+    renderTabs();
+    renderSaved();
+  }
+
+  async function fetchJournal() {
+    const res = await apiFetch(`${API}/api/logs`);
+    journalEntries = await res.json();
+    renderJournal();
+  }
+
+  async function addJournalEntry(text) {
+    if (!text.trim()) return;
+    await apiFetch(`${API}/api/log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text.trim() })
+    });
+    await fetchJournal();
+  }
+
+  async function updateNextStep(id, nextStep) {
+    await apiFetch(`${API}/api/update-nextstep`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, nextStep })
+    });
+    await fetchItems();
+  }
+
+  async function captureItem(text, url = '', nextStep = '', list = 'inbox') {
+    if (!text.trim()) return;
+    const body = { text: text.trim(), list };
+    if (url.trim()) body.url = url.trim();
+    if (nextStep.trim()) body.nextStep = nextStep.trim();
+    await apiFetch(`${API}/api/capture`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    await fetchItems();
+  }
+
+  async function moveItem(id, toList) {
+    await apiFetch(`${API}/api/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, list: toList })
+    });
+    await fetchItems();
+  }
+
+  async function doneItem(id) {
+    await apiFetch(`${API}/api/done`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchItems();
+  }
+
+  async function deleteItem(id) {
+    await apiFetch(`${API}/api/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchItems();
+  }
+
+  // ── Helpers ──
+
+  function daysSince(dateStr) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  }
+
+  function formatDate(dateStr) {
+    const days = daysSince(dateStr);
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return `${days} days ago`;
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function truncateUrl(url) {
+    try {
+      const u = new URL(url);
+      const path = u.pathname.length > 30 ? u.pathname.slice(0, 30) + '...' : u.pathname;
+      return u.hostname + path;
+    } catch { return url.slice(0, 50); }
+  }
+
+  function doneThisWeek() {
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    monday.setHours(0, 0, 0, 0);
+    return items.filter(i => i.list === 'done' && i.completed && inDomain(i) && new Date(i.completed) >= monday).length;
+  }
+
+  // ── Render ──
+
+  function render() {
+    const listEl = document.getElementById('item-list');
+    // Domain lens applies to the task lists everywhere.
+    const dItems = items.filter(inDomain);
+    const active = dItems.filter(i => i.list !== 'done' && i.list !== 'tabs');
+    const filtered = dItems.filter(i => i.list === currentList);
+    filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    LISTS.forEach(l => {
+      document.getElementById(`count-${l}`).textContent = dItems.filter(i => i.list === l).length;
+    });
+
+    document.getElementById('stat-total').textContent = active.length;
+    document.getElementById('stat-inbox').textContent = dItems.filter(i => i.list === 'inbox').length;
+    document.getElementById('stat-thisweek').textContent = dItems.filter(i => i.list === 'thisweek').length;
+    document.getElementById('stat-waiting').textContent = dItems.filter(i => i.list === 'waiting').length;
+    document.getElementById('stat-done-week').textContent = doneThisWeek();
+
+    // Show/hide triage buttons based on counts
+    const inboxCount = dItems.filter(i => i.list === 'inbox').length;
+    const somedayCount = dItems.filter(i => i.list === 'someday').length;
+    document.getElementById('triage-start-btn').style.display = inboxCount > 0 ? '' : 'none';
+    document.getElementById('review-someday-btn').style.display = somedayCount > 0 ? '' : 'none';
+
+    if (filtered.length === 0) {
+      const msgs = {
+        inbox: "Inbox zero. Nice work — or time to capture something new.",
+        thisweek: "Nothing scheduled this week. Triage your inbox?",
+        someday: "No someday items yet. Park ideas here during triage.",
+        waiting: "Nothing waiting on others. Lucky you."
+      };
+      listEl.innerHTML = `<div class="empty-state"><div class="icon">○</div><p>${msgs[currentList]}</p></div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+      const days = daysSince(item.created);
+      const stale = currentList === 'inbox' && days >= 14;
+      const somedayStale = currentList === 'someday' && days >= 90;
+      const otherLists = LISTS.filter(l => l !== item.list);
+
+      const icons = { inbox: 'IN', thisweek: 'TW', someday: 'SD', waiting: 'WT' };
+      const labels = { inbox: 'Inbox', thisweek: 'This Week', someday: 'Someday', waiting: 'Waiting' };
+
+      const moveButtons = otherLists.map(l => {
+        const action = l === 'thisweek'
+          ? `showInlineDayPicker('${item.id}')`
+          : `moveItem('${item.id}','${l}')`;
+        return `<button class="move-btn" onclick="${action}">
+          ${icons[l]}
+          <span class="tooltip">${labels[l]}</span>
+        </button>`;
+      }).join('');
+
+      const nsValue = item.nextStep ? escapeHtml(item.nextStep) : '';
+      const nextStepHtml = item.nextStep
+        ? `<div class="item-next-step">
+             <strong>Next step</strong> ${nsValue}
+             <button class="nextstep-edit-btn" onclick="toggleNextStepEdit('${item.id}')">edit</button>
+           </div>`
+        : `<button class="nextstep-edit-btn" onclick="toggleNextStepEdit('${item.id}')" style="margin-top:4px">+ add next step</button>`;
+
+      const editHtml = `
+        <div class="item-next-step-edit" id="ns-edit-${item.id}">
+          <input type="text" value="${nsValue}" placeholder="What's the next concrete step?"
+                 id="ns-input-${item.id}"
+                 onkeydown="if(event.key==='Enter')saveNextStep('${item.id}')">
+          <button onclick="saveNextStep('${item.id}')">Save</button>
+          <button onclick="toggleNextStepEdit('${item.id}')">Cancel</button>
+        </div>`;
+
+      return `
+        <div class="item">
+          <div class="item-content">
+            <div class="item-text">${escapeHtml(item.text)}${item.source === 'email' ? ' <span class="unsorted-flag" style="background:rgba(45,125,111,0.13);color:var(--thisweek)">email</span>' : ''}${domainChip(item)}</div>
+            ${nextStepHtml}
+            ${editHtml}
+            ${item.url ? `<a class="item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>` : ''}
+            <div class="item-meta">
+              <span class="item-date">${formatDate(item.created)}</span>
+              ${item.scheduled ? `<span class="item-date" style="color:var(--thisweek)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
+              ${stale ? '<span class="stale-badge">Stale — triage me</span>' : ''}
+              ${somedayStale ? `<span class="stale-badge" style="background:#F0EDF8;color:#6B6099">${days} days old — consider deleting</span>` : ''}
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="move-btn done-btn" onclick="doneItem('${item.id}')">
+              ✓
+              <span class="tooltip">Done</span>
+            </button>
+            ${moveButtons}
+            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+              ✕
+              <span class="tooltip">Delete</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Triage Mode ──
+
+  let triageQueue = [];
+  let triageIndex = 0;
+  let triageTotal = 0;
+
+  function startTriage() {
+    triageQueue = items
+      .filter(i => i.list === 'inbox' && inDomain(i))
+      .sort((a, b) => new Date(a.created) - new Date(b.created)); // oldest first
+    triageIndex = 0;
+    triageTotal = triageQueue.length;
+
+    if (triageTotal === 0) return;
+
+    activeTriageMode = 'task';
+    document.getElementById('triage-overlay').classList.add('active');
+    renderTriageCard();
+    // Refresh honest weekly evidence, then re-render to show it.
+    fetchWeekly().then(() => {
+      if (document.getElementById('triage-overlay').classList.contains('active')) renderTriageCard();
+    });
+  }
+
+  let weeklyEvidence = null;
+  async function fetchWeekly() {
+    try {
+      const res = await apiFetch(`${API}/api/weekly-summary`);
+      weeklyEvidence = await res.json();
+    } catch (e) { /* ignore */ }
+  }
+  function weeklyEvidenceHtml() {
+    const w = weeklyEvidence;
+    if (!w || (!w.done && !w.recipes_cooked && !w.sparks)) return '';
+    const parts = [];
+    if (w.done) parts.push(`${w.done} done`);
+    if (w.recipes_cooked) parts.push(`${w.recipes_cooked} recipe${w.recipes_cooked===1?'':'s'} cooked`);
+    if (w.sparks) parts.push(`${w.sparks} spark${w.sparks===1?'':'s'}`);
+    return `<div class="triage-item-age" style="text-align:center;margin-bottom:4px">Last 7 days: ${parts.join(' · ')}</div>`;
+  }
+
+  function renderTriageCard() {
+    const card = document.getElementById('triage-card');
+
+    if (triageIndex >= triageQueue.length) {
+      // Done screen
+      const sorted = triageTotal - triageQueue.filter(i => i.list === 'inbox').length;
+      card.innerHTML = `
+        <div class="triage-done-screen">
+          <div class="done-icon">○</div>
+          <h2>Triage complete</h2>
+          <p>You reviewed ${triageTotal} item${triageTotal === 1 ? '' : 's'}.</p>
+          <button class="btn btn-primary" onclick="closeTriage()">Back to dashboard</button>
+        </div>
+      `;
+      return;
+    }
+
+    const item = triageQueue[triageIndex];
+    const pct = Math.round(((triageIndex) / triageTotal) * 100);
+
+    const nextStepHtml = item.nextStep
+      ? `<div class="triage-item-nextstep"><strong>Next step</strong>${escapeHtml(item.nextStep)}</div>`
+      : '';
+
+    const urlHtml = item.url
+      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>`
+      : '';
+
+    card.innerHTML = `
+      ${weeklyEvidenceHtml()}
+      <div class="triage-progress">
+        <span>${triageIndex + 1} of ${triageTotal}</span>
+        <div class="triage-progress-bar">
+          <div class="triage-progress-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="triage-item-text">${escapeHtml(item.text)}${item.unsorted ? '<span class="unsorted-flag">unsorted</span>' : ''}${domainChip(item)}</div>
+      ${nextStepHtml}
+      ${urlHtml}
+      <div class="triage-item-age">Captured ${formatDate(item.created)}</div>
+      <div class="triage-actions" id="triage-actions">
+        <button class="triage-btn triage-btn-thisweek" onclick="showDayPicker('${item.id}')">This Week</button>
+        <button class="triage-btn triage-btn-someday" onclick="triageAction('${item.id}','someday')">Someday</button>
+        <button class="triage-btn triage-btn-waiting" onclick="triageAction('${item.id}','waiting')">Waiting</button>
+        <button class="triage-btn triage-btn-done" onclick="triageActionDone('${item.id}')">Done</button>
+        <button class="triage-btn triage-btn-skip" onclick="triageSkip()">Skip</button>
+        <button class="triage-btn triage-btn-delete" onclick="triageActionDelete('${item.id}')">Delete</button>
+      </div>
+    `;
+    triageDayPickerVisible = false;
+  }
+
+  // ── Day Picker ──
+
+  let triageDayPickerVisible = false;
+
+  function getWeekDays() {
+    const days = [];
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const iso = d.toISOString().slice(0, 10);
+      const name = d.toLocaleDateString('en-US', { weekday: 'short' });
+      const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const isToday = i === 0;
+      days.push({ iso, name, date, isToday });
+    }
+    return days;
+  }
+
+  function showDayPicker(itemId) {
+    triageDayPickerVisible = true;
+    const actionsEl = document.getElementById('triage-actions');
+    const days = getWeekDays();
+    const dayButtons = days.map((d, i) =>
+      `<button class="triage-day-btn ${d.isToday ? 'today' : ''}" onclick="scheduleItem('${itemId}','${d.iso}')">
+        <span class="day-name">${d.isToday ? 'Today' : d.name}</span>
+        ${d.date}
+      </button>`
+    ).join('');
+
+    actionsEl.innerHTML = `
+      <div class="triage-day-picker">
+        <p>When?</p>
+        <div class="triage-days">${dayButtons}</div>
+        <button class="triage-back-btn" onclick="renderTriageCard()">Back</button>
+      </div>
+    `;
+  }
+
+  async function scheduleItem(id, day) {
+    await apiFetch(`${API}/api/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, day })
+    });
+    await fetchItems();
+    triageQueue = triageQueue.filter(i => i.id !== id);
+    renderTriageCard();
+  }
+
+  async function triageAction(id, toList) {
+    await moveItem(id, toList);
+    triageQueue = triageQueue.filter(i => i.id !== id);
+    renderTriageCard();
+  }
+
+  async function triageActionDone(id) {
+    await doneItem(id);
+    triageQueue = triageQueue.filter(i => i.id !== id);
+    renderTriageCard();
+  }
+
+  async function triageActionDelete(id) {
+    await deleteItem(id);
+    triageQueue = triageQueue.filter(i => i.id !== id);
+    renderTriageCard();
+  }
+
+  function triageSkip() {
+    triageIndex++;
+    renderTriageCard();
+  }
+
+  function closeTriage() {
+    document.getElementById('triage-overlay').classList.remove('active');
+    activeTriageMode = null;
+    fetchItems();
+  }
+
+  // Close on overlay click (not card click)
+  document.getElementById('triage-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeTriage();
+  });
+
+  document.getElementById('triage-start-btn').addEventListener('click', startTriage);
+
+  // Track which triage mode is active
+  let activeTriageMode = null; // 'task' or 'sweep'
+
+  // Keyboard shortcuts in triage mode
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('triage-overlay').classList.contains('active')) return;
+
+    if (activeTriageMode === 'sweep') {
+      if (sweepIndex >= sweepQueue.length) return;
+      const item = sweepQueue[sweepIndex];
+      if (!item) return;
+
+      switch (e.key) {
+        case '1': case 'k': sweepSkip(); break;
+        case '2': case 's': sweepSave(item.id); break;
+        case '3': case 't': sweepPromote(item.id); break;
+        case '4': case 'd': sweepDone(item.id); break;
+        case 'Backspace': case 'x': sweepDelete(item.id); break;
+        case ' ': case 'ArrowRight': e.preventDefault(); sweepSkip(); break;
+        case 'Escape': closeTriage(); break;
+      }
+      return;
+    }
+
+    if (activeTriageMode === 'review') {
+      if (reviewIndex >= reviewQueue.length) return;
+      const item = reviewQueue[reviewIndex];
+      if (!item) return;
+
+      switch (e.key) {
+        case '1': case 'k': reviewKeep(); break;
+        case '2': case 'w': reviewPromote(item.id); break;
+        case 'Backspace': case 'x': reviewDelete(item.id); break;
+        case ' ': case 'ArrowRight': e.preventDefault(); reviewKeep(); break;
+        case 'Escape': closeTriage(); break;
+      }
+      return;
+    }
+
+    // Task triage mode
+    if (triageIndex >= triageQueue.length) return;
+    const item = triageQueue[triageIndex];
+    if (!item) return;
+
+    // Day picker is showing — number keys pick a day
+    if (triageDayPickerVisible) {
+      const days = getWeekDays();
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 7 && days[num - 1]) {
+        scheduleItem(item.id, days[num - 1].iso);
+        return;
+      }
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        renderTriageCard(); // back to main buttons
+        return;
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case '1': case 'w': showDayPicker(item.id); break;
+      case '2': case 's': triageAction(item.id, 'someday'); break;
+      case '3': case 'a': triageAction(item.id, 'waiting'); break;
+      case '4': case 'd': triageActionDone(item.id); break;
+      case 'f': flipTriageDomain(item); break;
+      case ' ': case 'ArrowRight': e.preventDefault(); triageSkip(); break;
+      case 'Backspace': case 'x': triageActionDelete(item.id); break;
+      case 'Escape': closeTriage(); break;
+    }
+  });
+
+  async function flipTriageDomain(item) {
+    const next = item.domain === 'work' ? 'life' : 'work';
+    item.domain = next; // optimistic — reflect on the current card immediately
+    renderTriageCard();
+    await apiFetch(`${API}/api/set-domain`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: item.id, domain: next })
+    });
+  }
+
+  // ── Export / Import ──
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `triage-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (Array.isArray(imported)) {
+          await apiFetch(`${API}/api/import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(imported)
+          });
+          await fetchItems();
+          alert(`Imported ${imported.length} items.`);
+        }
+      } catch { alert('Invalid file.'); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+  }
+
+  function exportMarkdown() {
+    const lines = ['# Triage Export — ' + new Date().toLocaleDateString(), ''];
+    const labels = { inbox: 'Inbox', thisweek: 'This Week', someday: 'Someday', waiting: 'Waiting' };
+    LISTS.forEach(l => {
+      const listItems = items.filter(i => i.list === l);
+      if (listItems.length === 0) return;
+      lines.push(`## ${labels[l]}`);
+      listItems.forEach(i => {
+        let line = `- ${i.text}`;
+        if (i.nextStep) line += ` [Next: ${i.nextStep}]`;
+        if (i.url) line += ` — ${i.url}`;
+        line += ` *(${formatDate(i.created)})*`;
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `triage-${new Date().toISOString().slice(0,10)}.md`;
+    a.click();
+  }
+
+  // ── Bookmarklet ──
+
+  // ── Event listeners ──
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentList = tab.dataset.list;
+      render();
+    });
+  });
+
+  document.getElementById('add-btn').addEventListener('click', async () => {
+    const text = document.getElementById('add-input').value;
+    const url = document.getElementById('add-url').value;
+    const nextStep = document.getElementById('add-nextstep').value;
+    await captureItem(text, url, nextStep);
+    document.getElementById('add-input').value = '';
+    document.getElementById('add-url').value = '';
+    document.getElementById('add-nextstep').value = '';
+    document.getElementById('add-input').focus();
+  });
+
+  document.getElementById('add-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('add-btn').click();
+  });
+
+  // ── Journal ──
+
+  function renderJournal() {
+    const el = document.getElementById('journal-entries');
+    if (journalEntries.length === 0) {
+      el.innerHTML = '';
+      return;
+    }
+
+    // Sort newest first
+    const sorted = [...journalEntries].sort((a, b) =>
+      new Date(b.timestamp) - new Date(a.timestamp)
+    );
+
+    el.innerHTML = sorted.map(entry => {
+      const ts = new Date(entry.timestamp);
+      const hours = daysSince(entry.timestamp) * 24 +
+        (Date.now() - ts.getTime()) / (1000 * 60 * 60) % 24;
+      const fading = hours > 24;
+      const timeStr = ts.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const dateStr = daysSince(entry.timestamp) === 0 ? '' : formatDate(entry.timestamp) + ', ';
+
+      return `
+        <div class="journal-entry ${fading ? 'fading' : ''}">
+          <span class="journal-time">${dateStr}${timeStr}</span>
+          <span class="journal-text">${escapeHtml(entry.text)}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('journal-btn').addEventListener('click', async () => {
+    const input = document.getElementById('journal-input');
+    await addJournalEntry(input.value);
+    input.value = '';
+    input.focus();
+  });
+
+  document.getElementById('journal-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('journal-btn').click();
+  });
+
+  // ── Editable next-step ──
+
+  function toggleNextStepEdit(id) {
+    const el = document.getElementById(`ns-edit-${id}`);
+    if (el) {
+      el.classList.toggle('active');
+      if (el.classList.contains('active')) {
+        const input = document.getElementById(`ns-input-${id}`);
+        input.focus();
+        input.select();
+      }
+    }
+  }
+
+  async function saveNextStep(id) {
+    const input = document.getElementById(`ns-input-${id}`);
+    if (input) {
+      await updateNextStep(id, input.value);
+    }
+  }
+
+  // ── Inline Day Picker (for list view TW button) ──
+
+  function showInlineDayPicker(itemId) {
+    // Create a small overlay day picker
+    const existing = document.getElementById('inline-day-picker');
+    if (existing) existing.remove();
+
+    const days = getWeekDays();
+    const picker = document.createElement('div');
+    picker.id = 'inline-day-picker';
+    picker.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.15s ease';
+    picker.innerHTML = `
+      <div style="background:var(--surface);border-radius:16px;padding:28px;max-width:480px;width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.15)">
+        <p style="font-size:0.85rem;font-weight:600;color:var(--ink-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px">When?</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${days.map(d =>
+            `<button class="triage-day-btn ${d.isToday ? 'today' : ''}" onclick="inlineSchedule('${itemId}','${d.iso}')">
+              <span class="day-name">${d.isToday ? 'Today' : d.name}</span>
+              ${d.date}
+            </button>`
+          ).join('')}
+        </div>
+        <button class="triage-back-btn" onclick="document.getElementById('inline-day-picker').remove()">Cancel</button>
+      </div>
+    `;
+    picker.addEventListener('click', (e) => {
+      if (e.target === picker) picker.remove();
+    });
+    document.body.appendChild(picker);
+  }
+
+  async function inlineSchedule(id, day) {
+    document.getElementById('inline-day-picker').remove();
+    await apiFetch(`${API}/api/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, day })
+    });
+    await fetchItems();
+  }
+
+  // ── Tab Sweep ──
+
+  function renderTabs() {
+    const tabs = items.filter(i => i.list === 'tabs');
+    tabs.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    document.getElementById('tabs-count').textContent = tabs.length;
+
+    const section = document.getElementById('tabs-section');
+    section.style.display = tabs.length > 0 ? '' : 'none';
+    document.getElementById('sweep-start-btn').style.display = tabs.length > 0 ? '' : 'none';
+
+    const listEl = document.getElementById('tabs-list');
+    if (tabs.length === 0) {
+      listEl.innerHTML = '';
+      return;
+    }
+
+    listEl.innerHTML = tabs.map(item => {
+      const memoValue = item.memo ? escapeHtml(item.memo) : '';
+      const memoHtml = item.memo
+        ? `<div class="tab-item-memo">${memoValue} <button class="nextstep-edit-btn" onclick="toggleMemoEdit('${item.id}')">edit</button></div>`
+        : `<div class="tab-item-memo-placeholder" onclick="toggleMemoEdit('${item.id}')">+ add memo (where you left off)</div>`;
+
+      const editHtml = `
+        <div class="tab-memo-edit" id="memo-edit-${item.id}">
+          <input type="text" value="${memoValue}" placeholder="Where did you leave off?"
+                 id="memo-input-${item.id}"
+                 onkeydown="if(event.key==='Enter')saveMemo('${item.id}')">
+          <button onclick="saveMemo('${item.id}')">Save</button>
+          <button onclick="toggleMemoEdit('${item.id}')">Cancel</button>
+        </div>`;
+
+      return `
+        <div class="tab-item">
+          <div class="tab-item-content">
+            <a class="tab-item-url" href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener">
+              ${escapeHtml(item.text || truncateUrl(item.url || ''))}
+            </a>
+            ${memoHtml}
+            ${editHtml}
+            <div class="tab-item-meta">${formatDate(item.created)}</div>
+          </div>
+          <div class="tab-item-actions">
+            <button class="move-btn" onclick="moveItem('${item.id}','saved')" style="color:var(--thisweek)">
+              SV
+              <span class="tooltip">Save</span>
+            </button>
+            <button class="move-btn promote-btn" onclick="promoteTab('${item.id}')">
+              IN
+              <span class="tooltip">Make task</span>
+            </button>
+            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+              ✕
+              <span class="tooltip">Delete</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function toggleMemoEdit(id) {
+    const el = document.getElementById(`memo-edit-${id}`);
+    if (el) {
+      el.classList.toggle('active');
+      if (el.classList.contains('active')) {
+        const input = document.getElementById(`memo-input-${id}`);
+        input.focus();
+        input.select();
+      }
+    }
+  }
+
+  async function saveMemo(id) {
+    const input = document.getElementById(`memo-input-${id}`);
+    if (input) {
+      await apiFetch(`${API}/api/update-memo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, memo: input.value })
+      });
+      await fetchItems();
+    }
+  }
+
+  async function promoteTab(id) {
+    await apiFetch(`${API}/api/promote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchItems();
+  }
+
+  // ── Tab Sweep Triage ──
+
+  let sweepQueue = [];
+  let sweepIndex = 0;
+  let sweepTotal = 0;
+
+  function startSweep() {
+    sweepQueue = items
+      .filter(i => i.list === 'tabs')
+      .sort((a, b) => new Date(a.created) - new Date(b.created)); // oldest first
+    sweepIndex = 0;
+    sweepTotal = sweepQueue.length;
+    if (sweepTotal === 0) return;
+
+    activeTriageMode = 'sweep';
+    document.getElementById('triage-overlay').classList.add('active');
+    renderSweepCard();
+  }
+
+  function renderSweepCard() {
+    const card = document.getElementById('triage-card');
+
+    if (sweepIndex >= sweepQueue.length) {
+      card.innerHTML = `
+        <div class="triage-done-screen">
+          <div class="done-icon">○</div>
+          <h2>Sweep complete</h2>
+          <p>You reviewed ${sweepTotal} tab${sweepTotal === 1 ? '' : 's'}.</p>
+          <button class="btn btn-primary" onclick="closeTriage()">Back to dashboard</button>
+        </div>
+      `;
+      return;
+    }
+
+    const item = sweepQueue[sweepIndex];
+    const pct = Math.round((sweepIndex / sweepTotal) * 100);
+
+    const memoHtml = item.memo
+      ? `<div class="triage-item-memo"><strong>Where you left off</strong>${escapeHtml(item.memo)}</div>`
+      : '';
+
+    const urlHtml = item.url
+      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(item.url)}</a>`
+      : '';
+
+    card.innerHTML = `
+      <div class="triage-progress">
+        <span>${sweepIndex + 1} of ${sweepTotal}</span>
+        <div class="triage-progress-bar">
+          <div class="triage-progress-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="triage-item-text">${escapeHtml(item.text || 'Untitled page')}</div>
+      ${urlHtml}
+      ${memoHtml}
+      <div class="triage-item-age">Saved ${formatDate(item.created)}</div>
+      <div class="triage-actions" id="sweep-actions">
+        <button class="triage-btn triage-btn-keep" onclick="sweepSkip()">Keep</button>
+        <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save</button>
+        <button class="triage-btn triage-btn-promote" onclick="sweepPromote('${item.id}')">Make Task</button>
+        <button class="triage-btn triage-btn-done" onclick="sweepDone('${item.id}')">Done Reading</button>
+        <button class="triage-btn triage-btn-delete" onclick="sweepDelete('${item.id}')">Delete</button>
+      </div>
+    `;
+  }
+
+  function sweepSkip() {
+    sweepIndex++;
+    renderSweepCard();
+  }
+
+  async function sweepPromote(id) {
+    await promoteTab(id);
+    sweepQueue = sweepQueue.filter(i => i.id !== id);
+    renderSweepCard();
+  }
+
+  async function sweepDone(id) {
+    await deleteItem(id);
+    sweepQueue = sweepQueue.filter(i => i.id !== id);
+    renderSweepCard();
+  }
+
+  async function sweepDelete(id) {
+    await deleteItem(id);
+    sweepQueue = sweepQueue.filter(i => i.id !== id);
+    renderSweepCard();
+  }
+
+  async function sweepSave(id) {
+    await moveItem(id, 'saved');
+    sweepQueue = sweepQueue.filter(i => i.id !== id);
+    renderSweepCard();
+  }
+
+  document.getElementById('sweep-start-btn').addEventListener('click', startSweep);
+
+  // ── Someday Review ──
+
+  let reviewQueue = [];
+  let reviewIndex = 0;
+  let reviewTotal = 0;
+  let reviewKept = 0;
+  let reviewPromoted = 0;
+  let reviewDeleted = 0;
+
+  function startSomedayReview() {
+    reviewQueue = items
+      .filter(inDomain)
+      .filter(i => i.list === 'someday')
+      .sort((a, b) => new Date(a.created) - new Date(b.created)); // oldest first
+    reviewIndex = 0;
+    reviewTotal = reviewQueue.length;
+    reviewKept = 0;
+    reviewPromoted = 0;
+    reviewDeleted = 0;
+    if (reviewTotal === 0) return;
+
+    activeTriageMode = 'review';
+    document.getElementById('triage-overlay').classList.add('active');
+    renderReviewCard();
+  }
+
+  function renderReviewCard() {
+    const card = document.getElementById('triage-card');
+
+    if (reviewIndex >= reviewQueue.length) {
+      card.innerHTML = `
+        <div class="triage-done-screen">
+          <div class="done-icon">○</div>
+          <h2>Review complete</h2>
+          <p>Reviewed ${reviewTotal} item${reviewTotal === 1 ? '' : 's'}.<br>
+             ${reviewKept} kept, ${reviewPromoted} promoted, ${reviewDeleted} deleted.</p>
+          <button class="btn btn-primary" onclick="closeTriage()">Back to dashboard</button>
+        </div>
+      `;
+      return;
+    }
+
+    const item = reviewQueue[reviewIndex];
+    const pct = Math.round((reviewIndex / reviewTotal) * 100);
+    const days = daysSince(item.created);
+
+    const nextStepHtml = item.nextStep
+      ? `<div class="triage-item-nextstep"><strong>Next step</strong>${escapeHtml(item.nextStep)}</div>`
+      : '';
+
+    const urlHtml = item.url
+      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>`
+      : '';
+
+    const ageNote = days >= 90
+      ? `<div class="triage-item-age" style="color:#6B6099"><strong>${days} days in Someday</strong> — still relevant?</div>`
+      : `<div class="triage-item-age">In Someday for ${days} days</div>`;
+
+    card.innerHTML = `
+      <div class="triage-progress">
+        <span>${reviewIndex + 1} of ${reviewTotal}</span>
+        <div class="triage-progress-bar">
+          <div class="triage-progress-fill" style="width:${pct}%"></div>
+        </div>
+      </div>
+      <div class="triage-item-text">${escapeHtml(item.text)}</div>
+      ${nextStepHtml}
+      ${urlHtml}
+      ${ageNote}
+      <div class="triage-actions">
+        <button class="triage-btn triage-btn-keep" onclick="reviewKeep()">Keep in Someday</button>
+        <button class="triage-btn triage-btn-thisweek" onclick="reviewPromote('${item.id}')">Promote to This Week</button>
+        <button class="triage-btn triage-btn-delete" onclick="reviewDelete('${item.id}')">Delete</button>
+      </div>
+    `;
+  }
+
+  function reviewKeep() {
+    reviewKept++;
+    reviewIndex++;
+    renderReviewCard();
+  }
+
+  async function reviewPromote(id) {
+    reviewPromoted++;
+    reviewQueue = reviewQueue.filter(i => i.id !== id);
+    // Show day picker for scheduling
+    showReviewDayPicker(id);
+  }
+
+  function showReviewDayPicker(itemId) {
+    const card = document.getElementById('triage-card');
+    const days = getWeekDays();
+    const dayButtons = days.map(d =>
+      `<button class="triage-day-btn ${d.isToday ? 'today' : ''}" onclick="reviewSchedule('${itemId}','${d.iso}')">
+        <span class="day-name">${d.isToday ? 'Today' : d.name}</span>
+        ${d.date}
+      </button>`
+    ).join('');
+
+    card.innerHTML = `
+      <div class="triage-day-picker">
+        <p>When?</p>
+        <div class="triage-days">${dayButtons}</div>
+      </div>
+    `;
+  }
+
+  async function reviewSchedule(id, day) {
+    await apiFetch(`${API}/api/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, day })
+    });
+    await fetchItems();
+    renderReviewCard();
+  }
+
+  async function reviewDelete(id) {
+    reviewDeleted++;
+    await deleteItem(id);
+    reviewQueue = reviewQueue.filter(i => i.id !== id);
+    renderReviewCard();
+  }
+
+  document.getElementById('review-someday-btn').addEventListener('click', startSomedayReview);
+
+  // ── Saved References ──
+
+  let savedSearchQuery = '';
+
+  function renderSaved() {
+    const saved = items.filter(i => i.list === 'saved');
+    document.getElementById('saved-count').textContent = saved.length;
+
+    const section = document.getElementById('saved-section');
+    section.style.display = saved.length > 0 ? '' : 'none';
+
+    // Filter by search
+    let filtered = saved;
+    if (savedSearchQuery) {
+      const q = savedSearchQuery.toLowerCase();
+      filtered = saved.filter(i =>
+        (i.text || '').toLowerCase().includes(q) ||
+        (i.url || '').toLowerCase().includes(q) ||
+        (i.memo || '').toLowerCase().includes(q)
+      );
+    }
+
+    filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    const listEl = document.getElementById('saved-list');
+    if (filtered.length === 0 && savedSearchQuery) {
+      listEl.innerHTML = '<div class="saved-no-results">No matches</div>';
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(item => {
+      const title = item.text || truncateUrl(item.url || '');
+      return `
+        <div class="saved-item">
+          <div class="saved-item-content">
+            <a class="saved-item-title" href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener">${escapeHtml(title)}</a>
+            ${item.memo ? `<div class="saved-item-memo">${escapeHtml(item.memo)}</div>` : ''}
+          </div>
+          <div class="saved-item-actions">
+            <button class="move-btn promote-btn" onclick="promoteTab('${item.id}')" title="Make task">
+              IN
+              <span class="tooltip">Make task</span>
+            </button>
+            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+              ✕
+              <span class="tooltip">Delete</span>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('saved-search').addEventListener('input', (e) => {
+    savedSearchQuery = e.target.value;
+    renderSaved();
+  });
+
+  // ══ System health strip ══════════════════════════════════════════
+
+  let healthData = null;
+
+  async function fetchHealth() {
+    try {
+      const q = currentDomain === 'all' ? '' : `?domain=${currentDomain}`;
+      const res = await apiFetch(`${API}/api/health${q}`);
+      healthData = await res.json();
+      renderHealth();
+    } catch (e) { /* server may be starting */ }
+  }
+
+  function renderHealth() {
+    const el = document.getElementById('health-strip');
+    if (!healthData) { el.style.display = 'none'; return; }
+    const h = healthData;
+    const parts = [];
+    if (h.travel) parts.push(`<span class="health-item" style="color:var(--thisweek);font-weight:600">✈ Travel</span>`);
+    parts.push(`<span class="health-item${h.stale ? ' health-warn' : ''}">Inbox: <strong>${h.inbox}</strong>${h.stale ? ` (${h.stale} stale)` : ''}</span>`);
+    if (h.unsorted) parts.push(`<span class="health-item health-warn">Unsorted: <strong>${h.unsorted}</strong></span>`);
+    if (h.recipe_queue) parts.push(`<span class="health-item">Recipe queue: <strong>${h.recipe_queue}</strong></span>`);
+    parts.push(`<span class="health-item">Sparks this week: <strong>${h.sparks_week}</strong></span>`);
+    if (h.recipe_backlog) parts.push(`<span class="health-item">Backlog: <strong>${h.recipe_backlog}</strong> archived</span>`);
+    if (h.recipes_missing_info) parts.push(`<span class="health-item">${h.recipes_missing_info} bookmarks missing info</span>`);
+
+    let html = parts.join('<span class="health-sep">·</span>');
+    const overload = (h.inbox + h.unsorted) > h.catchup_threshold;
+    if (overload) {
+      html += `<button class="btn btn-primary btn-small catchup-btn" onclick="openCatchup()">Pre-sort? (${h.inbox + h.unsorted})</button>`;
+    }
+    if (h.unclassified) {
+      html += `<button class="btn btn-ghost btn-small" style="margin-left:8px" onclick="backfillDomains(this)">Classify ${h.unclassified}</button>`;
+    }
+    el.innerHTML = html;
+    el.style.display = '';
+  }
+
+  async function backfillDomains(btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Classifying…'; }
+    try {
+      await apiFetch(`${API}/api/backfill-domains`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      await fetchItems();
+      await fetchHealth();
+    } catch (e) { if (btn) { btn.disabled = false; btn.textContent = 'Classify'; } }
+  }
+
+  // ══ Catch-up pre-sort (degrades gracefully when you skip weeks) ═════
+
+  async function openCatchup() {
+    const overlay = document.getElementById('plan-overlay');
+    const card = document.getElementById('plan-card');
+    overlay.classList.add('active');
+    card.innerHTML = `<h2>Pre-sort</h2><p class="plan-sub">Reading your inbox and proposing quick dispositions…</p>`;
+    let data;
+    try {
+      const res = await apiFetch(`${API}/api/presort`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      data = await res.json();
+    } catch (e) {
+      card.innerHTML = `<h2>Pre-sort</h2><p class="plan-sub">Couldn't reach the sorter. Try again.</p><button class="btn btn-ghost" onclick="closePlan()">Close</button>`;
+      return;
+    }
+    const props = data.proposals || [];
+    if (!props.length) {
+      card.innerHTML = `<h2>Pre-sort</h2><p class="plan-sub">Nothing to pre-sort.</p><button class="btn btn-ghost" onclick="closePlan()">Close</button>`;
+      return;
+    }
+    // Group by theme for a calmer read.
+    const byId = Object.fromEntries(items.map(i => [i.id, i]));
+    const rows = props.map(p => {
+      const it = byId[p.id];
+      if (!it) return '';
+      const text = escapeHtml(it.text || '');
+      const sel = s => p.suggestion === s ? ' selected' : '';
+      return `<div class="presort-row">
+        <span class="p-theme">${escapeHtml(p.theme || '')}</span>
+        <span style="flex:1;min-width:0">${text}</span>
+        <select data-id="${p.id}">
+          <option value="keep"${sel('keep')}>Keep</option>
+          <option value="someday"${sel('someday')}>Someday</option>
+          <option value="delete"${sel('delete')}>Delete</option>
+        </select>
+      </div>`;
+    }).join('');
+    card.innerHTML = `
+      <h2>Pre-sort — ${props.length} item${props.length===1?'':'s'}</h2>
+      <p class="plan-sub">Proposed dispositions. Adjust any, then apply. Nothing changes until you click Apply.</p>
+      <div id="presort-rows">${rows}</div>
+      <div class="triage-actions" style="margin-top:16px; display:flex; gap:8px;">
+        <button class="btn btn-primary" onclick="applyCatchup()">Apply</button>
+        <button class="btn btn-ghost" onclick="closePlan()">Cancel</button>
+      </div>`;
+  }
+
+  async function applyCatchup() {
+    const selects = document.querySelectorAll('#presort-rows select');
+    const ops = [];
+    selects.forEach(s => {
+      const id = s.getAttribute('data-id');
+      const v = s.value;
+      if (v === 'someday') ops.push(apiFetch(`${API}/api/move`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, list:'someday' }) }));
+      else if (v === 'delete') ops.push(apiFetch(`${API}/api/delete`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) }));
+    });
+    await Promise.all(ops);
+    closePlan();
+    await fetchItems();
+    await fetchHealth();
+  }
+
+  // ══ Sparks ═══════════════════════════════════════════════════════
+
+  let sparks = [];
+  let sparkSearch = '';
+
+  async function fetchSparks() {
+    try {
+      const res = await apiFetch(`${API}/api/sparks`);
+      sparks = await res.json();
+      renderSparks();
+    } catch (e) { /* ignore */ }
+  }
+
+  function renderSparks() {
+    const section = document.getElementById('sparks-section');
+    document.getElementById('sparks-count').textContent = sparks.length;
+    section.style.display = sparks.length ? '' : 'none';
+
+    let list = sparks.slice();
+    if (sparkSearch) {
+      const q = sparkSearch.toLowerCase();
+      list = list.filter(s => (s.reaction||'').toLowerCase().includes(q) || (s.url||'').toLowerCase().includes(q));
+    }
+    list.sort((a,b) => new Date(b.created) - new Date(a.created));
+
+    const el = document.getElementById('sparks-list');
+    if (!list.length) { el.innerHTML = '<div class="saved-no-results">No matches</div>'; return; }
+    el.innerHTML = list.map(s => `
+      <div class="spark-item">
+        ${s.reaction ? `<div class="spark-reaction">${escapeHtml(s.reaction)}</div>` : ''}
+        ${s.url ? `<a class="spark-link" href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(s.url))}</a>` : ''}
+        <div class="spark-date">${formatDate(s.created)}</div>
+      </div>`).join('');
+  }
+
+  // ══ Recipes ══════════════════════════════════════════════════════
+
+  let recipes = [];
+  let recipeSearch = '';
+
+  async function fetchRecipes() {
+    try {
+      const res = await apiFetch(`${API}/api/recipes`);
+      recipes = await res.json();
+      renderRecipes();
+    } catch (e) { /* ignore */ }
+  }
+
+  let showHidden = false;
+  let hideBaby = false;
+
+  function filterRecipes() {
+    const tier = document.getElementById('recipes-tier').value;
+    const maxTime = document.getElementById('recipes-time').value;
+    const status = (document.getElementById('recipes-status') || {}).value || 'active';
+    const q = recipeSearch.toLowerCase();
+    return recipes.filter(r => {
+      if (r.excluded && !showHidden) return false;
+      const backlog = r.status === 'archived-backlog';
+      if (status === 'active' && backlog) return false;   // default: hide the Meta backlog
+      if (status === 'backlog' && !backlog) return false;
+      if (hideBaby && (r.tags||[]).includes('babyfood')) return false;
+      if (tier && r.tier !== tier) return false;
+      if (maxTime && r.time_minutes && r.time_minutes > Number(maxTime)) return false;
+      if (maxTime && !r.time_minutes && Number(maxTime) < 30) return false;
+      if (q) {
+        const hay = [r.title, r.cuisine, (r.main_ingredients||[]).join(' '), (r.tags||[]).join(' '), (r.ingredients||[]).join(' '), r.notes||''].join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function recipeMetaLine(r) {
+    const bits = [];
+    if (r.cuisine) bits.push(escapeHtml(r.cuisine));
+    if (r.time_minutes) bits.push(`${r.time_minutes} min`);
+    if (r.effort) bits.push(escapeHtml(r.effort));
+    if ((r.main_ingredients||[]).length) bits.push(escapeHtml(r.main_ingredients.slice(0,4).join(', ')));
+    return bits.join('<span class="dot">·</span>');
+  }
+
+  function renderRecipes() {
+    const section = document.getElementById('recipes-section');
+    const visibleTotal = recipes.filter(r => !r.excluded).length;
+    const excludedCount = recipes.length - visibleTotal;
+    document.getElementById('recipes-count').textContent = showHidden ? recipes.length : visibleTotal;
+    section.style.display = recipes.length ? '' : 'none';
+
+    // Purge / show-hidden controls appear only when something is excluded.
+    const purgeBtn = document.getElementById('purge-hidden-btn');
+    const hiddenWrap = document.getElementById('show-hidden-wrap');
+    if (excludedCount > 0) {
+      purgeBtn.style.display = '';
+      purgeBtn.textContent = `Purge ${excludedCount} hidden`;
+      hiddenWrap.style.display = 'inline-flex';
+    } else {
+      purgeBtn.style.display = 'none';
+      hiddenWrap.style.display = 'none';
+    }
+    // Baby-food toggle appears only if any recipe is tagged babyfood.
+    const hasBaby = recipes.some(r => (r.tags||[]).includes('babyfood'));
+    document.getElementById('hide-baby-wrap').style.display = hasBaby ? 'inline-flex' : 'none';
+
+    const list = filterRecipes();
+    list.sort((a,b) => new Date(b.date_added||0) - new Date(a.date_added||0));
+    const el = document.getElementById('recipes-list');
+    if (!list.length) { el.innerHTML = '<div class="saved-no-results">No matching recipes</div>'; return; }
+    // Cap the DOM at a sane number — search/filter to narrow the ~1000s of imports.
+    const CAP = 60;
+    const shown = list.slice(0, CAP);
+    const capNote = list.length > CAP
+      ? `<div class="saved-no-results">Showing ${CAP} of ${list.length} — search or filter to narrow.</div>`
+      : '';
+    el.innerHTML = capNote + shown.map(r => {
+      const title = escapeHtml(r.title || 'Untitled');
+      const titleHtml = r.source_url ? `<a href="${escapeHtml(r.source_url)}" target="_blank" rel="noopener">${title}</a>` : title;
+      const cooked = (r.times_cooked||0) > 0 ? `<span class="recipe-cooked-badge">✓ ${r.times_cooked}× · ${formatDate(r.last_cooked)}</span>` : '';
+      const caption = r.notes ? `
+        <details class="recipe-caption">
+          <summary>Caption / details</summary>
+          <div class="cap-body">${escapeHtml(r.notes)}</div>
+        </details>` : '';
+      const fullBtn = (r.tier === 'bookmark' && r.notes)
+        ? `<button class="btn btn-ghost btn-small" id="full-${r.id}" onclick="promoteFull('${r.id}')">Get full recipe</button>`
+        : '';
+      return `
+        <div class="recipe-card">
+          <div class="recipe-row">
+            <div class="recipe-main">
+              <div class="recipe-title">${titleHtml} <span class="tier-badge tier-${r.tier}">${r.tier}</span></div>
+              <div class="recipe-meta">${recipeMetaLine(r) || '<em>no metadata yet</em>'}</div>
+            </div>
+            ${cooked}
+            <div class="recipe-btns">
+              ${fullBtn}
+              <button class="btn btn-ghost btn-small cook-btn" onclick="markCooked('${r.id}')">Cooked</button>
+            </div>
+          </div>
+          ${caption}
+        </div>`;
+    }).join('');
+  }
+
+  async function promoteFull(id) {
+    const btn = document.getElementById(`full-${id}`);
+    if (btn) { btn.disabled = true; btn.textContent = 'Reading…'; }
+    try {
+      const res = await apiFetch(`${API}/api/recipes/promote-full`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        if (btn) { btn.disabled = false; btn.textContent = data.error ? 'Could not parse' : 'Get full recipe'; }
+        return;
+      }
+      await fetchRecipes();
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = 'Get full recipe'; }
+    }
+  }
+
+  async function markCooked(id) {
+    await apiFetch(`${API}/api/recipes/cooked`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
+    await fetchRecipes();
+    await fetchHealth();
+  }
+
+  document.getElementById('recipes-search').addEventListener('input', e => { recipeSearch = e.target.value; renderRecipes(); });
+  document.getElementById('recipes-tier').addEventListener('change', renderRecipes);
+  document.getElementById('recipes-status').addEventListener('change', renderRecipes);
+  document.getElementById('recipes-time').addEventListener('change', renderRecipes);
+  document.getElementById('show-hidden').addEventListener('change', e => { showHidden = e.target.checked; renderRecipes(); });
+  document.getElementById('hide-baby').addEventListener('change', e => { hideBaby = e.target.checked; renderRecipes(); });
+  document.getElementById('purge-hidden-btn').addEventListener('click', async () => {
+    const n = recipes.filter(r => r.excluded).length;
+    if (!confirm(`Permanently delete ${n} hidden (non-recipe) item${n===1?'':'s'}? This cannot be undone.`)) return;
+    await apiFetch(`${API}/api/recipes/purge-excluded`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    await fetchRecipes();
+  });
+  document.getElementById('sparks-search').addEventListener('input', e => { sparkSearch = e.target.value; renderSparks(); });
+
+  // ══ Plan This Week ═══════════════════════════════════════════════
+
+  let planResult = null;
+
+  function openPlanModal() {
+    const overlay = document.getElementById('plan-overlay');
+    const card = document.getElementById('plan-card');
+    overlay.classList.add('active');
+    card.innerHTML = `
+      <h2>Plan This Week</h2>
+      <p class="plan-sub">Approve or swap from a proposed few. One grocery list out the other end — no choosing from your whole collection.</p>
+      <div class="plan-constraints">
+        <label>Dinners <input type="number" id="plan-count" value="5" min="1" max="10" style="width:64px"></label>
+        <select id="plan-maxtime">
+          <option value="">Any time</option>
+          <option value="20">≤ 20 min</option>
+          <option value="30">≤ 30 min</option>
+          <option value="45">≤ 45 min</option>
+          <option value="60">≤ 60 min</option>
+        </select>
+        <select id="plan-tier">
+          <option value="">Any tier</option>
+          <option value="full">Full only</option>
+          <option value="bookmark">Bookmark only</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="runPlan()">Propose meals</button>
+      <button class="btn btn-ghost" onclick="closePlan()">Cancel</button>
+      <div id="plan-output" style="margin-top:16px"></div>`;
+  }
+
+  async function runPlan(excludeIds) {
+    const body = {
+      count: Number(document.getElementById('plan-count').value) || 5,
+      max_time: document.getElementById('plan-maxtime').value || undefined,
+      tier: document.getElementById('plan-tier').value || undefined,
+    };
+    const out = document.getElementById('plan-output');
+    out.innerHTML = '<p class="plan-sub">Building your grocery list…</p>';
+    const res = await apiFetch(`${API}/api/recipes/plan`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    planResult = await res.json();
+    if (excludeIds && excludeIds.length) planResult.picks = planResult.picks.filter(p => !excludeIds.includes(p.id));
+    renderPlanOutput();
+  }
+
+  function renderPlanOutput() {
+    const out = document.getElementById('plan-output');
+    const r = planResult;
+    if (!r || !r.picks || !r.picks.length) {
+      out.innerHTML = `<p class="plan-sub">No recipes matched — add some, or loosen the constraints. (${r ? r.candidate_count : 0} in pool.)</p>`;
+      return;
+    }
+    const picks = r.picks.map(p => `
+      <div class="plan-pick">
+        <div class="pick-main">
+          <strong>${escapeHtml(p.title)}</strong> <span class="tier-badge tier-${p.tier}">${p.tier}</span>
+          <div class="recipe-meta">${recipeMetaLine(p) || '<em>no metadata</em>'}</div>
+        </div>
+        <button class="btn btn-ghost btn-small" onclick="swapPick('${p.id}')">Swap</button>
+        <button class="btn btn-ghost btn-small" onclick="planCooked('${p.id}')">Cooked</button>
+      </div>`).join('');
+
+    // Opportunistic enrichment: ONE question, for the first pick missing a key field.
+    let enrich = '';
+    const gap = r.picks.find(p => (p._missing||[]).length);
+    if (gap) {
+      const field = gap._missing[0];
+      const labels = { time_minutes: 'roughly how many minutes?', main_ingredients: 'main ingredients (comma-separated)?', cuisine: 'what cuisine?' };
+      enrich = `<div class="enrich-q">
+        <div><strong>${escapeHtml(gap.title)}</strong> — ${labels[field]||field}</div>
+        <input type="text" id="enrich-input" placeholder="${labels[field]||''}" onkeydown="if(event.key==='Enter')saveEnrich('${gap.id}','${field}')">
+        <div style="margin-top:6px"><button class="btn btn-ghost btn-small" onclick="saveEnrich('${gap.id}','${field}')">Save</button> <span class="plan-sub">or skip — never required</span></div>
+      </div>`;
+    }
+
+    let grocery = '';
+    if ((r.grocery||[]).length) {
+      grocery += `<ul>${r.grocery.map(g => `<li>${escapeHtml(g)}</li>`).join('')}</ul>`;
+    }
+    if ((r.grocery_approx||[]).length) {
+      grocery += r.grocery_approx.map(a => `<li class="approx-note">${escapeHtml(a.ingredients.join(', '))} — check video (${escapeHtml(a.title)})</li>`).join('');
+    }
+
+    out.innerHTML = `
+      <div>${picks}</div>
+      <div style="margin-top:6px"><button class="btn btn-ghost btn-small" onclick="runPlan()">Shuffle all</button></div>
+      ${enrich}
+      <div class="plan-grocery">
+        <h3>Grocery list</h3>
+        ${grocery || '<p class="plan-sub">No ingredients recorded on these picks.</p>'}
+        <button class="btn btn-ghost btn-small" style="margin-top:10px" onclick="copyGrocery()">Copy list</button>
+      </div>`;
+  }
+
+  function swapPick(id) {
+    // Re-run and drop the swapped pick, so a fresh candidate takes its slot.
+    runPlan([id]);
+  }
+
+  async function planCooked(id) {
+    await markCooked(id);
+    if (planResult) planResult.picks = planResult.picks.filter(p => p.id !== id);
+    renderPlanOutput();
+  }
+
+  async function saveEnrich(id, field) {
+    const raw = (document.getElementById('enrich-input').value || '').trim();
+    if (!raw) return;
+    let value = raw;
+    if (field === 'time_minutes') { value = parseInt(raw.replace(/\D/g,''), 10); if (!value) return; }
+    if (field === 'main_ingredients') value = raw.split(',').map(s => s.trim()).filter(Boolean);
+    await apiFetch(`${API}/api/recipes/enrich`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id, fields: { [field]: value } }) });
+    await fetchRecipes();
+    // Reflect the new metadata in the open plan.
+    if (planResult) {
+      const p = planResult.picks.find(x => x.id === id);
+      if (p) { p[field] = value; p._missing = (p._missing||[]).filter(f => f !== field); }
+    }
+    renderPlanOutput();
+  }
+
+  function copyGrocery() {
+    if (!planResult) return;
+    const lines = (planResult.grocery||[]).slice();
+    (planResult.grocery_approx||[]).forEach(a => lines.push(`${a.ingredients.join(', ')} (check video — ${a.title})`));
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      const btn = event.target; const t = btn.textContent; btn.textContent = 'Copied ✓';
+      setTimeout(() => btn.textContent = t, 1200);
+    });
+  }
+
+  function closePlan() {
+    document.getElementById('plan-overlay').classList.remove('active');
+    planResult = null;
+  }
+
+  document.getElementById('plan-week-btn').addEventListener('click', openPlanModal);
+  document.getElementById('plan-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'plan-overlay') closePlan();
+  });
+
+  // ══ Deadlines ledger ═════════════════════════════════════════════
+
+  let deadlines = [];
+
+  async function fetchDeadlines() {
+    try {
+      const res = await apiFetch(`${API}/api/deadlines`);
+      deadlines = await res.json();
+      renderDeadlines();
+    } catch (e) { /* ignore */ }
+  }
+
+  function renderDeadlines() {
+    const section = document.getElementById('deadlines-section');
+    // Active = not done/dismissed, in the current domain lens.
+    const active = deadlines.filter(d =>
+      !['done', 'dismissed'].includes(d.status) && inDomain(d));
+    document.getElementById('deadlines-count').textContent = active.length;
+    // Always visible: it starts empty and needs a discoverable "+ Add" entry point.
+    section.style.display = '';
+
+    active.sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
+    const el = document.getElementById('deadlines-list');
+    el.innerHTML = active.map(d => {
+      const dl = d.days_left;
+      let badgeCls = 'far', badgeTxt = dl == null ? '—' : `${dl}d`;
+      if (dl != null && dl <= 3) badgeCls = 'soon';
+      else if (d.runway_open) badgeCls = 'open';
+      const actions = d.proposed
+        ? `<button class="btn btn-primary btn-small" onclick="confirmDeadline('${d.id}')">Confirm</button>
+           <button class="btn btn-ghost btn-small" onclick="deleteDeadline('${d.id}')">Dismiss</button>`
+        : `<button class="btn btn-ghost btn-small" onclick="doneDeadline('${d.id}')">Done</button>
+           <button class="btn btn-ghost btn-small" onclick="deleteDeadline('${d.id}')">✕</button>`;
+      return `
+        <div class="deadline-item ${d.proposed ? 'proposed' : ''}">
+          <span class="dl-badge ${badgeCls}">${badgeTxt}</span>
+          <div class="deadline-main">
+            <div class="deadline-title">${escapeHtml(d.title)}${d.proposed ? ' <span class="unsorted-flag">proposed</span>' : ''}${domainChip(d)}</div>
+            <div class="deadline-meta">due ${d.due_date} · ${d.type} · runway ${d.lead_time_days}d${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
+          </div>
+          ${actions}
+        </div>`;
+    }).join('') || '<div class="saved-no-results">No deadlines yet — <strong>+ Add</strong> one above, or run <code>python3 deadlines-interview.py</code> to populate them in 5 minutes.</div>';
+  }
+
+  function toggleDeadlineAdd() {
+    const f = document.getElementById('deadline-add-form');
+    f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+    document.getElementById('deadlines-section').style.display = '';
+  }
+  async function addDeadline() {
+    const title = document.getElementById('dl-title').value.trim();
+    const due = document.getElementById('dl-due').value;
+    const type = document.getElementById('dl-type').value;
+    if (!title || !due) return;
+    await apiFetch(`${API}/api/deadlines/add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, due_date: due, type, domain: currentDomain === 'life' ? 'life' : 'work' })
+    });
+    document.getElementById('dl-title').value = '';
+    document.getElementById('dl-due').value = '';
+    document.getElementById('deadline-add-form').style.display = 'none';
+    await fetchDeadlines();
+  }
+  async function quickAddDeadline() {
+    const input = document.getElementById('dl-freeform');
+    const note = input.value.trim();
+    if (!note) return;
+    const res = await apiFetch(`${API}/api/deadlines/add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note })   // server parses the date/type from the text
+    });
+    if (res.status === 422) {   // no date found in the text
+      input.style.borderColor = 'var(--danger)';
+      input.placeholder = "Couldn't find a date — try “… due Aug 15” or “… by 9/1”";
+      input.value = '';
+      return;
+    }
+    input.value = ''; input.style.borderColor = '';
+    document.getElementById('deadline-add-form').style.display = 'none';
+    await fetchDeadlines();
+  }
+  async function confirmDeadline(id) { await _dlPost('/api/deadlines/confirm', { id }); }
+  async function doneDeadline(id) { await _dlPost('/api/deadlines/update', { id, fields: { status: 'done' } }); }
+  async function deleteDeadline(id) { await _dlPost('/api/deadlines/delete', { id }); }
+  async function _dlPost(path, body) {
+    await apiFetch(`${API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await fetchDeadlines(); await fetchItems();
+  }
+
+  // ══ Morning brief panel ══════════════════════════════════════════
+
+  function briefMdToHtml(md) {
+    const out = [];
+    let inList = false;
+    for (let line of md.split('\n')) {
+      if (/^#\s/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h1>${escapeHtml(line.replace(/^#\s/, ''))}</h1>`); }
+      else if (/^##\s/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h2>${escapeHtml(line.replace(/^##\s/, ''))}</h2>`); }
+      else if (/^-\s/.test(line)) { if (!inList) { out.push('<ul>'); inList = true; } out.push(`<li>${mdInline(line.replace(/^-\s/, ''))}</li>`); }
+      else if (/^_.*_$/.test(line.trim())) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<em>${escapeHtml(line.trim().replace(/^_|_$/g, ''))}</em>`); }
+      else if (line.trim()) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<p>${mdInline(line)}</p>`); }
+    }
+    if (inList) out.push('</ul>');
+    return out.join('');
+  }
+  function mdInline(s) { return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); }
+
+  async function fetchBrief() {
+    try {
+      const res = await apiFetch(`${API}/api/brief`);
+      const b = await res.json();
+      const panel = document.getElementById('brief-panel');
+      const todayKey = new Date().toISOString().slice(0, 10);
+      if (b.fresh && b.markdown && localStorage.getItem('brief-dismissed') !== todayKey) {
+        panel.innerHTML = `<button class="btn btn-ghost btn-small brief-dismiss" onclick="dismissBrief()">Dismiss for today</button>${briefMdToHtml(b.markdown)}`;
+        panel.style.display = '';
+      } else {
+        panel.style.display = 'none';
+      }
+    } catch (e) { /* ignore */ }
+  }
+  function dismissBrief() {
+    localStorage.setItem('brief-dismissed', new Date().toISOString().slice(0, 10));
+    document.getElementById('brief-panel').style.display = 'none';
+  }
+
+  // ══ Travel mode ══════════════════════════════════════════════════
+
+  let travelOn = false;
+
+  async function fetchTravel() {
+    try {
+      const t = await (await apiFetch(`${API}/api/travel`)).json();
+      travelOn = !!t.on;
+      renderTravel();
+    } catch (e) { /* ignore */ }
+  }
+  function renderTravel() {
+    const btn = document.getElementById('travel-btn');
+    btn.classList.toggle('on', travelOn);
+    btn.textContent = travelOn ? '✈ Travel mode: ON' : '✈ Travel mode: off';
+  }
+  async function toggleTravel() {
+    const next = !travelOn;
+    if (next && !confirm('Turn on travel mode? Brief shrinks to essentials and stale-flagging pauses until you turn it off.')) return;
+    await apiFetch(`${API}/api/travel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: next }) });
+    travelOn = next;
+    renderTravel();
+    await fetchHealth();
+    // Re-entry is a feature: turning travel OFF with a big backlog surfaces catch-up.
+    if (!next && healthData && (healthData.inbox + (healthData.unsorted || 0)) > healthData.catchup_threshold) {
+      openCatchup();
+    }
+  }
+
+  // ── Init ──
+  fetchItems();
+  fetchJournal();
+  fetchHealth();
+  fetchSparks();
+  fetchRecipes();
+  fetchDeadlines();
+  fetchBrief();
+  fetchTravel();
+  // Open any runways on load (idempotent), then refresh the ledger.
+  apiFetch(`${API}/api/deadlines/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(() => { fetchDeadlines(); }).catch(() => {});
+</script>
+</body>
+</html>

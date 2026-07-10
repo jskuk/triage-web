@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1A1A1A;
+    --surface: #242424;
+    --ink: #E8E4DE;
+    --ink-muted: #7A756E;
+    --accent: #D4642A;
+    --border: #333;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px 40px 40px;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    margin-bottom: 32px;
+  }
+
+  .search-box {
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    margin-bottom: 32px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 16px 20px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    background: var(--surface);
+    color: var(--ink);
+    transition: border-color 0.15s;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .search-box input::placeholder { color: #555; }
+
+  .count {
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+    margin-bottom: 20px;
+    max-width: 600px;
+    width: 100%;
+  }
+
+  .results {
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .vault-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: background 0.1s;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .vault-item:hover {
+    background: var(--surface);
+  }
+
+  .vault-item-content { flex: 1; min-width: 0; }
+
+  .vault-item-title {
+    font-size: 0.88rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  .vault-item-title:hover { text-decoration: underline; }
+
+  .vault-item-note {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-top: 3px;
+    line-height: 1.4;
+  }
+
+  .vault-item-url {
+    font-size: 0.72rem;
+    color: #555;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .vault-item-delete {
+    opacity: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink-muted);
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+    transition: all 0.1s;
+  }
+
+  .vault-item:hover .vault-item-delete { opacity: 1; }
+  .vault-item-delete:hover { border-color: #C0392B; color: #C0392B; }
+
+  .empty {
+    text-align: center;
+    color: #444;
+    padding: 60px 20px;
+    font-size: 0.92rem;
+    line-height: 1.6;
+  }
+
+  .no-results {
+    text-align: center;
+    color: #555;
+    padding: 40px 20px;
+    font-size: 0.88rem;
+  }
+
+  mark {
+    background: rgba(212, 100, 42, 0.3);
+    color: var(--ink);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .back-link {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    color: var(--ink-muted);
+    text-decoration: none;
+    font-size: 0.82rem;
+  }
+
+  .back-link:hover { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    body { padding: 60px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="/">&larr; Triage</a>
+
+<h1>Vault</h1>
+<p class="subtitle">Search your collection. That's it.</p>
+
+<div class="search-box">
+  <input type="text" id="search" placeholder="What are you looking for?" autofocus>
+</div>
+
+<div class="count" id="count"></div>
+<div class="results" id="results"></div>
+
+<script>
+  const API = window.location.origin;
+  let vault = [];
+
+  async function fetchVault() {
+    const res = await fetch(`${API}/api/vault`);
+    vault = await res.json();
+    render();
+  }
+
+  async function deleteItem(id) {
+    await fetch(`${API}/api/vault/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchVault();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function highlight(text, query) {
+    if (!query || !text) return escapeHtml(text || '');
+    const escaped = escapeHtml(text);
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    let result = escaped;
+    for (const term of terms) {
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      result = result.replace(regex, '<mark>$1</mark>');
+    }
+    return result;
+  }
+
+  function truncateUrl(url) {
+    try {
+      const u = new URL(url);
+      const path = u.pathname.length > 40 ? u.pathname.slice(0, 40) + '...' : u.pathname;
+      return u.hostname + path;
+    } catch { return url ? url.slice(0, 60) : ''; }
+  }
+
+  function render() {
+    const query = document.getElementById('search').value.trim();
+    const countEl = document.getElementById('count');
+    const resultsEl = document.getElementById('results');
+
+    let filtered = vault;
+    if (query) {
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      filtered = vault.filter(item => {
+        const haystack = [item.text, item.url, item.note].filter(Boolean).join(' ').toLowerCase();
+        return terms.every(t => haystack.includes(t));
+      });
+    }
+
+    // Sort newest first
+    filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    countEl.textContent = query
+      ? `${filtered.length} of ${vault.length} items`
+      : `${vault.length} items`;
+
+    if (vault.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">Nothing in the vault yet.<br>Use the Edge extension to send links here.</div>';
+      return;
+    }
+
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = '<div class="no-results">No matches</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = filtered.map(item => {
+      const title = item.text || truncateUrl(item.url || '');
+      return `
+        <div class="vault-item">
+          <div class="vault-item-content">
+            ${item.url
+              ? `<a class="vault-item-title" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(title, query)}</a>`
+              : `<div class="vault-item-title" style="cursor:default">${highlight(title, query)}</div>`
+            }
+            ${item.note ? `<div class="vault-item-note">${highlight(item.note, query)}</div>` : ''}
+            ${item.url ? `<div class="vault-item-url">${highlight(truncateUrl(item.url), query)}</div>` : ''}
+          </div>
+          <button class="vault-item-delete" onclick="deleteItem('${item.id}')" title="Delete">✕</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('search').addEventListener('input', render);
+
+  fetchVault();
+</script>
+</body>
+</html>
