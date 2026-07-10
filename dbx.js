@@ -169,9 +169,18 @@
       let pid = null;
       await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) { it.list = 'done'; it.completed = nowIso(); pid = it.project_id || null; } return a; }, []);
       // Finishing a task IS project movement. Second CAS write; failures ignored
-      // (A4: non-atomic across two files → benign staleness only).
-      if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) p.last_movement = nowIso(); return a; }, []); } catch {} }
-      return resp({ ok: true });
+      // (A4: non-atomic across two files → benign staleness only). Capture the
+      // project title so the toast can confirm the chained effect.
+      let projectMoved = null;
+      if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) { p.last_movement = nowIso(); projectMoved = p.title || null; } return a; }, []); } catch {} }
+      // Complete any linked deadline via CAS so the toast fires hosted too.
+      // NOTE: the browser cannot delete the Google event, so gcal_event_id is
+      // left intact. The Mac/cloud check will not re-complete an already-done
+      // deadline, but the ⏰ event cleanup only happens when Done is hit on the
+      // local server. Acceptable per plan.
+      let deadlineDone = null;
+      try { await updateJson('deadlines.json', a => { const d = a.find(x => x.linked_task_id === body.id && (x.status === 'open' || x.status === 'upcoming')); if (d) { d.status = 'done'; deadlineDone = d.title || null; } return a; }, []); } catch {}
+      return resp({ ok: true, deadline_done: deadlineDone, project_moved: projectMoved });
     }
     if (path === '/api/delete') { await updateJson('data.json', a => a.filter(i => i.id !== body.id), []); return resp({ ok: true }); }
     if (path === '/api/schedule') { await setField(i => { i.list = 'thisweek'; i.scheduled = body.day; }); return resp({ ok: true }); }

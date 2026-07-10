@@ -1257,6 +1257,30 @@
     .triage-btn { min-width: auto; }
     .recipes-filters { flex-direction: column; }
   }
+
+  /* Chained-effect toast — bottom-center, fades out after ~4s. */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(12px);
+    max-width: 90vw;
+    background: var(--ink);
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    font-size: 0.9rem;
+    line-height: 1.35;
+    z-index: 400;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 </style>
 </head>
 <body>
@@ -1265,6 +1289,8 @@
   <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
   <button class="cg-btn" onclick="DBX.connect()">Connect Dropbox</button>
 </div>
+
+<div id="toast"></div>
 
 <header>
   <h1>Triage</h1>
@@ -1687,13 +1713,41 @@
     await fetchItems();
   }
 
+  // Minimal toast: shows a line bottom-center, fades out after ~4s. No-op on
+  // empty text. Never throws.
+  let _toastTimer = null;
+  function showToast(msg) {
+    if (!msg) return;
+    const el = document.getElementById('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  // Build the chained-effect line from a /api/done response, or '' for a plain
+  // task (no linked deadline, no project) so we stay silent for the common case.
+  function doneToastMsg(r) {
+    if (!r) return '';
+    const parts = [];
+    if (r.deadline_done) parts.push(`deadline "${r.deadline_done}" completed · calendar cleared`);
+    if (r.project_moved) parts.push(`${r.project_moved}: movement logged`);
+    return parts.length ? '✓ Done — ' + parts.join(' · ') : '';
+  }
+
   async function doneItem(id) {
-    await apiFetch(`${API}/api/done`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    });
-    await fetchItems();
+    try {
+      const res = await apiFetch(`${API}/api/done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      // Best-effort toast — parse failures never block the UI.
+      try { if (res && res.ok) showToast(doneToastMsg(await res.json())); } catch (e) { /* no toast */ }
+    } finally {
+      await fetchItems();
+    }
   }
 
   async function deleteItem(id) {
