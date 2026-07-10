@@ -1065,6 +1065,20 @@
     font-weight: 600; color: var(--ink-muted); cursor: pointer;
   }
   .travel-btn.on { background: var(--thisweek); color: #fff; border-color: var(--thisweek); }
+  .ea-btn.has-topics { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .ea-popover {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin: 8px 0 4px; font-size: 0.8rem; color: var(--ink-muted);
+  }
+  .ea-popover code {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+    padding: 3px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .ea-copy {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 14px;
+    padding: 3px 10px; font-family: inherit; font-size: 0.78rem; font-weight: 600;
+    color: var(--ink-muted); cursor: pointer;
+  }
   .domain-chip {
     display: inline-flex; align-items: center; justify-content: center;
     width: 17px; height: 17px; border-radius: 5px; font-size: 0.62rem; font-weight: 700;
@@ -1074,6 +1088,15 @@
   .domain-chip.work { background: rgba(45,125,111,0.14); color: var(--thisweek); }
   .domain-chip.life { background: rgba(184,134,11,0.14); color: var(--waiting); }
   .domain-chip.none { background: var(--bg); color: var(--ink-muted); }
+  .project-chip {
+    display: inline-flex; align-items: center; height: 17px; border-radius: 5px;
+    font-size: 0.62rem; font-weight: 700; padding: 0 6px; margin-left: 6px;
+    vertical-align: middle; cursor: pointer; user-select: none;
+    border: 1px solid var(--border);
+    background: rgba(108,92,168,0.12); color: #6B6099;
+    max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .project-chip.none { background: var(--bg); color: var(--ink-muted); }
 
   /* ── Morning brief panel ── */
   .brief-panel {
@@ -1233,6 +1256,12 @@
     <button data-domain="all">All</button>
   </div>
   <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
+  <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in the Triage repo, then /checkin">🤖 EA</button>
+  <div id="ea-popover" class="ea-popover" style="display:none">
+    <code id="ea-cmd">cd ~/Dropbox/Apps/Triage_Kuk &amp;&amp; claude</code>
+    <button class="ea-copy" onclick="copyEACmd()">Copy</button>
+    <span>then <code>/checkin</code></span>
+  </div>
   <div class="stats-bar">
     <div class="stat">
       <span class="stat-number" id="stat-total">0</span>
@@ -1506,6 +1535,42 @@
     });
     await fetchItems();
   }
+
+  // ── Projects (v5): a one-tap chip links a task to a project ──
+  let projectsCache = [];   // refreshed once per render cycle (see fetchItems)
+  async function fetchProjects() {
+    try {
+      const res = await apiFetch(`${API}/api/projects`);
+      const data = await res.json();
+      projectsCache = (data && data.projects) || [];
+    } catch (e) { projectsCache = []; }
+  }
+  function projectChip(item) {
+    if (!projectsCache.length && !item.project_id) return '';
+    const p = projectsCache.find(x => x.id === item.project_id);
+    const label = p ? escapeHtml(p.title) : '·';
+    const cls = p ? '' : 'none';
+    const title = p ? `Project: ${escapeHtml(p.title)} — click to change` : 'Link to a project';
+    return `<span class="project-chip ${cls}" title="${title}" onclick="event.stopPropagation(); openProjectPicker('${item.id}')">${label}</span>`;
+  }
+  async function openProjectPicker(id) {
+    const it = items.find(i => i.id === id);
+    const active = projectsCache.filter(p => (p.status || 'active') === 'active');
+    const opts = active.map((p, i) => `${i + 1}. ${p.title}`).join('\n');
+    const cur = it && it.project_id ? (projectsCache.find(p => p.id === it.project_id) || {}).title : 'None';
+    const ans = prompt(
+      `Link to project (current: ${cur || 'None'}).\nEnter a number, or 0 for None:\n\n0. None\n${opts}`,
+      '');
+    if (ans === null) return;
+    const n = parseInt(ans.trim(), 10);
+    if (isNaN(n) || n < 0 || n > active.length) return;
+    const project_id = n === 0 ? null : active[n - 1].id;
+    await apiFetch(`${API}/api/set-project`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, project_id })
+    });
+    await fetchItems();
+  }
   function setDomain(d) {
     currentDomain = d;
     localStorage.setItem('triage-domain', d);
@@ -1527,6 +1592,7 @@
   async function fetchItems() {
     const res = await apiFetch(`${API}/api/items`);
     items = await res.json();
+    await fetchProjects();   // refresh the project cache once per render cycle
     render();
     renderTabs();
     renderSaved();
@@ -1710,7 +1776,7 @@
       return `
         <div class="item">
           <div class="item-content">
-            <div class="item-text">${escapeHtml(item.text)}${item.source === 'email' ? ' <span class="unsorted-flag" style="background:rgba(45,125,111,0.13);color:var(--thisweek)">email</span>' : ''}${domainChip(item)}</div>
+            <div class="item-text">${escapeHtml(item.text)}${item.source === 'email' ? ' <span class="unsorted-flag" style="background:rgba(45,125,111,0.13);color:var(--thisweek)">email</span>' : ''}${domainChip(item)}${projectChip(item)}</div>
             ${nextStepHtml}
             ${editHtml}
             ${item.url ? `<a class="item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>` : ''}
@@ -1754,11 +1820,97 @@
 
     activeTriageMode = 'task';
     document.getElementById('triage-overlay').classList.add('active');
+    // Weekly pre-screen: nudge stale project state notes before the flashcards.
+    // Zero friction when nothing is stale — proceeds straight to the cards.
+    maybeStateStallScreen().then(shown => { if (!shown) beginTriageCards(); });
+  }
+
+  function beginTriageCards() {
     renderTriageCard();
     // Refresh honest weekly evidence, then re-render to show it.
     fetchWeekly().then(() => {
       if (document.getElementById('triage-overlay').classList.contains('active')) renderTriageCard();
     });
+  }
+
+  // ── Weekly pre-screen: stale project state notes (v5) ──
+  // A state note is "stale" when its age (days since state_updated) exceeds the
+  // project's stall_days. A null state_updated counts as stale ONLY if the
+  // project is otherwise stalled (days_since_movement > stall_days) — so a
+  // brand-new project without a note doesn't nag.
+  let staleStateProjects = [];
+  async function maybeStateStallScreen() {
+    try {
+      if (!projectsCache.length) await fetchProjects();
+    } catch (e) { /* ignore */ }
+    const now = Date.now();
+    staleStateProjects = (projectsCache || []).filter(p => {
+      if ((p.status || 'active') !== 'active') return false;
+      const limit = Number.isInteger(p.stall_days) ? p.stall_days : 21;
+      if (p.state_updated) {
+        const ageDays = (now - new Date(p.state_updated).getTime()) / 86400000;
+        return ageDays > limit;
+      }
+      // No state note yet: only nag if the project is otherwise stalled.
+      return p.stalled === true;
+    });
+    if (!staleStateProjects.length) return false;
+    renderStateStallScreen();
+    return true;
+  }
+
+  function renderStateStallScreen() {
+    const card = document.getElementById('triage-card');
+    const rows = staleStateProjects.map(p => {
+      const note = p.state_note ? escapeHtml(p.state_note) : '<em>no state note yet</em>';
+      return `
+        <div class="state-stall-row" id="state-stall-${p.id}" style="border-bottom:1px solid var(--border);padding:10px 0;">
+          <div style="font-weight:600">${escapeHtml(p.title || '(untitled)')}</div>
+          <div class="triage-item-age" style="margin:2px 0 6px">Where I left off: ${note}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" id="state-stall-input-${p.id}" placeholder="Update where you left off…"
+                   style="flex:1;padding:6px 8px"
+                   onkeydown="if(event.key==='Enter')saveStateStall('${p.id}')">
+            <button class="btn btn-small" onclick="saveStateStall('${p.id}')">Save</button>
+            <button class="btn btn-small" onclick="skipStateStall('${p.id}')">Skip</button>
+          </div>
+        </div>`;
+    }).join('');
+    card.innerHTML = `
+      <div class="triage-progress"><span>Stale project notes</span></div>
+      <div class="triage-item-age" style="margin-bottom:8px">These projects haven't moved in a while — refresh where you left off, or skip.</div>
+      ${rows}
+      <div style="margin-top:14px;text-align:center">
+        <button class="btn btn-primary" onclick="finishStateStallScreen()">Continue to triage →</button>
+      </div>`;
+  }
+
+  async function saveStateStall(pid) {
+    const input = document.getElementById('state-stall-input-' + pid);
+    const val = (input && input.value || '').trim();
+    if (!val) { skipStateStall(pid); return; }
+    try {
+      await apiFetch(`${API}/api/projects/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: pid, fields: { state_note: val } })
+      });
+    } catch (e) { /* ignore — never block triage */ }
+    dismissStateStallRow(pid);
+  }
+
+  function skipStateStall(pid) { dismissStateStallRow(pid); }
+
+  function dismissStateStallRow(pid) {
+    staleStateProjects = staleStateProjects.filter(p => p.id !== pid);
+    const row = document.getElementById('state-stall-' + pid);
+    if (row) row.remove();
+    if (!staleStateProjects.length) finishStateStallScreen();
+  }
+
+  function finishStateStallScreen() {
+    fetchProjects();  // refresh cache after edits
+    beginTriageCards();
   }
 
   let weeklyEvidence = null;
@@ -1899,6 +2051,17 @@
   }
 
   function triageSkip() {
+    // Record the deferral server-side (fire-and-forget; UI never waits on it).
+    const cur = triageQueue[triageIndex];
+    if (cur && cur.id) {
+      try {
+        apiFetch(`${API}/api/skip`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: cur.id }),
+        }).catch(() => {});
+      } catch (e) { /* ignore */ }
+    }
     triageIndex++;
     renderTriageCard();
   }
@@ -2584,6 +2747,7 @@
     if (h.unsorted) parts.push(`<span class="health-item health-warn">Unsorted: <strong>${h.unsorted}</strong></span>`);
     if (h.recipe_queue) parts.push(`<span class="health-item">Recipe queue: <strong>${h.recipe_queue}</strong></span>`);
     parts.push(`<span class="health-item">Sparks this week: <strong>${h.sparks_week}</strong></span>`);
+    if (h.stalled) parts.push(`<span class="health-item" style="color:var(--waiting)">Stalled: <strong>${h.stalled}</strong></span>`);
     if (h.recipe_backlog) parts.push(`<span class="health-item">Backlog: <strong>${h.recipe_backlog}</strong> archived</span>`);
     if (h.recipes_missing_info) parts.push(`<span class="health-item">${h.recipes_missing_info} bookmarks missing info</span>`);
 
@@ -2597,6 +2761,7 @@
     }
     el.innerHTML = html;
     el.style.display = '';
+    renderEA();
   }
 
   async function backfillDomains(btn) {
@@ -3147,6 +3312,38 @@
     if (!next && healthData && (healthData.inbox + (healthData.unsorted || 0)) > healthData.catchup_threshold) {
       openCatchup();
     }
+  }
+
+  // ══ Talk to EA doorway (LOCAL only — the EA runs on this Mac) ═══════
+  // Hidden when hosted (GitHub Pages): there's no Claude Code to open there.
+  if (LOCAL) {
+    const eb = document.getElementById('ea-btn');
+    if (eb) eb.style.display = '';
+  }
+  function toggleEA() {
+    const pop = document.getElementById('ea-popover');
+    pop.style.display = pop.style.display === 'none' ? 'flex' : 'none';
+  }
+  function copyEACmd() {
+    const btn = event.target;
+    const cmd = 'cd ~/Dropbox/Apps/Triage_Kuk && claude';
+    const flash = () => { const t = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = t, 1200); };
+    const fallback = () => {
+      const el = document.getElementById('ea-cmd');
+      const r = document.createRange(); r.selectNodeContents(el);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      try { document.execCommand('copy'); flash(); } catch (e) { /* ignore */ }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(cmd).then(flash, fallback);
+    } else { fallback(); }
+  }
+  function renderEA() {
+    const btn = document.getElementById('ea-btn');
+    if (!btn || !LOCAL) return;
+    const n = (healthData && healthData.ea_topics) || 0;
+    btn.textContent = n > 0 ? `🤖 EA (${n})` : '🤖 EA';
+    btn.classList.toggle('has-topics', n > 0);
   }
 
   // ── Init ──

@@ -105,9 +105,21 @@
     return work.test(t) && !life.test(t) ? 'work' : (life.test(t) ? 'life' : 'life');
   }
 
+  // JS port of records.project_movement — keep the math identical to Python.
+  const STALL_DEFAULT = 21;
+  function projectMovement(p) {
+    const ref = p.last_movement || p.created;
+    let daysSince = null;
+    if (ref) { const dt = new Date(ref); if (!isNaN(dt)) daysSince = Math.floor((Date.now() - dt) / 86400000); }
+    if (p.status !== 'active') return { daysSince, stalled: false };
+    const limit = Number.isInteger(p.stall_days) ? p.stall_days : STALL_DEFAULT;
+    return { daysSince, stalled: daysSince != null && daysSince > limit };
+  }
+
   // ── route table ─────────────────────────────────────────────────
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
-    '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import'];
+    '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
+    '/api/session-log', '/api/email/outbox-mark'];   // sessions + outbox marks are Mac-agent-only
 
   async function handle(path, opts) {
     const method = (opts && opts.method) || 'GET';
@@ -124,6 +136,10 @@
         return { ...d, days_left: dl, runway_open: dl != null && dl <= (d.lead_time_days || 14) };
       }));
     }
+    if (path === '/api/projects') {
+      const ps = await readJson('projects.json', []);
+      return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled }; }) });
+    }
     if (path === '/api/sparks') return resp(await readJson('sparks.json', []));
     if (path === '/api/recipes') return resp(await readJson('recipes/recipes.json', []));
     if (path === '/api/logs') return resp(await readJson('journal.json', []));
@@ -132,6 +148,12 @@
     if (path === '/api/brief') { const md = await download('brief.md'); const fresh = md != null; return resp({ markdown: md, generated: null, fresh }); }
     if (path.startsWith('/api/health')) return resp(await computeHealth(new URLSearchParams(path.split('?')[1] || '').get('domain')));
     if (path === '/api/weekly-summary') return resp(await computeWeekly());
+    if (path.startsWith('/api/email/outbox') && !path.startsWith('/api/email/outbox-mark')) {
+      const status = new URLSearchParams(path.split('?')[1] || '').get('status');
+      let items = await readJson('draft-outbox.json', []);
+      if (status) items = items.filter(e => e.status === status);
+      return resp({ items });
+    }
 
     // — task writes (data.json) —
     if (path === '/api/capture') return resp(await updateJson('data.json', a => {
@@ -143,7 +165,14 @@
         ...(body.unsorted ? { unsorted: true } : {}) }); return a; }, []), 201);
     const setField = (fn) => updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) fn(it); return a; }, []);
     if (path === '/api/move') { await setField(i => i.list = body.list); return resp({ ok: true }); }
-    if (path === '/api/done') { await setField(i => { i.list = 'done'; i.completed = nowIso(); }); return resp({ ok: true }); }
+    if (path === '/api/done') {
+      let pid = null;
+      await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) { it.list = 'done'; it.completed = nowIso(); pid = it.project_id || null; } return a; }, []);
+      // Finishing a task IS project movement. Second CAS write; failures ignored
+      // (A4: non-atomic across two files → benign staleness only).
+      if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) p.last_movement = nowIso(); return a; }, []); } catch {} }
+      return resp({ ok: true });
+    }
     if (path === '/api/delete') { await updateJson('data.json', a => a.filter(i => i.id !== body.id), []); return resp({ ok: true }); }
     if (path === '/api/schedule') { await setField(i => { i.list = 'thisweek'; i.scheduled = body.day; }); return resp({ ok: true }); }
     if (path === '/api/update-nextstep') { await setField(i => i.nextStep = (body.nextStep || '').trim() || null); return resp({ ok: true }); }
@@ -162,6 +191,87 @@
     if (path === '/api/deadlines/confirm') { await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) d.proposed = false; return a; }, []); return resp({ ok: true }); }
     if (path === '/api/deadlines/delete') { await updateJson('deadlines.json', a => a.filter(x => x.id !== body.id), []); return resp({ ok: true }); }
     if (path === '/api/deadlines/check') return resp({ opened: [] });   // cloud brain runs the real engine
+
+    // — projects (v5) —
+    if (path === '/api/projects/add') {
+      let out = null;
+      await updateJson('projects.json', a => {
+        const t = (body.title || '').trim();
+        const src = (body.source_id || '').trim() || null;
+        out = (src && a.find(p => p.source_id === src)) || a.find(p => (p.title || '').trim().toLowerCase() === t.toLowerCase());
+        if (out) return a;
+        out = { id: genId(), title: t, domain: ['work', 'life'].includes(body.domain) ? body.domain : null,
+          status: ['active', 'paused', 'done'].includes(body.status) ? body.status : 'active',
+          goal: body.goal || null, state_note: null, state_updated: null, last_movement: nowIso(),
+          stall_days: Number.isInteger(body.stall_days) ? body.stall_days : null, target: body.target || null,
+          notes: body.notes || null, keywords: Array.isArray(body.keywords) ? body.keywords : [],
+          created: nowIso(), source_id: src };
+        a.push(out); return a;
+      }, []);
+      return resp(out, 201);
+    }
+    if (path === '/api/projects/update') {
+      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note'];
+      await updateJson('projects.json', a => { const p = a.find(x => x.id === body.id); if (p && body.fields) {
+        for (const k of Object.keys(body.fields)) { if (!allowed.includes(k)) continue; p[k] = body.fields[k];
+          if (k === 'state_note' && (body.fields[k] || '').toString().trim()) { p.state_updated = nowIso(); p.last_movement = nowIso(); } } }
+        return a; }, []);
+      return resp({ ok: true });
+    }
+    if (path === '/api/projects/delete') { await updateJson('projects.json', a => a.filter(x => x.id !== body.id), []); return resp({ ok: true }); }
+    if (path === '/api/projects/state') {
+      let found = null;
+      await updateJson('projects.json', a => {
+        const low = (body.name || '').trim().toLowerCase();
+        found = (body.id && a.find(p => p.id === body.id))
+          || (low && (a.find(p => (p.title || '').trim().toLowerCase() === low)
+            || a.find(p => (p.title || '').toLowerCase().includes(low))
+            || a.find(p => (p.keywords || []).some(k => (k || '').toLowerCase().includes(low)))));
+        if (found) { found.state_note = (body.note || '').trim() || null; found.state_updated = nowIso(); found.last_movement = nowIso(); }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'project not resolved' }, 404);
+      return resp({ ok: true, project_id: found.id, title: found.title });
+    }
+    if (path === '/api/set-project') {
+      await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) it.project_id = body.project_id || null; return a; }, []);
+      if (body.project_id) await updateJson('projects.json', a => { const p = a.find(x => x.id === body.project_id); if (p) p.last_movement = nowIso(); return a; }, []);
+      return resp({ ok: true });
+    }
+    if (path === '/api/skip') {
+      // A6: increment deferrals only if last skip is absent or > 20h old; always re-stamp.
+      let deferrals = 0, found = false;
+      await updateJson('data.json', a => {
+        const it = a.find(i => i.id === body.id);
+        if (it) {
+          found = true;
+          const last = it.last_skipped ? new Date(it.last_skipped).getTime() : null;
+          if (last == null || isNaN(last) || (Date.now() - last) > 20 * 3600000) it.deferrals = (it.deferrals || 0) + 1;
+          it.last_skipped = nowIso();
+          deferrals = it.deferrals || 0;
+        }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp({ ok: true, deferrals });
+    }
+
+    // — draft outbox (A2: CAS append; only the Mac agent marks entries) —
+    if (path === '/api/email/stage-draft') {
+      const draftText = (body.draft_text || '').trim();
+      const threadKey = (body.thread_key || '').trim() || null;
+      const messageId = (body.message_id || '').trim() || null;
+      if (!draftText) return resp({ error: 'draft_text is required' }, 400);
+      if (!threadKey && !messageId) return resp({ error: 'thread_key or message_id is required' }, 400);
+      const id = 'do_' + genId();
+      await updateJson('draft-outbox.json', a => {
+        a.push({ id, thread_key: threadKey, message_id: messageId, draft_text: draftText,
+          note: (body.note || '').trim() || null, created: nowIso(), created_by: 'ea',
+          status: 'pending', attempts: 0, pushed_at: null, pushed_host: null });
+        return a;
+      }, []);
+      return resp({ ok: true, id });
+    }
 
     // — travel —
     if (path === '/api/travel') { if (body.on) await upload('travel.flag', JSON.stringify({ since: nowIso(), note: body.note || '' }), 'overwrite'); else await del('travel.flag'); const t = await readJson('travel.flag', null); return resp(t ? { on: true, since: t.since } : { on: false }); }
@@ -186,12 +296,26 @@
     const travel = (await readJson('travel.flag', null)) != null;
     const inbox = items.filter(i => i.list === 'inbox' && inDom(i));
     const stale = travel ? 0 : inbox.filter(i => i.created && (now - new Date(i.created)) / day >= STALE).length;
+    const projects = await readJson('projects.json', []);
+    const stalled = projects.filter(p => projectMovement(p).stalled).length;
+    // ea_topics — JS port of the Python formula (server._compute_health /
+    // brief._ea_topics_count): drafts pending review + stalled active projects +
+    // repeat-deferral tasks. email-state read is read-only; missing → 0.
+    let draftsPending = 0;
+    try {
+      const es = await readJson('email-state.json', {});
+      const threads = (es && typeof es === 'object' && es.threads) ? es.threads : {};
+      draftsPending = items.filter(i => i.list === 'inbox' && i.source === 'email'
+        && threads[i.emailThread] && threads[i.emailThread].draft_written === true).length;
+    } catch (e) { draftsPending = 0; }
+    const repeatDeferral = items.filter(i => i.list !== 'done' && (i.deferrals || 0) >= 3).length;
+    const ea_topics = draftsPending + stalled + repeatDeferral;
     return {
       inbox: inbox.length, stale,
       unsorted: items.filter(i => i.unsorted && i.list !== 'done' && inDom(i)).length,
       unclassified: items.filter(i => ['inbox','thisweek','someday','waiting'].includes(i.list) && !['work','life'].includes(i.domain)).length,
       waiting_overdue: items.filter(i => i.list === 'waiting' && inDom(i) && (now - new Date(i.waitingSince || i.created)) / day >= 7).length,
-      recipe_queue: 0, sparks_week: 0, catchup_threshold: 25, travel,
+      recipe_queue: 0, sparks_week: 0, stalled, ea_topics, catchup_threshold: 25, travel,
     };
   }
   async function computeWeekly() {
