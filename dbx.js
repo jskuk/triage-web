@@ -18,7 +18,7 @@
   function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
   async function sha256(s) { return b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))); }
   async function connect() {
-    const key = prompt('Dropbox App key (from your app console):', APP_KEY);
+    const key = prompt('Dropbox App key (from your app console):', localStorage.getItem('dbx-app-key') || APP_KEY);
     if (!key) return;
     localStorage.setItem('dbx-app-key', key);
     const verifier = b64url(crypto.getRandomValues(new Uint8Array(64)));
@@ -49,7 +49,7 @@
   async function token() {
     if (localStorage.getItem(LS.at) && Date.now() < +localStorage.getItem(LS.exp)) return localStorage.getItem(LS.at);
     const rt = localStorage.getItem(LS.rt);
-    if (!rt) { connect(); throw new Error('not connected'); }
+    if (!rt) { throw new Error('not connected'); }   // banner is the entry point; no auto-popup (mobile blocks it)
     const body = new URLSearchParams({ grant_type: 'refresh_token', refresh_token: rt,
       client_id: localStorage.getItem('dbx-app-key') });
     const j = await (await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', body })).json();
@@ -323,6 +323,8 @@
     return { done: items.filter(i => i.list === 'done' && i.completed && new Date(i.completed) >= cut).length, recipes_cooked: 0, sparks: 0 };
   }
 
-  handleRedirect();
-  window.DBX = { handle, connect, connected: () => !!localStorage.getItem(LS.rt) };
+  // ready resolves once the OAuth redirect (?code=) has been exchanged for a token,
+  // so the connect-gate banner can re-check connected() after that async completes.
+  const ready = handleRedirect().catch(() => {});
+  window.DBX = { handle, connect, connected: () => !!localStorage.getItem(LS.rt), ready };
 })();

@@ -1134,6 +1134,20 @@
   .dl-badge.open { background: rgba(184,134,11,0.15); color: var(--waiting); }
   .dl-badge.soon { background: rgba(192,57,43,0.13); color: var(--danger); }
 
+  /* ── Connect gate (hosted mode only) ── */
+  .connect-gate {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 10px 14px; margin-bottom: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent); border-radius: var(--radius);
+    box-shadow: var(--shadow); font-size: 0.88rem; color: var(--ink);
+  }
+  .connect-gate .cg-btn {
+    margin-left: auto; padding: 7px 14px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff; font-family: inherit;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  }
+
   /* ── Health strip ── */
   .health-strip {
     display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
@@ -1246,6 +1260,11 @@
 </style>
 </head>
 <body>
+
+<div class="connect-gate" id="connect-gate" style="display:none">
+  <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
+  <button class="cg-btn" onclick="DBX.connect()">Connect Dropbox</button>
+</div>
 
 <header>
   <h1>Triage</h1>
@@ -1495,6 +1514,7 @@
   <div class="plan-card" id="plan-card"></div>
 </div>
 
+<script src="dbx.js"></script>
 <script>
   const API = window.location.origin;
   const LISTS = ['inbox', 'thisweek', 'someday', 'waiting'];
@@ -1505,8 +1525,30 @@
   async function apiFetch(url, opts) {
     if (LOCAL) return fetch(url, opts);
     const path = url.replace(location.origin, '');   // '/api/…'
-    if (typeof DBX === 'undefined') return { ok: false, status: 503, json: async () => ({}) };
+    // dbx.js failed to load: surface it in the connect gate instead of faking 503 forever.
+    if (typeof DBX === 'undefined') { renderConnectGate(); return { ok: false, status: 503, json: async () => ({}) }; }
     return DBX.handle(path, opts);                    // Response-compatible
+  }
+
+  // ── Connect gate (hosted mode only) ─────────────────────────────
+  // Visible bar at the top of the page when not connected to Dropbox. The button
+  // is a real user gesture, so the OAuth prompt/redirect is allowed on mobile.
+  async function renderConnectGate() {
+    const bar = document.getElementById('connect-gate');
+    if (!bar) return;
+    const msg = bar.querySelector('.cg-msg'), btn = bar.querySelector('.cg-btn');
+    if (LOCAL) { bar.style.display = 'none'; return; }
+    if (typeof DBX === 'undefined') {
+      msg.textContent = 'dbx.js failed to load — hard-refresh the page';
+      btn.style.display = 'none';
+      bar.style.display = 'flex';
+      return;
+    }
+    try { if (DBX.ready) await DBX.ready; } catch (e) { /* ignore */ }   // wait out an in-flight OAuth redirect
+    if (DBX.connected()) { bar.style.display = 'none'; return; }
+    msg.textContent = 'Not connected to Dropbox — your data lives in your Dropbox.';
+    btn.style.display = '';
+    bar.style.display = 'flex';
   }
 
   let currentList = 'inbox';
@@ -3347,6 +3389,7 @@
   }
 
   // ── Init ──
+  renderConnectGate();   // hosted mode: show/hide the Dropbox connect bar (re-checks after any OAuth redirect)
   fetchItems();
   fetchJournal();
   fetchHealth();
