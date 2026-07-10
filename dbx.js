@@ -98,6 +98,43 @@
   function genId() { return Date.now().toString(16) + Math.floor(Math.random() * 65536).toString(16).padStart(4, '0'); }
   const resp = (obj, status = 200) => ({ ok: status < 300, status, json: async () => obj });
 
+  // normalize_url mirror (records.normalize_url): lowercase host, strip www.,
+  // drop utm_*/tracking params + fragment + trailing slash. Dedupe key.
+  const _TRACK = ['fbclid', 'gclid', 'gclsrc', 'dclid', 'ref', 'ref_src', 'msclkid'];
+  function normalizeUrl(u) {
+    u = (u || '').trim(); if (!u) return '';
+    try {
+      const url = new URL(u);
+      let host = url.hostname.toLowerCase(); if (host.startsWith('www.')) host = host.slice(4);
+      const port = url.port ? ':' + url.port : '';
+      const p = new URLSearchParams(url.search);
+      [...p.keys()].forEach(k => { const lk = k.toLowerCase(); if (lk.startsWith('utm_') || _TRACK.includes(lk)) p.delete(k); });
+      let path = url.pathname; if (path.endsWith('/') && path !== '/') path = path.replace(/\/+$/, ''); if (path === '/') path = '';
+      const qs = p.toString();
+      return `${url.protocol}//${host}${port}${path}${qs ? '?' + qs : ''}`;
+    } catch { return u.toLowerCase(); }
+  }
+  function sourceDomain(u) {
+    if (!u) return null;
+    try { let h = new URL(u).hostname.toLowerCase(); if (h.startsWith('www.')) h = h.slice(4); return h || null; } catch { return null; }
+  }
+  // make_readlater mirror (records.make_readlater).
+  function makeReadlater(body) {
+    const url = (body.url || '').trim() || null;
+    let src = (body.source || '').trim().toLowerCase();
+    if (!['sweep', 'capture', 'extension', 'dashboard'].includes(src)) src = 'dashboard';
+    const topics = Array.isArray(body.topics) ? body.topics.slice(0, 4).map(t => String(t).trim()).filter(Boolean) : [];
+    const est = Number.isInteger(body.est_minutes) && body.est_minutes > 0 ? body.est_minutes : null;
+    return {
+      id: genId(), url, url_norm: normalizeUrl(url), title: (body.title || '').trim() || null,
+      source_domain: sourceDomain(url), added: nowIso(), est_minutes: est,
+      summary: (body.summary || '').trim() || null, key_point: (body.key_point || '').trim() || null,
+      topics, project_link: (body.project_link || '').trim() || null, status: 'unread', read_date: null,
+      my_take: (body.note || body.my_take || '').trim() || null, fetch_failed: false, enrich_attempts: 0,
+      source: src, capture_src: (body.capture_src || '').trim() || null,
+    };
+  }
+
   function heuristicDomain(text) {
     const t = (text || '').toLowerCase();
     const work = /referee|review|r&r|revise|paper|grant|nsf|student|syllabus|dept|letter|journal|conference|editor|\.edu|논문|학회|강의|학생/;
@@ -119,7 +156,8 @@
   // ── route table ─────────────────────────────────────────────────
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
     '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
-    '/api/session-log', '/api/email/outbox-mark'];   // sessions + outbox marks are Mac-agent-only
+    '/api/session-log', '/api/email/outbox-mark',
+    '/api/sweep/analyze'];   // AI-in-request; only the Mac runs analyze (sessions + outbox marks are Mac-agent-only too)
 
   async function handle(path, opts) {
     const method = (opts && opts.method) || 'GET';
@@ -146,6 +184,32 @@
     if (path === '/api/vault') return resp(await readJson('vault.json', []));
     if (path === '/api/travel') { const t = await readJson('travel.flag', null); return resp(t ? { on: true, since: t.since, note: t.note } : { on: false }); }
     if (path === '/api/brief') { const md = await download('brief.md'); const fresh = md != null; return resp({ markdown: md, generated: null, fresh }); }
+    // Sweep Insights (v6): read-only join here — the browser prunes <2-live-tab
+    // proposals for display but does NOT write the pruned state back (the Mac /
+    // cloud sweep run owns insights-state.json; a phone read must not race it).
+    if (path === '/api/insights') {
+      const state = await readJson('insights-state.json', {});
+      const items = await readJson('data.json', []);
+      const live = {}; items.forEach(i => { if (i.list === 'tabs' && i.id) live[i.id] = i; });
+      const out = [];
+      for (const p of (state.pending || [])) {
+        const liveIds = (p.tab_ids || []).filter(t => live[t]);
+        if (liveIds.length < 2) continue;
+        out.push({ ...p, tab_ids_live: liveIds, tabs: liveIds.map(t => live[t]) });
+      }
+      return resp({ pending: out, last_run: state.last_run || null });
+    }
+    // Read Later (v6): default unread+read; ?status=all includes archived.
+    if (path === '/api/readlater' || path.startsWith('/api/readlater?')) {
+      const status = new URLSearchParams(path.split('?')[1] || '').get('status');
+      const recs = await readJson('readlater.json', []);
+      let out;
+      if (status === 'all') out = recs.slice();
+      else if (['unread', 'read', 'archived'].includes(status)) out = recs.filter(r => r.status === status);
+      else out = recs.filter(r => r.status === 'unread' || r.status === 'read');
+      out.sort((a, b) => new Date(b.added) - new Date(a.added));
+      return resp(out);
+    }
     if (path.startsWith('/api/health')) return resp(await computeHealth(new URLSearchParams(path.split('?')[1] || '').get('domain')));
     if (path === '/api/weekly-summary') return resp(await computeWeekly());
     if (path.startsWith('/api/email/outbox') && !path.startsWith('/api/email/outbox-mark')) {
@@ -263,6 +327,127 @@
       }, []);
       if (!found) return resp({ error: 'not found' }, 404);
       return resp({ ok: true, deferrals });
+    }
+
+    // — Sweep Insights accept / dismiss (H4: fixed CAS order data → state → project) —
+    if (path === '/api/insights/accept') {
+      const fp = (body.fingerprint || '').trim();
+      if (!fp) return resp({ error: 'fingerprint required' }, 400);
+      const state = await readJson('insights-state.json', {});
+      const prop = (state.pending || []).find(p => p.fingerprint === fp);
+      if (!prop) return resp({ ok: false, reason: 'proposal not found' }, 404);
+      // Determine live survivors from the current data.json first.
+      const dataNow = await readJson('data.json', []);
+      const liveIds = new Set(dataNow.filter(i => i.list === 'tabs' && i.id).map(i => i.id));
+      const survivors = (prop.tab_ids || []).filter(t => liveIds.has(t));
+      if (!survivors.length) {
+        // Honest failure + drop the empty proposal from state.
+        await updateJson('insights-state.json', s => { s.pending = (s.pending || []).filter(p => p.fingerprint !== fp); return s; }, {});
+        return resp({ ok: false, reason: 'tabs already triaged' });
+      }
+      const kind = prop.kind;
+      const targetList = kind === 'park' ? 'someday' : (kind === 'waiting' ? 'waiting' : 'inbox');
+      const taskText = (body.task_text || '').trim() || (prop.task_text || '').trim() || prop.theme || 'Tab cluster';
+      const pid = prop.project_id || null;
+      let taskId = null;
+      // (1) data.json — build the task with research_trail, delete the attached tabs.
+      await updateJson('data.json', a => {
+        const trail = a.filter(i => i.list === 'tabs' && survivors.includes(i.id))
+          .map(t => ({ text: t.text, url: t.url, memo: t.memo, created: t.created }));
+        const dv = ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(taskText);
+        const task = { id: genId(), text: taskText, url: null, nextStep: null, memo: null,
+          list: targetList, created: nowIso(), domain: dv, research_trail: trail };
+        if (targetList === 'waiting') task.waitingSince = nowIso();
+        if (pid) task.project_id = pid;
+        taskId = task.id;
+        const keep = a.filter(i => !(i.list === 'tabs' && survivors.includes(i.id)));
+        keep.push(task);
+        return keep;
+      }, []);
+      // (2) insights-state — record accepted fp + drop the proposal.
+      await updateJson('insights-state.json', s => {
+        s.accepted = s.accepted || {};
+        s.accepted[fp] = { task_id: taskId, ts: nowIso() };
+        s.pending = (s.pending || []).filter(p => p.fingerprint !== fp);
+        return s;
+      }, {});
+      // (3) project bump (benign staleness if it fails — A4).
+      let projectTitle = null;
+      if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) { p.last_movement = nowIso(); projectTitle = p.title || null; } return a; }, []); } catch {} }
+      return resp({ ok: true, task_id: taskId, tabs_attached: survivors.length, list: targetList, project: projectTitle });
+    }
+    if (path === '/api/insights/dismiss') {
+      const fp = (body.fingerprint || '').trim();
+      if (!fp) return resp({ error: 'fingerprint required' }, 400);
+      await updateJson('insights-state.json', s => {
+        const prop = (s.pending || []).find(p => p.fingerprint === fp);
+        const tabIds = (prop && prop.tab_ids) || (s.dismissed && s.dismissed[fp] && s.dismissed[fp].tab_ids) || [];
+        s.dismissed = s.dismissed || {};
+        s.dismissed[fp] = { tab_ids: tabIds, ts: nowIso() };
+        s.pending = (s.pending || []).filter(p => p.fingerprint !== fp);
+        return s;
+      }, {});
+      return resp({ ok: true });
+    }
+
+    // — Read Later (v6): add (two-file CAS for from_tab_id), mark-read, archive,
+    //   promote-spark (writes sparks.json directly — no /api/sparks route here).
+    if (path === '/api/readlater/enrich') return resp({ ok: true });   // lazy enrichment is Mac-only
+    if (path === '/api/readlater/add') {
+      const b = { ...body };
+      const fromTab = (body.from_tab_id || '').trim() || null;
+      let tab = null;
+      if (fromTab) {
+        const data = await readJson('data.json', []);
+        tab = data.find(i => i.id === fromTab && i.list === 'tabs') || null;
+        if (tab) {
+          if (!(b.url || '').trim()) b.url = tab.url;
+          if (!(b.title || '').trim()) b.title = tab.text;
+          if (!(b.note || '').trim() && !(b.my_take || '').trim()) b.note = tab.memo;
+          if (!(b.source || '').trim()) b.source = 'sweep';
+        }
+      }
+      if (!(b.url || '').trim()) return resp({ error: 'url required' }, 400);
+      let result = null;
+      // (1) readlater.json — dedupe/resurrect/create.
+      await updateJson('readlater.json', recs => {
+        const unorm = normalizeUrl(b.url);
+        const csrc = (b.capture_src || '').trim() || null;
+        const ex = recs.find(r => (csrc && r.capture_src === csrc) || (unorm && r.url_norm === unorm));
+        if (ex) {
+          if (ex.status === 'archived') { ex.status = 'unread'; ex.added = nowIso(); ex.read_date = null; result = { renewed: true, id: ex.id, record: ex }; }
+          else result = { existing: true, id: ex.id, record: ex };
+        } else { const rec = makeReadlater(b); recs.push(rec); result = { _new: rec }; }
+        return recs;
+      }, []);
+      // (2) data.json — delete the routed tab.
+      if (tab) await updateJson('data.json', a => a.filter(i => i.id !== fromTab), []);
+      if (result && result._new) return resp(result._new, 201);
+      return resp(result || {});
+    }
+    if (path === '/api/readlater/mark-read') {
+      let canSpark = false;
+      await updateJson('readlater.json', recs => {
+        const r = recs.find(x => x.id === body.id);
+        if (r) { r.status = 'read'; r.read_date = nowIso(); const mt = (body.my_take || '').trim(); if (mt) r.my_take = mt; canSpark = !!r.my_take; }
+        return recs;
+      }, []);
+      return resp({ ok: true, can_spark: canSpark });
+    }
+    if (path === '/api/readlater/archive') {
+      await updateJson('readlater.json', recs => { const r = recs.find(x => x.id === body.id); if (r) r.status = 'archived'; return recs; }, []);
+      return resp({ ok: true });
+    }
+    if (path === '/api/readlater/promote-spark') {
+      const recs = await readJson('readlater.json', []);
+      const rec = recs.find(r => r.id === body.id);
+      if (!rec) return resp({ error: 'not found' }, 404);
+      const mt = (rec.my_take || '').trim();
+      if (!mt) return resp({ ok: false, reason: 'my_take required' }, 400);
+      const spark = { id: genId(), url: rec.url || null, reaction: mt, created: nowIso() };
+      await updateJson('sparks.json', a => { a.push(spark); return a; }, []);
+      await updateJson('readlater.json', a => { const r = a.find(x => x.id === body.id); if (r) r.status = 'archived'; return a; }, []);
+      return resp({ ok: true, spark });
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —

@@ -613,6 +613,46 @@
     flex-wrap: wrap;
   }
 
+  /* ── Sweep Insights (proposal cards) ── */
+  .insights-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+  .insights-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .insights-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; font-weight: 400; }
+  .insights-sub { font-size: 0.82rem; color: var(--ink-muted); }
+  .insight-card {
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+    margin-bottom: 12px; background: var(--card, #fff);
+  }
+  .insight-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .insight-theme { font-weight: 600; font-size: 0.95rem; }
+  .stall-badge {
+    font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    padding: 2px 8px; border-radius: 999px; color: #fff; white-space: nowrap;
+  }
+  .stall-badge.decision-pending { background: #d4642a; }   /* act — orange */
+  .stall-badge.open-question     { background: #2f6fb0; }   /* answerable — blue */
+  .stall-badge.waiting-external  { background: #7a7a86; }   /* blocked — gray */
+  .stall-badge.research-early     { background: #5a9367; }   /* explore — green */
+  .insight-domain { font-size: 0.72rem; color: var(--ink-muted); }
+  .insight-task-edit {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: 0.9rem;
+    padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; margin-bottom: 8px;
+  }
+  .insight-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .insight-evidence { margin-top: 8px; font-size: 0.83rem; color: var(--ink-muted); }
+  .insight-evidence summary { cursor: pointer; }
+  .insight-evidence .blocker-answer {
+    background: #fff6e5; border-left: 3px solid #d4642a; padding: 6px 10px;
+    border-radius: 4px; margin: 6px 0; color: var(--ink); }
+  .insight-evidence ul { margin: 6px 0 0 0; padding-left: 18px; }
+  .insight-evidence a { color: var(--thisweek); }
+  .research-trail { margin-top: 8px; font-size: 0.8rem; color: var(--ink-muted); }
+  .research-trail summary { cursor: pointer; }
+  .research-trail ul { margin: 6px 0 0 0; padding-left: 18px; }
+
   /* ── Tab Sweep ── */
   .tabs-section {
     margin-top: 48px;
@@ -869,6 +909,68 @@
     color: #C4BEB6;
     font-size: 0.85rem;
   }
+
+  /* ── Read Later ── */
+  .readlater-section {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+  .readlater-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .readlater-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; font-weight: 400; }
+  .rl-search {
+    width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: var(--radius); font-family: inherit; font-size: 0.88rem;
+    background: var(--surface); margin-bottom: 12px; box-sizing: border-box;
+  }
+  .rl-search:focus { outline: none; border-color: var(--accent); }
+  .rl-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
+  .rl-filter-group { display: flex; gap: 4px; align-items: center; }
+  .rl-filter-label { font-size: 0.68rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-right: 2px; }
+  .rl-chip-btn {
+    font: inherit; font-size: 0.72rem; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-muted);
+    cursor: pointer; white-space: nowrap;
+  }
+  .rl-chip-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .rl-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid #F0ECE6;
+  }
+  .rl-item-main { flex: 1; min-width: 0; }
+  .rl-item-title {
+    font-size: 0.86rem; color: var(--accent); text-decoration: none; font-weight: 600;
+  }
+  .rl-item-title:hover { text-decoration: underline; }
+  .rl-mins {
+    font-size: 0.66rem; font-weight: 700; color: var(--ink-muted);
+    background: #F0ECE6; padding: 1px 7px; border-radius: 999px; margin-left: 6px; white-space: nowrap;
+  }
+  .rl-state {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); margin-left: 6px;
+  }
+  .rl-keypoint { font-size: 0.8rem; color: var(--ink); margin-top: 3px; line-height: 1.4; }
+  .rl-keypoint.muted { color: #C4BEB6; font-style: italic; }
+  .rl-meta { font-size: 0.72rem; color: var(--ink-muted); margin-top: 3px; }
+  .rl-meta .rl-topic { margin-left: 6px; }
+  .rl-item-actions { display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; align-items: flex-end; }
+  .rl-take {
+    font: inherit; font-size: 0.74rem; padding: 4px 7px; border: 1px solid var(--border);
+    border-radius: 6px; width: 150px; box-sizing: border-box;
+  }
+  .rl-act-btn {
+    font: inherit; font-size: 0.72rem; padding: 3px 9px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink-muted); cursor: pointer;
+  }
+  .rl-act-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rl-act-spark { border-color: var(--accent); color: var(--accent); }
+  .rl-archived-toggle {
+    margin-top: 12px; font: inherit; font-size: 0.74rem; color: var(--ink-muted);
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+  .triage-btn-readlater { border-color: var(--accent); color: var(--accent); }
+  .triage-btn-readlater:hover { background: var(--accent); color: white; }
 
   /* ── Journal ── */
   .journal-section {
@@ -1393,12 +1495,22 @@
     <div id="deadlines-list"></div>
   </div>
 
+  <!-- Sweep Insights: proposed tasks from clustered tabs (above Tab Sweep) -->
+  <div class="insights-section" id="insights-section" style="display:none">
+    <div class="insights-header">
+      <h2>Sweep insights</h2>
+      <span class="insights-sub">Tabs that look like one stalled piece of work</span>
+    </div>
+    <div id="insights-list"></div>
+  </div>
+
   <!-- Tab Sweep Section -->
   <div class="tabs-section" id="tabs-section">
     <div class="tabs-header">
       <h2>Tab Sweep</h2>
       <span class="tab-count" id="tabs-count">0</span>
       <button class="btn btn-primary btn-small sweep-btn" id="sweep-start-btn">Sweep</button>
+      <button class="btn btn-ghost btn-small" id="analyze-sweep-btn" style="display:none" onclick="analyzeSweep(this)">Analyze sweep</button>
     </div>
     <div id="tabs-list"></div>
   </div>
@@ -1411,6 +1523,17 @@
     </div>
     <input type="text" class="saved-search" id="saved-search" placeholder="Search saved links...">
     <div id="saved-list"></div>
+  </div>
+
+  <!-- Read Later -->
+  <div class="readlater-section" id="readlater-section" style="display:none">
+    <div class="readlater-header">
+      <h2>Read Later</h2>
+    </div>
+    <input type="text" class="rl-search" id="rl-search" placeholder="Search reading...">
+    <div class="rl-filters" id="rl-filters"></div>
+    <div id="readlater-list"></div>
+    <button class="rl-archived-toggle" id="rl-archived-toggle" onclick="toggleReadLaterArchived()">Show archived</button>
   </div>
 
   <!-- Recipes -->
@@ -1664,6 +1787,8 @@
     render();
     renderTabs();
     renderSaved();
+    fetchInsights();         // sweep-insight proposal cards (own async, never blocks)
+    fetchReadLater();        // Read Later store (own async, never blocks)
   }
 
   async function fetchJournal() {
@@ -1780,6 +1905,24 @@
     return div.innerHTML;
   }
 
+  // A task accepted from a sweep insight carries research_trail = the tabs it
+  // was built from. Show them collapsed so the task keeps its context.
+  function researchTrailHtml(item) {
+    const trail = item.research_trail;
+    if (!Array.isArray(trail) || !trail.length) return '';
+    const rows = trail.map(t => {
+      const label = escapeHtml(t.text || truncateUrl(t.url || '') || '(tab)');
+      const memo = t.memo ? ` <em>— ${escapeHtml(t.memo)}</em>` : '';
+      return t.url
+        ? `<li><a href="${escapeHtml(t.url)}" target="_blank" rel="noopener">${label}</a>${memo}</li>`
+        : `<li>${label}${memo}</li>`;
+    }).join('');
+    return `<details class="research-trail">
+        <summary>🔗 ${trail.length} tab${trail.length === 1 ? '' : 's'} — research trail</summary>
+        <ul>${rows}</ul>
+      </details>`;
+  }
+
   function truncateUrl(url) {
     try {
       const u = new URL(url);
@@ -1876,6 +2019,7 @@
             ${nextStepHtml}
             ${editHtml}
             ${item.url ? `<a class="item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>` : ''}
+            ${researchTrailHtml(item)}
             <div class="item-meta">
               <span class="item-date">${formatDate(item.created)}</span>
               ${item.scheduled ? `<span class="item-date" style="color:var(--thisweek)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
@@ -2192,6 +2336,7 @@
         case '2': case 's': sweepSave(item.id); break;
         case '3': case 't': sweepPromote(item.id); break;
         case '4': case 'd': sweepDone(item.id); break;
+        case '5': case 'r': sweepReadLater(item.id); break;
         case 'Backspace': case 'x': sweepDelete(item.id); break;
         case ' ': case 'ArrowRight': e.preventDefault(); sweepSkip(); break;
         case 'Escape': closeTriage(); break;
@@ -2454,6 +2599,9 @@
     const section = document.getElementById('tabs-section');
     section.style.display = tabs.length > 0 ? '' : 'none';
     document.getElementById('sweep-start-btn').style.display = tabs.length > 0 ? '' : 'none';
+    // "Analyze sweep" runs Claude in-request — LOCAL only (no Claude Code hosted).
+    const analyzeBtn = document.getElementById('analyze-sweep-btn');
+    if (analyzeBtn) analyzeBtn.style.display = (LOCAL && tabs.length >= 2) ? '' : 'none';
 
     const listEl = document.getElementById('tabs-list');
     if (tabs.length === 0) {
@@ -2487,6 +2635,10 @@
             <div class="tab-item-meta">${formatDate(item.created)}</div>
           </div>
           <div class="tab-item-actions">
+            <button class="move-btn" onclick="readLaterTab('${item.id}')" style="color:var(--accent)">
+              RL
+              <span class="tooltip">Read later</span>
+            </button>
             <button class="move-btn" onclick="moveItem('${item.id}','saved')" style="color:var(--thisweek)">
               SV
               <span class="tooltip">Save</span>
@@ -2536,6 +2688,114 @@
       body: JSON.stringify({ id })
     });
     await fetchItems();
+  }
+
+  // ── Sweep Insights (proposal cards) ──
+
+  let insightsPending = [];
+
+  async function fetchInsights() {
+    try {
+      const res = await apiFetch(`${API}/api/insights`);
+      const data = await res.json();
+      insightsPending = (data && data.pending) || [];
+    } catch (e) { insightsPending = []; }
+    renderInsights();
+  }
+
+  const STALL_LABEL = {
+    'decision-pending': 'decide',
+    'open-question': 'question',
+    'waiting-external': 'waiting',
+    'research-early': 'explore',
+  };
+
+  function renderInsights() {
+    const section = document.getElementById('insights-section');
+    const listEl = document.getElementById('insights-list');
+    if (!section || !listEl) return;
+    // Domain lens does not apply — proposals carry a topic label, not work/life.
+    const props = insightsPending.filter(p => (p.tabs || []).length >= 2);
+    section.style.display = props.length ? '' : 'none';
+    if (!props.length) { listEl.innerHTML = ''; return; }
+
+    listEl.innerHTML = props.map(p => {
+      const st = p.stall_type || 'research-early';
+      const badge = `<span class="stall-badge ${st}">${STALL_LABEL[st] || st}</span>`;
+      const domain = p.domain ? `<span class="insight-domain">${escapeHtml(p.domain)}</span>` : '';
+      const tabsHtml = (p.tabs || []).map(t => {
+        const label = escapeHtml(t.text || truncateUrl(t.url || '') || '(tab)');
+        const memo = t.memo ? ` <em>— ${escapeHtml(t.memo)}</em>` : '';
+        return t.url
+          ? `<li><a href="${escapeHtml(t.url)}" target="_blank" rel="noopener">${label}</a>${memo}</li>`
+          : `<li>${label}${memo}</li>`;
+      }).join('');
+      const answer = p.blocker_answer
+        ? `<div class="blocker-answer"><strong>Answer:</strong> ${escapeHtml(p.blocker_answer)}</div>` : '';
+      const note = p.evidence_note ? `<div>${escapeHtml(p.evidence_note)}</div>` : '';
+      const n = (p.tabs || []).length;
+      return `
+        <div class="insight-card" id="insight-${p.fingerprint}">
+          <div class="insight-top">
+            <span class="insight-theme">${escapeHtml(p.theme || 'Tab cluster')}</span>
+            ${badge}${domain}
+          </div>
+          <input class="insight-task-edit" id="itask-${p.fingerprint}"
+                 value="${escapeHtml(p.task_text || '')}"
+                 placeholder="What should this become?">
+          <div class="insight-actions">
+            <button class="btn btn-primary btn-small" onclick="acceptInsight('${p.fingerprint}')">Accept</button>
+            <button class="btn btn-ghost btn-small" onclick="dismissInsight('${p.fingerprint}')">Dismiss</button>
+          </div>
+          <details class="insight-evidence">
+            <summary>🔗 ${n} tab${n === 1 ? '' : 's'} — evidence</summary>
+            ${answer}${note}
+            <ul>${tabsHtml}</ul>
+          </details>
+        </div>`;
+    }).join('');
+  }
+
+  async function acceptInsight(fp) {
+    const input = document.getElementById(`itask-${fp}`);
+    const task_text = input ? input.value.trim() : '';
+    let res, data;
+    try {
+      res = await apiFetch(`${API}/api/insights/accept`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: fp, task_text })
+      });
+      data = await res.json();
+    } catch (e) { data = null; }
+    if (data && data.ok) {
+      const n = data.tabs_attached || 0;
+      showToast(`✓ Task created · ${n} tab${n === 1 ? '' : 's'} attached · Tab Sweep −${n}`);
+    } else if (data && data.reason) {
+      showToast(`Couldn't create task — ${data.reason}`);
+    }
+    await fetchItems();      // refreshes items, tabs, saved, and insights
+  }
+
+  async function dismissInsight(fp) {
+    try {
+      await apiFetch(`${API}/api/insights/dismiss`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: fp })
+      });
+    } catch (e) { /* ignore */ }
+    await fetchInsights();
+  }
+
+  // "Analyze sweep" — user-clicked AI-in-request pass (LOCAL only; hidden hosted).
+  async function analyzeSweep(btn) {
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Analyzing…'; }
+    try {
+      await apiFetch(`${API}/api/sweep/analyze`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}'
+      });
+    } catch (e) { showToast('Analyze failed — is the server up?'); }
+    if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || 'Analyze sweep'; }
+    await fetchInsights();
   }
 
   // ── Tab Sweep Triage ──
@@ -2597,6 +2857,7 @@
       <div class="triage-actions" id="sweep-actions">
         <button class="triage-btn triage-btn-keep" onclick="sweepSkip()">Keep</button>
         <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save</button>
+        <button class="triage-btn triage-btn-readlater" onclick="sweepReadLater('${item.id}')">Read Later</button>
         <button class="triage-btn triage-btn-promote" onclick="sweepPromote('${item.id}')">Make Task</button>
         <button class="triage-btn triage-btn-done" onclick="sweepDone('${item.id}')">Done Reading</button>
         <button class="triage-btn triage-btn-delete" onclick="sweepDelete('${item.id}')">Delete</button>
@@ -2631,6 +2892,184 @@
     await moveItem(id, 'saved');
     sweepQueue = sweepQueue.filter(i => i.id !== id);
     renderSweepCard();
+  }
+
+  async function sweepReadLater(id) {
+    await apiFetch(`${API}/api/readlater/add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_tab_id: id })
+    });
+    sweepQueue = sweepQueue.filter(i => i.id !== id);
+    renderSweepCard();
+  }
+
+  // ── Read Later store ──
+
+  let readLaterRecords = [];
+  let rlSearchQuery = '';
+  let rlTopicFilter = null;
+  let rlMaxMinutes = null;   // 15 | 30 | 60 | null(any)
+  let rlProjectFilter = null;
+  let rlShowArchived = false;
+
+  async function readLaterTab(id) {
+    await apiFetch(`${API}/api/readlater/add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_tab_id: id })
+    });
+    showToast('→ Read Later');
+    await fetchItems();      // tab is gone; refreshes tabs + Read Later
+  }
+
+  async function fetchReadLater() {
+    try {
+      const res = await apiFetch(`${API}/api/readlater${rlShowArchived ? '?status=all' : ''}`);
+      const data = await res.json();
+      readLaterRecords = Array.isArray(data) ? data : [];
+    } catch (e) { readLaterRecords = []; }
+    renderReadLater();
+  }
+
+  function renderReadLater() {
+    const section = document.getElementById('readlater-section');
+    const listEl = document.getElementById('readlater-list');
+    if (!section || !listEl) return;
+
+    // Archived hidden unless the toggle is on (server already filters, but the
+    // 'all' fetch also carries archived — filter defensively here).
+    let base = readLaterRecords.slice();
+    if (!rlShowArchived) base = base.filter(r => r.status !== 'archived');
+    section.style.display = base.length ? '' : 'none';
+    if (!base.length) { listEl.innerHTML = ''; renderReadLaterFilters(base); return; }
+
+    renderReadLaterFilters(base);
+
+    let filtered = base;
+    if (rlSearchQuery) {
+      const q = rlSearchQuery.toLowerCase();
+      filtered = filtered.filter(r =>
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.key_point || '').toLowerCase().includes(q) ||
+        (r.summary || '').toLowerCase().includes(q) ||
+        (r.source_domain || '').toLowerCase().includes(q) ||
+        (r.topics || []).some(t => (t || '').toLowerCase().includes(q)));
+    }
+    if (rlTopicFilter) filtered = filtered.filter(r => (r.topics || []).includes(rlTopicFilter));
+    if (rlMaxMinutes) filtered = filtered.filter(r => r.est_minutes != null && r.est_minutes <= rlMaxMinutes);
+    if (rlProjectFilter) filtered = filtered.filter(r => r.project_link === rlProjectFilter);
+    filtered.sort((a, b) => new Date(b.added) - new Date(a.added));
+
+    if (!filtered.length) { listEl.innerHTML = '<div class="saved-no-results">No matches</div>'; return; }
+
+    listEl.innerHTML = filtered.map(r => {
+      const title = escapeHtml(r.title || truncateUrl(r.url || '') || '(untitled)');
+      const mins = r.est_minutes != null ? `${r.est_minutes}m` : '?min';
+      const kp = r.fetch_failed
+        ? `<div class="rl-keypoint muted">no summary (paywalled?)</div>`
+        : (r.key_point ? `<div class="rl-keypoint">${escapeHtml(r.key_point)}</div>` : '');
+      const domain = r.source_domain ? escapeHtml(r.source_domain) : '';
+      const topics = (r.topics || []).map(t => `<span class="rl-topic">#${escapeHtml(t)}</span>`).join('');
+      const canSpark = r.status === 'read' && r.my_take;
+      const sparkBtn = canSpark
+        ? `<button class="rl-act-btn rl-act-spark" onclick="sparkReadLater('${r.id}')">→ spark</button>` : '';
+      return `
+        <div class="rl-item">
+          <div class="rl-item-main">
+            <a class="rl-item-title" href="${escapeHtml(r.url || '#')}" target="_blank" rel="noopener">${title}</a>
+            <span class="rl-mins">${mins}</span>
+            <span class="rl-state">${escapeHtml(r.status || '')}</span>
+            ${kp}
+            <div class="rl-meta">${domain}${topics}</div>
+          </div>
+          <div class="rl-item-actions">
+            <input class="rl-take" id="rltake-${r.id}" placeholder="my take (optional)" value="${escapeHtml(r.my_take || '')}">
+            <div style="display:flex;gap:4px;">
+              <button class="rl-act-btn" onclick="markReadLater('${r.id}')">Mark read</button>
+              <button class="rl-act-btn" onclick="archiveReadLater('${r.id}')">Archive</button>
+              ${sparkBtn}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderReadLaterFilters(base) {
+    const el = document.getElementById('rl-filters');
+    if (!el) return;
+    const topics = [...new Set(base.flatMap(r => r.topics || []))].filter(Boolean).sort();
+    const projIds = [...new Set(base.map(r => r.project_link).filter(Boolean))];
+    const chip = (label, active, onclick) =>
+      `<button class="rl-chip-btn ${active ? 'active' : ''}" onclick="${onclick}">${label}</button>`;
+    let html = '';
+    // minutes
+    html += `<span class="rl-filter-group"><span class="rl-filter-label">time</span>`;
+    [['15', 15], ['30', 30], ['60', 60], ['any', null]].forEach(([lbl, v]) => {
+      html += chip(lbl, rlMaxMinutes === v, `setRlMinutes(${v === null ? 'null' : v})`);
+    });
+    html += `</span>`;
+    // topics
+    if (topics.length) {
+      html += `<span class="rl-filter-group"><span class="rl-filter-label">topic</span>`;
+      html += chip('all', !rlTopicFilter, `setRlTopic(null)`);
+      topics.slice(0, 12).forEach(t => {
+        html += chip('#' + escapeHtml(t), rlTopicFilter === t, `setRlTopic(${JSON.stringify(t)})`);
+      });
+      html += `</span>`;
+    }
+    // projects
+    if (projIds.length) {
+      html += `<span class="rl-filter-group"><span class="rl-filter-label">project</span>`;
+      html += chip('all', !rlProjectFilter, `setRlProject(null)`);
+      projIds.forEach(pid => {
+        const p = projectsCache.find(x => x.id === pid);
+        const lbl = p ? escapeHtml(p.title) : pid;
+        html += chip(lbl, rlProjectFilter === pid, `setRlProject(${JSON.stringify(pid)})`);
+      });
+      html += `</span>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function setRlMinutes(v) { rlMaxMinutes = v; renderReadLater(); }
+  function setRlTopic(t) { rlTopicFilter = t; renderReadLater(); }
+  function setRlProject(p) { rlProjectFilter = p; renderReadLater(); }
+
+  function toggleReadLaterArchived() {
+    rlShowArchived = !rlShowArchived;
+    const btn = document.getElementById('rl-archived-toggle');
+    if (btn) btn.textContent = rlShowArchived ? 'Hide archived' : 'Show archived';
+    fetchReadLater();
+  }
+
+  async function markReadLater(id) {
+    const input = document.getElementById(`rltake-${id}`);
+    const my_take = input ? input.value.trim() : '';
+    await apiFetch(`${API}/api/readlater/mark-read`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, my_take })
+    });
+    await fetchReadLater();
+  }
+
+  async function archiveReadLater(id) {
+    await apiFetch(`${API}/api/readlater/archive`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchReadLater();
+  }
+
+  async function sparkReadLater(id) {
+    let data = null;
+    try {
+      const res = await apiFetch(`${API}/api/readlater/promote-spark`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      data = await res.json();
+    } catch (e) { data = null; }
+    if (data && data.ok) showToast('✦ Saved as spark');
+    await fetchReadLater();
   }
 
   document.getElementById('sweep-start-btn').addEventListener('click', startSweep);
@@ -2818,6 +3257,11 @@
   document.getElementById('saved-search').addEventListener('input', (e) => {
     savedSearchQuery = e.target.value;
     renderSaved();
+  });
+
+  document.getElementById('rl-search').addEventListener('input', (e) => {
+    rlSearchQuery = e.target.value;
+    renderReadLater();
   });
 
   // ══ System health strip ══════════════════════════════════════════
