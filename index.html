@@ -1738,10 +1738,19 @@
   async function flipDomain(id) {
     const it = items.find(i => i.id === id);
     const next = (it && it.domain === 'work') ? 'life' : 'work';
-    await apiFetch(`${API}/api/set-domain`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, domain: next })
-    });
+    try {
+      const res = await apiFetch(`${API}/api/set-domain`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, domain: next })
+      });
+      if (!res.ok) throw new Error('set-domain failed');
+      // Flipping out of the current lens makes the card vanish — say why.
+      if (currentDomain !== 'all' && next !== currentDomain) {
+        showToast(`→ ${next} (hidden by the ${currentDomain} lens)`);
+      }
+    } catch (e) {
+      showToast('⚠ Flip failed — server busy? Tap again.');
+    }
     await fetchItems();
   }
 
