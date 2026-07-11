@@ -3732,6 +3732,13 @@
 
     active.sort((a, b) => (a.due_date || '').localeCompare(b.due_date || ''));
     const el = document.getElementById('deadlines-list');
+    // A deadline hidden by the domain lens looks like data loss — say so instead.
+    const lensHidden = deadlines.filter(d =>
+      !['done', 'dismissed'].includes(d.status) && !inDomain(d)).length;
+    if (!active.length && lensHidden > 0) {
+      el.innerHTML = `<div class="saved-no-results">${lensHidden} deadline${lensHidden > 1 ? 's' : ''} hidden by the ${currentDomain} lens — switch to Work or All above.</div>`;
+      return;
+    }
     el.innerHTML = active.map(d => {
       const dl = d.days_left;
       let badgeCls = 'far', badgeTxt = dl == null ? '—' : `${dl}d`;
