@@ -3457,6 +3457,8 @@
     return bits.join('<span class="dot">·</span>');
   }
 
+  let recipeShowCap = 60;   // paged up by "Show 60 more"; reset when filters change
+
   function renderRecipes() {
     const section = document.getElementById('recipes-section');
     const visibleTotal = recipes.filter(r => !r.excluded).length;
@@ -3483,11 +3485,10 @@
     list.sort((a,b) => new Date(b.date_added||0) - new Date(a.date_added||0));
     const el = document.getElementById('recipes-list');
     if (!list.length) { el.innerHTML = '<div class="saved-no-results">No matching recipes</div>'; return; }
-    // Cap the DOM at a sane number — search/filter to narrow the ~1000s of imports.
-    const CAP = 60;
-    const shown = list.slice(0, CAP);
-    const capNote = list.length > CAP
-      ? `<div class="saved-no-results">Showing ${CAP} of ${list.length} — search or filter to narrow.</div>`
+    // Cap the DOM at a sane number — pageable via the "Show 60 more" button below.
+    const shown = list.slice(0, recipeShowCap);
+    const capNote = list.length > recipeShowCap
+      ? `<div class="saved-no-results">Showing ${recipeShowCap} of ${list.length} — search to narrow, or "Show 60 more" below.</div>`
       : '';
     el.innerHTML = capNote + shown.map(r => {
       const title = escapeHtml(r.title || 'Untitled');
@@ -3517,6 +3518,14 @@
           ${caption}
         </div>`;
     }).join('');
+    if (list.length > recipeShowCap) {
+      const more = document.createElement('button');
+      more.className = 'btn btn-ghost';
+      more.style.cssText = 'display:block;margin:10px auto;';
+      more.textContent = `Show 60 more (${list.length - recipeShowCap} remaining)`;
+      more.onclick = () => { recipeShowCap += 60; renderRecipes(); };
+      el.appendChild(more);
+    }
   }
 
   async function promoteFull(id) {
@@ -3544,12 +3553,13 @@
     await fetchHealth();
   }
 
-  document.getElementById('recipes-search').addEventListener('input', e => { recipeSearch = e.target.value; renderRecipes(); });
-  document.getElementById('recipes-tier').addEventListener('change', renderRecipes);
-  document.getElementById('recipes-status').addEventListener('change', renderRecipes);
-  document.getElementById('recipes-time').addEventListener('change', renderRecipes);
-  document.getElementById('show-hidden').addEventListener('change', e => { showHidden = e.target.checked; renderRecipes(); });
-  document.getElementById('hide-baby').addEventListener('change', e => { hideBaby = e.target.checked; renderRecipes(); });
+  const resetRecipeCap = () => { recipeShowCap = 60; };
+  document.getElementById('recipes-search').addEventListener('input', e => { recipeSearch = e.target.value; resetRecipeCap(); renderRecipes(); });
+  document.getElementById('recipes-tier').addEventListener('change', () => { resetRecipeCap(); renderRecipes(); });
+  document.getElementById('recipes-status').addEventListener('change', () => { resetRecipeCap(); renderRecipes(); });
+  document.getElementById('recipes-time').addEventListener('change', () => { resetRecipeCap(); renderRecipes(); });
+  document.getElementById('show-hidden').addEventListener('change', e => { showHidden = e.target.checked; resetRecipeCap(); renderRecipes(); });
+  document.getElementById('hide-baby').addEventListener('change', e => { hideBaby = e.target.checked; resetRecipeCap(); renderRecipes(); });
   document.getElementById('purge-hidden-btn').addEventListener('click', async () => {
     const n = recipes.filter(r => r.excluded).length;
     if (!confirm(`Permanently delete ${n} hidden (non-recipe) item${n===1?'':'s'}? This cannot be undone.`)) return;
