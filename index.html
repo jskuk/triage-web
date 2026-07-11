@@ -3799,14 +3799,16 @@
     const title = document.getElementById('dl-title').value.trim();
     const due = document.getElementById('dl-due').value;
     const type = document.getElementById('dl-type').value;
-    if (!title || !due) return;
-    await apiFetch(`${API}/api/deadlines/add`, {
+    if (!title || !due) { showToast('Enter a title and a due date'); return; }
+    const res = await apiFetch(`${API}/api/deadlines/add`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, due_date: due, type, domain: currentDomain === 'life' ? 'life' : 'work' })
     });
+    let data = {}; try { data = await res.json(); } catch (e) {}
     document.getElementById('dl-title').value = '';
     document.getElementById('dl-due').value = '';
     document.getElementById('deadline-add-form').style.display = 'none';
+    showToast(data && data.due_date ? `Deadline added · ${data.title} · due ${data.due_date}` : 'Deadline added');
     await fetchDeadlines();
   }
   async function quickAddDeadline() {
@@ -3815,16 +3817,24 @@
     if (!note) return;
     const res = await apiFetch(`${API}/api/deadlines/add`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ note })   // server parses the date/type from the text
+      body: JSON.stringify({ note })   // server/dbx parses the date/type from the text
     });
-    if (res.status === 422) {   // no date found in the text
+    if (res.status === 422) {   // LOCAL server: no date found in the text
       input.style.borderColor = 'var(--danger)';
       input.placeholder = "Couldn't find a date — try “… due Aug 15” or “… by 9/1”";
       input.value = '';
       return;
     }
+    let data = {}; try { data = await res.json(); } catch (e) {}
     input.value = ''; input.style.borderColor = '';
     document.getElementById('deadline-add-form').style.display = 'none';
+    if (data && data.saved_to_inbox) {
+      // Hosted: no date recoverable → landed in Inbox, never lost.
+      showToast('No date found — saved to Inbox');
+      await fetchItems();
+      return;
+    }
+    if (data && data.due_date) showToast(`Deadline${data.proposed ? ' (proposed ❓)' : ''} · ${data.title} · due ${data.due_date}`);
     await fetchDeadlines();
   }
   async function confirmDeadline(id) { await _dlPost('/api/deadlines/confirm', { id }); }

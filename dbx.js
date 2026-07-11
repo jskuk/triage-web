@@ -142,6 +142,67 @@
     return work.test(t) && !life.test(t) ? 'work' : (life.test(t) ? 'life' : 'life');
   }
 
+  // ── deadline heuristics: minimal JS mirror of aihelper (browser can't run the
+  //    Python heuristic parser). config.DEADLINE_LEAD_DEFAULTS + _deadline_type.
+  const DEADLINE_LEAD_DEFAULTS = { referee: 14, recletter: 7, rnr: 42, grant: 30, conference: 21, teaching: 7, other: 14 };
+  const _DL_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  const _DL_TYPES = [
+    [['referee', 'review report', 'report for', 'reviewer report'], 'referee'],
+    [['recommendation', 'rec letter', 'reference letter', 'letter for', '추천서'], 'recletter'],
+    [['r&r', 'revise and resubmit', 'revise & resubmit', 'resubmit', 'revision'], 'rnr'],
+    [['grant', 'nsf', 'nih', 'proposal'], 'grant'],
+    [['conference', 'cfp', 'call for papers', 'abstract', 'submission'], 'conference'],
+    [['syllabus', 'teaching', 'class', 'lecture', 'grade', 'exam'], 'teaching'],
+  ];
+  function deadlineType(text) {
+    const t = (text || '').toLowerCase();
+    for (const [keys, name] of _DL_TYPES) if (keys.some(k => t.includes(k))) return name;
+    return 'other';
+  }
+  // Minimal date sniff (mirror aihelper.heuristic_parse_date, simplified): ISO
+  // yyyy-mm-dd, month-name + day (English), day + month, M/D[/Y], and "tomorrow".
+  // No-year dates roll forward past today (mirror _roll). Returns {due, match} or null.
+  function sniffDeadlineDate(text) {
+    const t = (text || '').toLowerCase();
+    const pad = n => String(n).padStart(2, '0');
+    const fmt = (y, mo, d) => `${y}-${pad(mo)}-${pad(d)}`;
+    const valid = (y, mo, d) => { const dt = new Date(y, mo - 1, d); return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d; };
+    const now = new Date();
+    const today = fmt(now.getFullYear(), now.getMonth() + 1, now.getDate());   // local ISO for lexical compare
+    const roll = (mo, d) => {
+      const y = now.getFullYear();
+      if (!valid(y, mo, d)) return null;
+      let s = fmt(y, mo, d);
+      if (s < today) { if (!valid(y + 1, mo, d)) return null; s = fmt(y + 1, mo, d); }
+      return s;
+    };
+    let m;
+    m = t.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+    if (m) { return valid(+m[1], +m[2], +m[3]) ? { due: fmt(+m[1], +m[2], +m[3]), match: m[0] } : null; }
+    m = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
+    if (m) { const s = roll(_DL_MONTHS[m[1]], +m[2]); return s ? { due: s, match: m[0] } : null; }
+    m = t.match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/);
+    if (m) { const s = roll(_DL_MONTHS[m[2]], +m[1]); return s ? { due: s, match: m[0] } : null; }
+    m = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+    if (m) {
+      const mo = +m[1], d = +m[2];
+      if (m[3]) { let y = +m[3]; if (y < 100) y += 2000; return valid(y, mo, d) ? { due: fmt(y, mo, d), match: m[0] } : null; }
+      const s = roll(mo, d); return s ? { due: s, match: m[0] } : null;
+    }
+    if (/\btomorrow\b/.test(t) || text.includes('내일')) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      return { due: fmt(d.getFullYear(), d.getMonth() + 1, d.getDate()), match: /\btomorrow\b/.test(t) ? 'tomorrow' : '내일' };
+    }
+    return null;
+  }
+  // Title from a freeform note: drop the matched date + a dangling connector.
+  function deadlineTitleFromNote(note, match) {
+    let s = note || '';
+    if (match) s = s.replace(new RegExp(match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
+    s = s.replace(/\s+/g, ' ').trim().replace(/[\s,]*\b(due|by|on|before)\b\s*$/i, '').trim();
+    return (s || note || '').slice(0, 80).trim();
+  }
+
   // JS port of records.project_movement — keep the math identical to Python.
   const STALL_DEFAULT = 21;
   function projectMovement(p) {
@@ -255,11 +316,56 @@
     if (path === '/api/log') return resp(await updateJson('journal.json', a => { a.push({ id: genId(), text: body.text, timestamp: nowIso() }); return a; }, []), 201);
 
     // — deadlines —
-    if (path === '/api/deadlines/add') return resp(await updateJson('deadlines.json', a => {
-      a.push({ id: genId(), title: body.title, type: body.type || 'other', due_date: body.due_date,
-        lead_time_days: body.lead_time_days || 14, domain: body.domain || 'work', status: 'upcoming',
-        notes: body.notes || null, linked_task_id: null, runway_opened: null,
-        proposed: !!body.proposed, source: body.source || 'dashboard', source_id: body.source_id || null, created: nowIso() }); return a; }, []), 201);
+    // Mirror server._handle_deadline_add: structured (title+due) → record;
+    // freeform ({note}) → minimal JS date sniff → proposed record, else NEVER
+    // lose it (inbox task fallback, the router's shape); empty → create nothing.
+    if (path === '/api/deadlines/add') {
+      const bTitle = (body.title || '').trim();
+      const bDue = (body.due_date || '').trim();
+      const note = (body.note || body.text || '').trim();
+      if (!bTitle && !bDue && !note) return resp({ ok: false, error: 'empty' }, 400);
+
+      // Resolve final title/due/type/proposed for either input shape.
+      let title = bTitle, due = bDue, dtype = DEADLINE_LEAD_DEFAULTS[body.type] ? body.type : null, proposed = !!body.proposed, srcNote = null;
+      if (!(bTitle && bDue)) {
+        // Freeform (or partial) → try the JS heuristic on the note.
+        const hit = note ? sniffDeadlineDate(note) : null;
+        if (!hit) {
+          // No date recoverable → never-lost inbox TASK (mirror the router).
+          let task = null;
+          await updateJson('data.json', a => {
+            task = { id: genId(), text: '[deadline] ' + note, url: (body.url || '').trim() || null,
+              nextStep: null, memo: null, list: 'inbox', created: nowIso(), domain: 'work', unsorted: true };
+            a.push(task); return a;
+          }, []);
+          return resp({ ok: true, saved_to_inbox: true, task_id: task.id, message: 'no date found — saved to Inbox' }, 201);
+        }
+        due = hit.due;
+        title = deadlineTitleFromNote(note, hit.match) || 'Untitled deadline';
+        if (!dtype) dtype = deadlineType(note);
+        proposed = true;              // ❓ confirm-on-dashboard: heuristic, not confirmed
+        srcNote = note;
+      }
+      if (!dtype) dtype = 'other';
+      if (!title) title = 'Untitled deadline';
+      const lead = Number.isInteger(body.lead_time_days) ? body.lead_time_days : DEADLINE_LEAD_DEFAULTS[dtype];
+      let domain = (body.domain || '').trim().toLowerCase();
+      if (!['work', 'life'].includes(domain)) domain = dtype !== 'other' ? 'work' : heuristicDomain(srcNote || title);
+      const srcId = (body.source_id || '').trim() || null;
+      const notes = (body.notes || '').trim() || srcNote || null;
+      let outRec = null;
+      await updateJson('deadlines.json', a => {
+        // Idempotent: dedupe by source_id or (title,due) — mirror the server.
+        const ex = a.find(d => (srcId && d.source_id === srcId) ||
+          ((d.title || '').toLowerCase() === title.toLowerCase() && d.due_date === due));
+        if (ex) { outRec = ex; return a; }
+        outRec = { id: genId(), title, type: dtype, due_date: due, lead_time_days: lead,
+          domain, status: 'upcoming', notes, linked_task_id: null, runway_opened: null,
+          proposed, source: body.source || 'dashboard', source_id: srcId, created: nowIso() };
+        a.push(outRec); return a;
+      }, []);
+      return resp(outRec, 201);
+    }
     if (path === '/api/deadlines/update') { await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) Object.assign(d, body.fields || {}); return a; }, []); return resp({ ok: true }); }
     if (path === '/api/deadlines/confirm') { await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) d.proposed = false; return a; }, []); return resp({ ok: true }); }
     if (path === '/api/deadlines/delete') { await updateJson('deadlines.json', a => a.filter(x => x.id !== body.id), []); return resp({ ok: true }); }
