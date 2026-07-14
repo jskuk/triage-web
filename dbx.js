@@ -218,7 +218,7 @@
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
     '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
     '/api/session-log', '/api/email/outbox-mark',
-    '/api/sweep/analyze'];   // AI-in-request; only the Mac runs analyze (sessions + outbox marks are Mac-agent-only too)
+    '/api/sweep/analyze', '/api/insights/replace'];   // AI-in-request; only the Mac runs analyze (sessions + outbox marks are Mac-agent-only too)
 
   async function handle(path, opts) {
     const method = (opts && opts.method) || 'GET';
