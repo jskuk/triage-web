@@ -361,7 +361,7 @@
       const metaBits = [];
       if (item.theme) metaBits.push(`<span class="theme-tag">${escapeHtml(item.theme)}</span>`);
       if (item.est_minutes) metaBits.push(`${item.est_minutes} min`);
-      if (item.link_dead) metaBits.push('<span class="badge-dead">link gone &mdash; digested</span>');
+      if (item.link_dead) metaBits.push('<span class="badge-dead" title="The server can\'t log in to read this (social post / paywall). Re-capture it with the browser extension to grab its caption and digest it.">🔒 couldn\'t read &mdash; re-capture in browser</span>');
       if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
       const meta = metaBits.length ? `<div class="garden-item-meta">${metaBits.join('')}</div>` : '';
       return `
