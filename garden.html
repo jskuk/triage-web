@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garden</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  /* v8: the Vault (a dark link-graveyard) became the Garden — warm, light,
+     living. Same layout bones; opposite mood. Palette: cream + garden green. */
+  :root {
+    --bg: #FAF6EF;
+    --surface: #FFFFFF;
+    --ink: #2E3A2F;
+    --ink-muted: #7A8073;
+    --accent: #4A7C59;
+    --accent-soft: rgba(74, 124, 89, 0.10);
+    --border: #E4DCCB;
+    --radius: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 84px 40px 56px;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.1rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    margin-bottom: 32px;
+  }
+
+  .wrap { width: 100%; max-width: 640px; }
+
+  /* Weekly harvest (filled by the Monday digest; hidden until then). */
+  .harvest {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-bottom: 28px;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+  .harvest h2 {
+    font-family: 'DM Serif Display', serif;
+    font-weight: 400;
+    font-size: 1.15rem;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .harvest p { margin: 6px 0; }
+  .harvest a { color: var(--accent); }
+  .harvest .past { margin-top: 12px; font-size: 0.8rem; color: var(--ink-muted); }
+  .harvest .merge-row { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .harvest button {
+    font-family: inherit; font-size: 0.76rem; cursor: pointer;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+  }
+  .harvest button:hover { background: var(--accent); color: #fff; }
+
+  .search-box { width: 100%; position: relative; margin-bottom: 16px; }
+
+  .search-box input {
+    width: 100%;
+    padding: 16px 20px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    background: var(--surface);
+    color: var(--ink);
+    transition: border-color 0.15s;
+  }
+
+  .search-box input:focus { outline: none; border-color: var(--accent); }
+  .search-box input::placeholder { color: #B5B0A3; }
+
+  /* Theme chips — inventory, never guilt; click to filter. */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .chip {
+    font-size: 0.78rem; cursor: pointer; user-select: none;
+    background: var(--surface); color: var(--ink-muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px;
+    transition: all 0.1s;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .chip .n { opacity: 0.6; margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+  .count {
+    color: var(--ink-muted);
+    font-size: 0.78rem;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+
+  .results { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+
+  .garden-item {
+    padding: 14px 18px;
+    border-radius: 10px;
+    transition: background 0.1s, box-shadow 0.1s;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .garden-item:hover {
+    background: var(--surface);
+    box-shadow: 0 1px 4px rgba(46, 58, 47, 0.06);
+  }
+  .garden-item-content { flex: 1; min-width: 0; }
+
+  .garden-item-title {
+    font-size: 0.92rem;
+    color: var(--accent);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .garden-item-title:hover { text-decoration: underline; }
+
+  /* The user's memo — his ANGLE. Primary: it leads, styled as the voice. */
+  .garden-item-memo {
+    font-size: 0.86rem;
+    color: var(--ink);
+    margin-top: 5px;
+    line-height: 1.5;
+    border-left: 2px solid var(--border);
+    padding-left: 10px;
+    font-style: italic;
+  }
+  .garden-item-kp {
+    font-size: 0.82rem;
+    color: var(--ink);
+    margin-top: 6px;
+    line-height: 1.45;
+    font-weight: 500;
+  }
+  .garden-item-summary {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .garden-item-tags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag {
+    font-size: 0.68rem; color: var(--ink-muted);
+    background: var(--accent-soft); border-radius: 999px; padding: 2px 8px;
+  }
+  .garden-item-meta {
+    margin-top: 7px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    font-size: 0.72rem; color: #9A9488;
+  }
+  .theme-tag { color: var(--accent); font-weight: 500; }
+  .badge-dead {
+    font-size: 0.68rem; color: #9A8F7A;
+    background: #F0EADD; border-radius: 999px; padding: 2px 8px;
+  }
+  .garden-item-url {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 60%;
+  }
+  .garden-item-url a { color: #9A9488; text-decoration: none; }
+  .garden-item-url a:hover { text-decoration: underline; }
+
+  .garden-item-delete {
+    opacity: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink-muted);
+    width: 24px; height: 24px;
+    cursor: pointer; font-size: 0.7rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 2px; transition: all 0.1s;
+  }
+  .garden-item:hover .garden-item-delete { opacity: 1; }
+  .garden-item-delete:hover { border-color: #C0392B; color: #C0392B; }
+
+  .empty { text-align: center; color: var(--ink-muted); padding: 60px 20px; font-size: 0.92rem; line-height: 1.6; }
+  .no-results { text-align: center; color: var(--ink-muted); padding: 40px 20px; font-size: 0.88rem; }
+
+  mark { background: rgba(74, 124, 89, 0.18); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+
+  .back-link { position: fixed; top: 24px; left: 24px; color: var(--ink-muted); text-decoration: none; font-size: 0.82rem; }
+  .back-link:hover { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    body { padding: 60px 16px 40px; }
+  }
+</style>
+</head>
+<body>
+
+<a class="back-link" href="/">&larr; Triage</a>
+
+<h1>Garden</h1>
+<p class="subtitle">Things worth keeping &mdash; digested, not buried.</p>
+
+<div class="wrap">
+  <section class="harvest" id="harvest" hidden></section>
+
+  <div class="search-box">
+    <input type="text" id="search" placeholder="Search by meaning — title, your note, summary, topics&hellip;" autofocus>
+  </div>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="count" id="count"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+  const API = window.location.origin;
+  let garden = [];
+  let activeTheme = null;   // null = all themes
+
+  async function fetchGarden() {
+    const res = await fetch(`${API}/api/garden`);
+    garden = await res.json();
+    render();
+  }
+
+  async function deleteItem(id) {
+    await fetch(`${API}/api/garden/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchGarden();
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  function highlight(text, query) {
+    if (!query || !text) return escapeHtml(text || '');
+    const escaped = escapeHtml(text);
+    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+    let result = escaped;
+    for (const term of terms) {
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      result = result.replace(regex, '<mark>$1</mark>');
+    }
+    return result;
+  }
+
+  function truncateUrl(url) {
+    try {
+      const u = new URL(url);
+      const path = u.pathname.length > 40 ? u.pathname.slice(0, 40) + '...' : u.pathname;
+      return u.hostname + path;
+    } catch { return url ? url.slice(0, 60) : ''; }
+  }
+
+  // Retrieval by MEANING, not archaeology: search title + memo + summary +
+  // key_point + topics + url, and always keep the user's note (his angle) first.
+  function haystack(item) {
+    return [item.title, item.text, item.note, item.summary, item.key_point,
+            (item.topics || []).join(' '), item.url]
+      .filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function headline(item) {
+    return item.title || item.text || truncateUrl(item.url || '') || '(untitled)';
+  }
+
+  function renderChips() {
+    const chipsEl = document.getElementById('chips');
+    const counts = {};
+    for (const it of garden) {
+      if (it.theme) counts[it.theme] = (counts[it.theme] || 0) + 1;
+    }
+    const themes = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+    if (themes.length === 0) { chipsEl.innerHTML = ''; return; }   // suppress at zero
+    const chip = (label, key, n) =>
+      `<div class="chip${activeTheme === key ? ' active' : ''}" data-theme="${key == null ? '' : escapeHtml(key)}">`
+      + `${escapeHtml(label)}<span class="n">${n}</span></div>`;
+    let html = chip('All', null, garden.length);
+    for (const t of themes) html += chip(t, t, counts[t]);
+    chipsEl.innerHTML = html;
+    chipsEl.querySelectorAll('.chip').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.getAttribute('data-theme');
+        activeTheme = t === '' ? null : t;
+        render();
+      });
+    });
+  }
+
+  function render() {
+    renderChips();
+    const query = document.getElementById('search').value.trim();
+    const countEl = document.getElementById('count');
+    const resultsEl = document.getElementById('results');
+
+    let filtered = garden;
+    if (activeTheme) filtered = filtered.filter(it => it.theme === activeTheme);
+    if (query) {
+      const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+      filtered = filtered.filter(item => {
+        const hay = haystack(item);
+        return terms.every(t => hay.includes(t));
+      });
+    }
+
+    filtered = filtered.slice().sort((a, b) => new Date(b.created) - new Date(a.created));
+
+    const scope = activeTheme ? ` in “${escapeHtml(activeTheme)}”` : '';
+    countEl.textContent = (query || activeTheme)
+      ? `${filtered.length} of ${garden.length} items${scope}`
+      : `${garden.length} items`;
+
+    if (garden.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">Nothing in the garden yet.<br>Capture links with the Edge extension or a &ldquo;garden&rdquo; capture &mdash; they get digested here.</div>';
+      return;
+    }
+    if (filtered.length === 0) {
+      resultsEl.innerHTML = '<div class="no-results">No matches</div>';
+      return;
+    }
+
+    resultsEl.innerHTML = filtered.map(item => {
+      const head = headline(item);
+      const titleHtml = item.url
+        ? `<a class="garden-item-title" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(head, query)}</a>`
+        : `<div class="garden-item-title" style="cursor:default">${highlight(head, query)}</div>`;
+      const memo = item.note ? `<div class="garden-item-memo">${highlight(item.note, query)}</div>` : '';
+      const kp = item.key_point ? `<div class="garden-item-kp">${highlight(item.key_point, query)}</div>` : '';
+      const summary = item.summary ? `<div class="garden-item-summary">${highlight(item.summary, query)}</div>` : '';
+      const tags = (item.topics && item.topics.length)
+        ? `<div class="garden-item-tags">${item.topics.map(t => `<span class="tag">${escapeHtml(t)}</span>`).join('')}</div>`
+        : '';
+      const metaBits = [];
+      if (item.theme) metaBits.push(`<span class="theme-tag">${escapeHtml(item.theme)}</span>`);
+      if (item.est_minutes) metaBits.push(`${item.est_minutes} min`);
+      if (item.link_dead) metaBits.push('<span class="badge-dead">link gone &mdash; digested</span>');
+      if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
+      const meta = metaBits.length ? `<div class="garden-item-meta">${metaBits.join('')}</div>` : '';
+      return `
+        <div class="garden-item">
+          <div class="garden-item-content">
+            ${titleHtml}
+            ${memo}
+            ${kp}
+            ${summary}
+            ${tags}
+            ${meta}
+          </div>
+          <button class="garden-item-delete" onclick="deleteItem('${item.id}')" title="Delete">✕</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Weekly harvest (the Monday digest) ──────────────────────────────
+  function mdInline(s) {
+    s = escapeHtml(s);
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
+      (m, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`);
+    return s;
+  }
+
+  async function loadHarvest() {
+    const el = document.getElementById('harvest');
+    try {
+      const files = await (await fetch(`${API}/api/garden/digests`)).json();
+      if (!Array.isArray(files) || files.length === 0) return;   // stay hidden
+      const txt = await (await fetch(`${API}/digests/${encodeURIComponent(files[0])}`)).text();
+      if (!txt.trim()) return;
+      renderHarvest(el, txt, files.slice(1));
+      el.hidden = false;
+    } catch (e) { /* home-only; stay hidden on any failure */ }
+  }
+
+  function renderHarvest(el, md, older) {
+    const parts = md.split(/^###\s+Theme tidy-up\s*$/m);
+    let html = "<h2>This week&rsquo;s harvest</h2>";
+    for (const para of parts[0].split(/\n{2,}/)) {
+      const t = para.trim();
+      if (t) html += `<p>${mdInline(t)}</p>`;
+    }
+    const merges = [];
+    (parts[1] || '').replace(/-\s*Merge\s+"([^"]+)"\s+into\s+"([^"]+)"/g,
+      (m, a, b) => { merges.push([a, b]); return m; });
+    if (merges.length) {
+      html += '<div class="merge-row"><span>Tidy up themes:</span>';
+      for (const [a, b] of merges) {
+        html += `<button data-from="${escapeHtml(a)}" data-to="${escapeHtml(b)}">`
+          + `Merge &ldquo;${escapeHtml(a)}&rdquo; &rarr; &ldquo;${escapeHtml(b)}&rdquo;</button>`;
+      }
+      html += '</div>';
+    }
+    if (older && older.length) {
+      html += `<div class="past"><details><summary>Past harvests (${older.length})</summary>`
+        + older.map(f => `<div><a href="${API}/digests/${encodeURIComponent(f)}" target="_blank" rel="noopener">${escapeHtml(f.replace(/\.md$/, ''))}</a></div>`).join('')
+        + '</details></div>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.merge-row button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          await fetch(`${API}/api/garden/merge-themes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from: btn.getAttribute('data-from'), to: btn.getAttribute('data-to') })
+          });
+          btn.textContent = 'merged ✓';
+          await fetchGarden();   // refresh chips + counts
+        } catch (e) { btn.disabled = false; }
+      });
+    });
+  }
+
+  document.getElementById('search').addEventListener('input', render);
+
+  fetchGarden();
+  loadHarvest();
+</script>
+</body>
+</html>

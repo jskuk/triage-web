@@ -965,6 +965,7 @@
   }
   .rl-act-btn:hover { border-color: var(--accent); color: var(--accent); }
   .rl-act-spark { border-color: var(--accent); color: var(--accent); }
+  .rl-act-garden { border-color: #4A7C59; color: #4A7C59; }
   .rl-archived-toggle {
     margin-top: 12px; font: inherit; font-size: 0.74rem; color: var(--ink-muted);
     background: none; border: none; cursor: pointer; text-decoration: underline;
@@ -1262,6 +1263,25 @@
   .health-strip .health-warn strong { color: var(--waiting); }
   .health-strip .health-sep { color: var(--border); }
   .health-strip .catchup-btn { margin-left: auto; }
+  /* v7 Stage 2: overdue-agent chip (a silent writing agent) — red, unmissable. */
+  .health-strip .health-overdue {
+    background: rgba(192,57,43,0.12); color: var(--danger);
+    font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid rgba(192,57,43,0.35);
+  }
+  /* v7 Stage 2: Dropbox-conflict banner — top of page, unmissable. Detection
+     only: it names the forked files, it never offers to touch them. */
+  .conflict-banner {
+    padding: 12px 16px; margin-bottom: 16px;
+    background: rgba(192,57,43,0.10); border: 1px solid var(--danger);
+    border-left: 4px solid var(--danger); border-radius: var(--radius);
+    box-shadow: var(--shadow); font-size: 0.88rem; color: var(--danger);
+    font-weight: 600;
+  }
+  .conflict-banner .cb-files {
+    display: block; margin-top: 6px; font-weight: 400; color: var(--ink);
+    font-size: 0.82rem; word-break: break-word;
+  }
 
   /* ── Recipes ── */
   .recipes-section, .sparks-section { margin-top: 40px; }
@@ -1404,6 +1424,10 @@
 </style>
 </head>
 <body>
+
+<!-- v7 Stage 2: Dropbox-conflict banner — populated by renderHealth() when the
+     health payload reports conflict files. Detection only, no file-touching buttons. -->
+<div class="conflict-banner" id="conflict-banner" style="display:none"></div>
 
 <div class="connect-gate" id="connect-gate" style="display:none">
   <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
@@ -1615,7 +1639,7 @@
       <div class="help-card">
         <h3>Capture from your phone</h3>
         <p>Share sheet or Home Screen → <strong>Capture</strong> shortcut. First option is <strong>Just capture</strong> — no filing decision needed; it lands in Inbox flagged <em>unsorted</em>.</p>
-        <p style="margin-top:8px">Or file directly as Task, Vault, Spark, or Recipe. Files sync via Dropbox and route within ~3 min.</p>
+        <p style="margin-top:8px">Or file directly as Task, Garden, Spark, or Recipe. Files sync via Dropbox and route within ~3 min.</p>
       </div>
       <div class="help-card">
         <h3>Sparks &amp; Recipes</h3>
@@ -2772,6 +2796,7 @@
                  placeholder="What should this become?">
           <div class="insight-actions">
             <button class="btn btn-primary btn-small" onclick="acceptInsight('${p.fingerprint}')">Accept</button>
+            ${p.garden_candidate ? `<button class="btn btn-ghost btn-small" onclick="gardenInsight('${p.fingerprint}')">→ Garden</button>` : ''}
             <button class="btn btn-ghost btn-small" onclick="dismissInsight('${p.fingerprint}')">Dismiss</button>
           </div>
           <details class="insight-evidence">
@@ -2801,6 +2826,34 @@
       showToast(`Couldn't create task — ${data.reason}`);
     }
     await fetchItems();      // refreshes items, tabs, saved, and insights
+  }
+
+  // Sweep → Garden: file a reference/how-to cluster's tabs into the Garden as
+  // knowledge (propose-only — this only runs on the user's tap), then clear them.
+  async function gardenInsight(fp) {
+    const p = insightsPending.find(x => x.fingerprint === fp);
+    if (!p) return;
+    const tabs = p.tabs || [];
+    for (const t of tabs) {
+      try {
+        await apiFetch(`${API}/api/garden/add`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: t.text || '', url: t.url || '', note: t.memo || '' })
+        });
+        await apiFetch(`${API}/api/delete`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: t.id })
+        });
+      } catch (e) { /* best-effort per tab */ }
+    }
+    try {
+      await apiFetch(`${API}/api/insights/dismiss`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fingerprint: fp })
+      });
+    } catch (e) { /* the tabs are already filed; a stale proposal prunes on next read */ }
+    showToast(`🌱 ${tabs.length} tab${tabs.length === 1 ? '' : 's'} planted in the Garden`);
+    await fetchItems();
   }
 
   async function dismissInsight(fp) {
@@ -2999,6 +3052,9 @@
       const canSpark = r.status === 'read' && r.my_take;
       const sparkBtn = canSpark
         ? `<button class="rl-act-btn rl-act-spark" onclick="sparkReadLater('${r.id}')">→ spark</button>` : '';
+      // Knowledge worth KEEPING → Garden (no take required, unlike → spark).
+      const gardenBtn = r.status === 'read'
+        ? `<button class="rl-act-btn rl-act-garden" onclick="gardenReadLater('${r.id}')">→ Garden</button>` : '';
       return `
         <div class="rl-item">
           <div class="rl-item-main">
@@ -3014,6 +3070,7 @@
               <button class="rl-act-btn" onclick="markReadLater('${r.id}')">Mark read</button>
               <button class="rl-act-btn" onclick="archiveReadLater('${r.id}')">Archive</button>
               ${sparkBtn}
+              ${gardenBtn}
             </div>
           </div>
         </div>`;
@@ -3096,6 +3153,19 @@
       data = await res.json();
     } catch (e) { data = null; }
     if (data && data.ok) showToast('✦ Saved as spark');
+    await fetchReadLater();
+  }
+
+  async function gardenReadLater(id) {
+    let data = null;
+    try {
+      const res = await apiFetch(`${API}/api/readlater/promote-garden`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      data = await res.json();
+    } catch (e) { data = null; }
+    if (data && data.ok) showToast('🌱 Planted in the Garden');
     await fetchReadLater();
   }
 
@@ -3304,11 +3374,37 @@
     } catch (e) { /* server may be starting */ }
   }
 
+  // v7 Stage 2: minutes → compact age chip ('3h', '2d', '45m'), mirroring
+  // brief-generator._humanize_min.
+  function humanizeMin(m) {
+    m = Math.round(m);
+    if (m >= 1440) return `${Math.floor(m / 1440)}d`;
+    if (m >= 60) return `${Math.floor(m / 60)}h`;
+    return `${m}m`;
+  }
+
+  function renderConflictBanner() {
+    const el = document.getElementById('conflict-banner');
+    if (!el) return;
+    const files = (healthData && healthData.conflicts) || [];
+    if (!files.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.innerHTML = `⚠ Dropbox conflict files detected — data may be forking:`
+      + `<span class="cb-files">${files.map(escapeHtml).join('<br>')}</span>`;
+    el.style.display = '';
+  }
+
   function renderHealth() {
     const el = document.getElementById('health-strip');
+    renderConflictBanner();
     if (!healthData) { el.style.display = 'none'; return; }
     const h = healthData;
     const parts = [];
+    // A red chip per overdue writing agent ('⚠ router 3h') — a silent agent is
+    // exactly what the user must not miss.
+    (h.overdue || []).forEach(a => {
+      const age = h.agents && h.agents[a] != null ? ' ' + humanizeMin(h.agents[a]) : '';
+      parts.push(`<span class="health-item health-overdue">⚠ ${escapeHtml(a)}${age}</span>`);
+    });
     if (h.travel) parts.push(`<span class="health-item" style="color:var(--thisweek);font-weight:600">✈ Travel</span>`);
     parts.push(`<span class="health-item${h.stale ? ' health-warn' : ''}">Inbox: <strong>${h.inbox}</strong>${h.stale ? ` (${h.stale} stale)` : ''}</span>`);
     if (h.unsorted) parts.push(`<span class="health-item health-warn">Unsorted: <strong>${h.unsorted}</strong></span>`);

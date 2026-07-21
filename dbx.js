@@ -242,7 +242,7 @@
     if (path === '/api/sparks') return resp(await readJson('sparks.json', []));
     if (path === '/api/recipes') return resp(await readJson('recipes/recipes.json', []));
     if (path === '/api/logs') return resp(await readJson('journal.json', []));
-    if (path === '/api/vault') return resp(await readJson('vault.json', []));
+    if (path === '/api/garden' || path === '/api/vault') return resp(await readJson('vault.json', []));
     if (path === '/api/travel') { const t = await readJson('travel.flag', null); return resp(t ? { on: true, since: t.since, note: t.note } : { on: false }); }
     if (path === '/api/brief') { const md = await download('brief.md'); const fresh = md != null; return resp({ markdown: md, generated: null, fresh }); }
     // Sweep Insights (v6): read-only join here — the browser prunes <2-live-tab
@@ -610,12 +610,44 @@
     } catch (e) { draftsPending = 0; }
     const repeatDeferral = items.filter(i => i.list !== 'done' && (i.deferrals || 0) >= 3).length;
     const ea_topics = draftsPending + stalled + repeatDeferral;
+    // v7 Stage 2: self-monitoring, mirroring server._compute_health.
+    // agents/overdue — freshest per-host heartbeat age (minutes) per agent with a
+    // locks/hb-<agent>-*.json; an agent with no heartbeat is absent (never-enabled
+    // ≠ broken). Travel exempts email from overdue.
+    const AGENT_MAX = { router: 30, email: 30, brief: 26 * 60, insights: 26 * 60, recipes: 30 };
+    const agents = {}, overdue = [];
+    try {
+      const freshest = {};
+      const hb = (await listDir('locks')).filter(n => n.startsWith('hb-') && n.endsWith('.json'));
+      for (const name of hb) {
+        const agent = name.slice(3, -5).split('-')[0];              // hb-<agent>-<host>.json
+        const info = await readJson('locks/' + name, null);
+        if (!info || !info.ts) continue;
+        const age = (now - new Date(info.ts)) / 60000;
+        if (isNaN(age)) continue;
+        if (!(agent in freshest) || age < freshest[agent]) freshest[agent] = age;
+      }
+      for (const [agent, age] of Object.entries(freshest)) {
+        agents[agent] = Math.round(age);
+        const thr = AGENT_MAX[agent];
+        if (thr == null || (agent === 'email' && travel)) continue;
+        if (age > thr) overdue.push(agent);
+      }
+      overdue.sort();
+    } catch (e) { /* self-monitor is best-effort; never breaks health */ }
+    // conflicts — hosted checks the TOP LEVEL ONLY (a recursive Dropbox listing is
+    // too chatty for a phone); the Mac-side server does the deep recursive scan.
+    let conflicts = [];
+    try {
+      conflicts = (await listDir('')).filter(n => n.toLowerCase().includes('conflicted copy')).sort();
+    } catch (e) { conflicts = []; }
     return {
       inbox: inbox.length, stale,
       unsorted: items.filter(i => i.unsorted && i.list !== 'done' && inDom(i)).length,
       unclassified: items.filter(i => ['inbox','thisweek','someday','waiting'].includes(i.list) && !['work','life'].includes(i.domain)).length,
       waiting_overdue: items.filter(i => i.list === 'waiting' && inDom(i) && (now - new Date(i.waitingSince || i.created)) / day >= 7).length,
       recipe_queue: 0, sparks_week: 0, stalled, ea_topics, catchup_threshold: 25, travel,
+      agents, overdue, conflicts,
     };
   }
   async function computeWeekly() {
