@@ -167,6 +167,9 @@
     line-height: 1.5;
   }
   .garden-item-tags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .garden-item-imgs { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .garden-item-imgs img { height: 88px; width: auto; max-width: 140px; object-fit: cover;
+    border: 1px solid var(--border); border-radius: 6px; }
   .tag {
     font-size: 0.68rem; color: var(--ink-muted);
     background: var(--accent-soft); border-radius: 999px; padding: 2px 8px;
@@ -363,7 +366,11 @@
       if (item.est_minutes) metaBits.push(`${item.est_minutes} min`);
       if (item.link_dead) metaBits.push('<span class="badge-dead" title="The server can\'t log in to read this (social post / paywall). Re-capture it with the browser extension to grab its caption and digest it.">🔒 couldn\'t read &mdash; re-capture in browser</span>');
       if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
+      if (item.images && item.images.length) metaBits.unshift('<span title="Saved from a screenshot">📷</span>');
       const meta = metaBits.length ? `<div class="garden-item-meta">${metaBits.join('')}</div>` : '';
+      const imgs = (item.images && item.images.length)
+        ? `<div class="garden-item-imgs">${item.images.map(p => `<a href="${API}/${encodeURI(p)}" target="_blank" rel="noopener"><img src="${API}/${encodeURI(p)}" loading="lazy" alt="screenshot"></a>`).join('')}</div>`
+        : '';
       return `
         <div class="garden-item">
           <div class="garden-item-content">
@@ -372,6 +379,7 @@
             ${kp}
             ${summary}
             ${tags}
+            ${imgs}
             ${meta}
           </div>
           <button class="garden-item-delete" onclick="deleteItem('${item.id}')" title="Delete">✕</button>
