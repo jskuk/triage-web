@@ -1540,6 +1540,17 @@
     <div id="deadlines-list"></div>
   </div>
 
+  <!-- Meetings (v9): settled appointments extracted from email. A proposed one is
+       NOT on the calendar until confirmed — confirming is one tap and always
+       optional (the brief surfaces unconfirmed meetings on its own). -->
+  <div class="deadlines-section" id="meetings-section" style="display:none">
+    <div class="deadlines-header">
+      <h2>Meetings</h2>
+      <span class="tab-count" id="meetings-count">0</span>
+    </div>
+    <div id="meetings-list"></div>
+  </div>
+
   <!-- Sweep Insights: proposed tasks from clustered tabs (above Tab Sweep) -->
   <div class="insights-section" id="insights-section" style="display:none">
     <div class="insights-header">
@@ -1823,6 +1834,7 @@
       b.classList.toggle('active', b.dataset.domain === d));
     render(); renderTabs && renderTabs();
     if (typeof renderDeadlines === 'function') renderDeadlines();
+    if (typeof renderMeetings === 'function') renderMeetings();
     fetchHealth();
   }
   document.querySelectorAll('#domain-toggle button').forEach(b =>
@@ -3408,6 +3420,11 @@
       const age = h.agents && h.agents[a] != null ? ' ' + humanizeMin(h.agents[a]) : '';
       parts.push(`<span class="health-item health-overdue">⚠ ${escapeHtml(a)}${age}</span>`);
     });
+    // Calendar coverage: gcal can only see your primary calendar — meetings on
+    // other calendars are invisible. A red chip so the blindness is never silent.
+    if (h.calendar && h.calendar.degraded) {
+      parts.push(`<span class="health-item health-overdue" title="Triage can only read your primary Google calendar (calendar-list access blocked). Re-authorize Google with the calendar.readonly scope.">⚠ calendar partial</span>`);
+    }
     if (h.travel) parts.push(`<span class="health-item" style="color:var(--thisweek);font-weight:600">✈ Travel</span>`);
     parts.push(`<span class="health-item${h.stale ? ' health-warn' : ''}">Inbox: <strong>${h.inbox}</strong>${h.stale ? ` (${h.stale} stale)` : ''}</span>`);
     if (h.unsorted) parts.push(`<span class="health-item health-warn">Unsorted: <strong>${h.unsorted}</strong></span>`);
@@ -3898,6 +3915,75 @@
     }).join('') || '<div class="saved-no-results">No deadlines yet — <strong>+ Add</strong> one above, or run <code>python3 deadlines-interview.py</code> to populate them in 5 minutes.</div>';
   }
 
+  let meetings = [];
+  async function fetchMeetings() {
+    try {
+      const res = await apiFetch(`${API}/api/meetings`);
+      meetings = await res.json();
+      renderMeetings();
+    } catch (e) { /* ignore */ }
+  }
+
+  function fmtMeetingWhen(startIso) {
+    // start is naive-local 'YYYY-MM-DDTHH:MM' — parse the parts directly rather
+    // than letting Date() guess, which would shift a bare ISO string by the offset.
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(startIso || '');
+    if (!m) return startIso || '';
+    const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    return d.toLocaleString(undefined, {
+      weekday: 'short', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit'
+    });
+  }
+
+  function renderMeetings() {
+    const section = document.getElementById('meetings-section');
+    // Past meetings drop off on their own (server computes `past`).
+    const active = meetings.filter(m =>
+      !m.past && !['done', 'cancelled'].includes(m.status) && inDomain(m));
+    document.getElementById('meetings-count').textContent = active.length;
+    // Suppress-at-zero: unlike Deadlines there is no hand-add entry point here, so
+    // an empty Meetings box would be pure noise.
+    if (!active.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    active.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    document.getElementById('meetings-list').innerHTML = active.map(m => {
+      const who = (m.attendees || []).join(', ');
+      const meta = [m.location, who ? 'with ' + escapeHtml(who) : '', m.notes ? escapeHtml(m.notes) : '']
+        .filter(Boolean).join(' · ');
+      const actions = m.proposed
+        ? `<button class="btn btn-primary btn-small" onclick="confirmMeeting('${m.id}')">Confirm</button>
+           <button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">Dismiss</button>`
+        : `<button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">✕</button>`;
+      return `
+        <div class="deadline-item ${m.proposed ? 'proposed' : ''}">
+          <span class="dl-badge ${m.days_until != null && m.days_until <= 1 ? 'soon' : 'open'}">${m.days_until == null ? '—' : m.days_until + 'd'}</span>
+          <div class="deadline-main">
+            <div class="deadline-title">${escapeHtml(m.title)}${m.proposed ? ' <span class="unsorted-flag">unconfirmed</span>' : ''}${domainChip(m)}</div>
+            <div class="deadline-meta">${fmtMeetingWhen(m.start)}${meta ? ' · ' + meta : ''}</div>
+          </div>
+          ${actions}
+        </div>`;
+    }).join('');
+  }
+
+  async function confirmMeeting(id) {
+    await apiFetch(`${API}/api/meetings/confirm`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    showToast('Meeting confirmed · on your calendar');
+    fetchMeetings();
+  }
+
+  async function deleteMeeting(id) {
+    await apiFetch(`${API}/api/meetings/delete`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    fetchMeetings();
+  }
+
   function toggleDeadlineAdd() {
     const f = document.getElementById('deadline-add-form');
     f.style.display = f.style.display === 'none' ? 'flex' : 'none';
@@ -4062,6 +4148,7 @@
   fetchSparks();
   fetchRecipes();
   fetchDeadlines();
+  fetchMeetings();
   fetchBrief();
   fetchTravel();
   // Open any runways on load (idempotent), then refresh the ledger.
