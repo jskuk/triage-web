@@ -1169,6 +1169,8 @@
   }
   .travel-btn.on { background: var(--thisweek); color: #fff; border-color: var(--thisweek); }
   .ea-btn.has-topics { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .garden-link { color: #4A7C59; border-color: #4A7C59; text-decoration: none; }
+  .garden-link:hover { background: #4A7C59; color: #fff; }
   .ea-popover {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     margin: 8px 0 4px; font-size: 0.8rem; color: var(--ink-muted);
@@ -1446,6 +1448,7 @@
   </div>
   <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
   <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in the Triage repo, then /checkin">🤖 EA</button>
+  <a class="travel-btn garden-link" id="garden-link" href="/garden" style="display:none" title="Your Garden — kept, digested knowledge">🌱 Garden</a>
   <div id="ea-popover" class="ea-popover" style="display:none">
     <code id="ea-cmd">cd ~/Dropbox/Apps/Triage_Kuk &amp;&amp; claude</code>
     <button class="ea-copy" onclick="copyEACmd()">Copy</button>
@@ -4020,6 +4023,10 @@
   if (LOCAL) {
     const eb = document.getElementById('ea-btn');
     if (eb) eb.style.display = '';
+    // The Garden page fetches the local server directly (home-only, like the
+    // old Vault) — show its header link only at home.
+    const gl = document.getElementById('garden-link');
+    if (gl) gl.style.display = '';
   }
   function toggleEA() {
     const pop = document.getElementById('ea-popover');
