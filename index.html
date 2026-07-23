@@ -3006,6 +3006,7 @@
   let rlMaxMinutes = null;   // 15 | 30 | 60 | null(any)
   let rlProjectFilter = null;
   let rlShowArchived = false;
+  let rlShowAll = false;   // Read Later collapses to a few by default (the list runs long)
 
   async function readLaterTab(id) {
     await apiFetch(`${API}/api/readlater/add`, {
@@ -3056,7 +3057,9 @@
 
     if (!filtered.length) { listEl.innerHTML = '<div class="saved-no-results">No matches</div>'; return; }
 
-    listEl.innerHTML = filtered.map(r => {
+    const RL_CAP = 6;
+    const shownRL = rlShowAll ? filtered : filtered.slice(0, RL_CAP);
+    listEl.innerHTML = shownRL.map(r => {
       const title = escapeHtml(r.title || truncateUrl(r.url || '') || '(untitled)');
       const mins = r.est_minutes != null ? `${r.est_minutes}m` : '?min';
       const kp = r.fetch_failed
@@ -3090,6 +3093,13 @@
           </div>
         </div>`;
     }).join('');
+    if (filtered.length > RL_CAP) {
+      const t = document.createElement('button');
+      t.style.cssText = 'display:block;margin:10px auto;font-size:0.82rem;background:none;border:1px solid var(--border);border-radius:14px;padding:4px 12px;color:var(--ink-muted);cursor:pointer;';
+      t.textContent = rlShowAll ? 'Show fewer ↑' : `Show all ${filtered.length} ↓`;
+      t.onclick = () => { rlShowAll = !rlShowAll; renderReadLater(); };
+      listEl.appendChild(t);
+    }
   }
 
   function renderReadLaterFilters(base) {
@@ -3679,6 +3689,13 @@
       more.textContent = `Show 60 more (${list.length - recipeShowCap} remaining)`;
       more.onclick = () => { recipeShowCap += 60; renderRecipes(); };
       el.appendChild(more);
+    } else if (recipeShowCap > 60) {
+      const less = document.createElement('button');
+      less.className = 'btn btn-ghost';
+      less.style.cssText = 'display:block;margin:10px auto;';
+      less.textContent = 'Show fewer ↑';
+      less.onclick = () => { recipeShowCap = 60; renderRecipes(); };
+      el.appendChild(less);
     }
   }
 
