@@ -1302,6 +1302,10 @@
   }
   .recipe-row { display: flex; align-items: flex-start; gap: 12px; }
   .recipe-btns { display: flex; flex-direction: column; gap: 4px; }
+  .recipe-edit-input { width: 100%; font-family: inherit; font-size: 0.85rem; padding: 6px 9px;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--ink); box-sizing: border-box; }
+  .recipe-edit-input:focus { outline: none; border-color: var(--accent); }
+  .recipe-edit-label { font-size: 0.72rem; color: var(--ink-muted); margin: 2px 0 -4px; }
   .recipe-card .recipe-main { flex: 1; min-width: 0; }
   .recipe-caption { margin-top: 10px; }
   .recipe-caption summary { cursor: pointer; font-size: 0.8rem; color: var(--accent); list-style: none; }
@@ -3611,6 +3615,7 @@
   }
 
   let recipeShowCap = 60;   // paged up by "Show 60 more"; reset when filters change
+  let editingRecipeId = null;   // the recipe currently open in the inline Edit form
 
   function renderRecipes() {
     const section = document.getElementById('recipes-section');
@@ -3644,6 +3649,7 @@
       ? `<div class="saved-no-results">Showing ${recipeShowCap} of ${list.length} — search to narrow, or "Show 60 more" below.</div>`
       : '';
     el.innerHTML = capNote + shown.map(r => {
+      if (r.id === editingRecipeId) return recipeEditForm(r);
       const title = escapeHtml(r.title || 'Untitled');
       const titleHtml = r.source_url ? `<a href="${escapeHtml(r.source_url)}" target="_blank" rel="noopener">${title}</a>` : title;
       const cooked = (r.times_cooked||0) > 0 ? `<span class="recipe-cooked-badge">✓ ${r.times_cooked}× · ${formatDate(r.last_cooked)}</span>` : '';
@@ -3676,6 +3682,8 @@
             <div class="recipe-btns">
               ${fullBtn}
               <button class="btn btn-ghost btn-small cook-btn" onclick="markCooked('${r.id}')">Cooked</button>
+              <button class="btn btn-ghost btn-small" onclick="editRecipe('${r.id}')">Edit</button>
+              <button class="btn btn-ghost btn-small" onclick="deleteRecipe('${r.id}')" title="Delete recipe" style="color:#C0392B">✕</button>
             </div>
           </div>
           ${caption}
@@ -3730,6 +3738,73 @@
     } catch (e) {
       if (btn) { btn.disabled = false; btn.textContent = 'Get full recipe'; }
     }
+  }
+
+  function editRecipe(id) {
+    editingRecipeId = id; renderRecipes();
+    setTimeout(() => { const t = document.getElementById(`edit-title-${id}`); if (t) t.focus(); }, 0);
+  }
+  function cancelRecipeEdit() { editingRecipeId = null; renderRecipes(); }
+
+  function recipeEditForm(r) {
+    const val = (s) => escapeHtml(s == null ? '' : String(s));
+    const lines = (arr) => (arr || []).map(x => val(x)).join('\n');
+    return `
+      <div class="recipe-card" style="border:1px solid var(--accent);">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input id="edit-title-${r.id}" class="recipe-edit-input" value="${val(r.title)}" placeholder="Title">
+          <div style="display:flex;gap:8px;">
+            <input id="edit-cuisine-${r.id}" class="recipe-edit-input" style="flex:2" value="${val(r.cuisine)}" placeholder="Cuisine">
+            <input id="edit-time-${r.id}" class="recipe-edit-input" style="flex:1" type="number" value="${r.time_minutes != null ? r.time_minutes : ''}" placeholder="Minutes">
+          </div>
+          <input id="edit-tags-${r.id}" class="recipe-edit-input" value="${val((r.tags || []).join(', '))}" placeholder="Tags (comma-separated)">
+          <label class="recipe-edit-label">Ingredients (one per line)</label>
+          <textarea id="edit-ing-${r.id}" class="recipe-edit-input" rows="6">${lines(r.ingredients)}</textarea>
+          <label class="recipe-edit-label">Steps (one per line)</label>
+          <textarea id="edit-steps-${r.id}" class="recipe-edit-input" rows="6">${lines(r.steps)}</textarea>
+          <label class="recipe-edit-label">Notes / caption</label>
+          <textarea id="edit-notes-${r.id}" class="recipe-edit-input" rows="4">${val(r.notes)}</textarea>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-small" onclick="saveRecipeEdit('${r.id}')">Save</button>
+            <button class="btn btn-ghost btn-small" onclick="cancelRecipeEdit()">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function saveRecipeEdit(id) {
+    const g = (k) => (document.getElementById(`edit-${k}-${id}`) || {}).value;
+    const toLines = (s) => (s || '').split('\n').map(x => x.trim()).filter(Boolean);
+    const timeStr = (g('time') || '').trim();
+    const fields = {
+      title: (g('title') || '').trim() || 'Untitled recipe',
+      cuisine: (g('cuisine') || '').trim() || null,
+      time_minutes: timeStr ? parseInt(timeStr, 10) : null,
+      tags: (g('tags') || '').split(',').map(x => x.trim()).filter(Boolean),
+      ingredients: toLines(g('ing')),
+      steps: toLines(g('steps')),
+      notes: (g('notes') || '').trim() || null,
+    };
+    try {
+      await apiFetch(`${API}/api/recipes/update`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, fields }) });
+      showToast('✓ Recipe saved');
+    } catch (e) { showToast('Save failed'); }
+    editingRecipeId = null;
+    await fetchRecipes();
+  }
+
+  async function deleteRecipe(id) {
+    if (!confirm('Delete this recipe? This cannot be undone.')) return;
+    try {
+      await apiFetch(`${API}/api/recipes/delete`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }) });
+      showToast('Recipe deleted');
+    } catch (e) { showToast('Delete failed'); }
+    if (editingRecipeId === id) editingRecipeId = null;
+    await fetchRecipes();
   }
 
   async function markCooked(id) {
