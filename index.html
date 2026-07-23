@@ -3697,6 +3697,20 @@
       less.onclick = () => { recipeShowCap = 60; renderRecipes(); };
       el.appendChild(less);
     }
+    // The Active view hides the imported backlog (~1,120 recipes). Surface it with a
+    // clear button so you don't have to hunt the status dropdown to find others.
+    const statusSel = document.getElementById('recipes-status');
+    if (((statusSel || {}).value || 'active') === 'active') {
+      const backlogN = recipes.filter(r => r.status === 'archived-backlog' && (!r.excluded || showHidden)).length;
+      if (backlogN > 0) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-ghost';
+        b.style.cssText = 'display:block;margin:14px auto 4px;';
+        b.textContent = `Show all ${backlogN + list.length} recipes (incl. ${backlogN} archived) ↓`;
+        b.onclick = () => { if (statusSel) statusSel.value = 'all'; resetRecipeCap(); renderRecipes(); };
+        el.appendChild(b);
+      }
+    }
   }
 
   async function promoteFull(id) {
