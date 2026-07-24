@@ -4,13 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Triage</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #F6F4F0;
     --surface: #FFFFFF;
     --ink: #1A1A1A;
-    --ink-muted: #7A756E;
+    --ink-muted: #6A655D;
     --accent: #D4642A;
     --accent-hover: #BF5520;
     --inbox: #D4642A;
@@ -19,16 +18,31 @@
     --waiting: #B8860B;
     --done: #4A9B5A;
     --border: #E8E4DE;
+    --hair: #EDE9E1;        /* lighter than --border — section dividers */
+    --chip-bg: #F0ECE4;     /* calm neutral for count chips / quiet pills */
     --danger: #C0392B;
+    /* ── Semantic STATE tokens (design pass B0) ── color = state, never decoration.
+       One color per state; alias existing palette where semantics already agree.
+       Orange (--accent) retracts to: brand, selected controls, primary buttons. */
+    --state-urgent: #B3362A;        /* overdue external commitment, due ≤1d — deepest */
+    --state-soon: #C07A1F;          /* due 2-7d, needs-attention-soon — amber */
+    --state-waiting: var(--waiting);/* blocked on someone else — gold */
+    --state-ok: var(--done);        /* success/done — green */
+    --state-info: var(--thisweek);  /* neutral-informational — teal */
     --radius: 10px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow: 0 1px 2px rgba(35,30,22,0.05);
+    --shadow-lg: 0 6px 20px rgba(35,30,22,0.09);
+    /* Type system (design pass 3.5, #25): zero webfonts — native system stack,
+       no CDN dependency (the zero-maintenance law). Five layers: display /
+       section / card / micro-label / mono-data. No dark mode (dropped). */
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'DM Sans', -apple-system, sans-serif;
+    font-family: var(--sans);
     background: var(--bg);
     color: var(--ink);
     min-height: 100vh;
@@ -41,11 +55,12 @@
     margin: 0 auto;
   }
 
-  header h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2.4rem;
-    font-weight: 400;
+  header h1 {              /* Display layer (#25) */
+    font-family: var(--sans);
+    font-size: clamp(1.9rem, 4vw, 2.4rem);
+    font-weight: 700;
     letter-spacing: -0.02em;
+    line-height: 1.08;
     color: var(--ink);
   }
 
@@ -68,18 +83,24 @@
     align-items: baseline;
     gap: 8px;
   }
+  .stat-link { cursor: pointer; border-radius: 8px; padding: 2px 6px; margin: -2px -6px; transition: background 0.12s; }
+  .stat-link:hover { background: var(--bg); }
+  .stat-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .stat-number {
-    font-family: 'DM Serif Display', serif;
+  .stat-number {         /* Mono-data layer (#25): tabular figures, weighted */
+    font-family: var(--sans);
     font-size: 1.8rem;
+    font-weight: 700;
     line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);   /* neutral by default — color is reserved for STATE */
   }
 
   .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     color: var(--ink-muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
   }
 
   main {
@@ -125,6 +146,7 @@
     padding: 1px 7px;
     border-radius: 99px;
     font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
 
   .tab.active .tab-count {
@@ -212,7 +234,7 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 16px 20px;
+    padding: 12px 16px;
     display: flex;
     align-items: flex-start;
     gap: 14px;
@@ -226,54 +248,48 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .item:hover { box-shadow: var(--shadow-lg); }
+  .item:hover { box-shadow: var(--shadow-lg); border-color: #DBD4C8; }
 
   .item-content { flex: 1; min-width: 0; }
 
   .item-text {
-    font-size: 0.92rem;
-    line-height: 1.5;
+    font-size: 0.98rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--ink);
     word-break: break-word;
   }
+  /* Bold the leading KIND prefix ("Reply:", "Action:"…) — see titleHtml(). */
+  .item-text strong, .triage-item-text strong { font-weight: 700; }
 
+  /* One quiet line — the → arrow is the single accent per card. */
   .item-next-step {
-    font-size: 0.84rem;
+    font-size: 0.86rem;
     line-height: 1.5;
-    margin-top: 6px;
-    padding: 8px 12px;
-    background: #FFF8F0;
-    border-left: 3px solid var(--accent);
-    border-radius: 0 6px 6px 0;
-    color: var(--ink);
+    margin-top: 4px;
+    color: #4E4940;
   }
 
-  .item-next-step strong {
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
+  .item-next-step .ns-arrow { color: var(--accent); font-weight: 600; }
 
   .item-url {
     font-size: 0.78rem;
-    color: var(--accent);
+    color: var(--ink-muted);
     text-decoration: none;
-    display: inline-block;
-    margin-top: 4px;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .item-url:hover { text-decoration: underline; }
+  .item-url:hover { color: var(--accent); text-decoration: underline; }
 
   .item-meta {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 8px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   .item-date {
@@ -283,8 +299,8 @@
 
   .stale-badge {
     font-size: 0.7rem;
-    background: #FFF3E0;
-    color: #E65100;
+    background: rgba(192,122,31,0.13);
+    color: var(--state-soon);
     padding: 2px 8px;
     border-radius: 99px;
     font-weight: 600;
@@ -417,9 +433,10 @@
     transition: width 0.3s ease;
   }
 
-  .triage-item-text {
-    font-family: 'DM Serif Display', serif;
+  .triage-item-text {    /* Card-title layer (#25) */
+    font-family: var(--sans);
     font-size: 1.4rem;
+    font-weight: 600;
     line-height: 1.4;
     margin-bottom: 12px;
   }
@@ -488,6 +505,12 @@
     transform: translateY(-1px);
     box-shadow: var(--shadow-lg);
   }
+  /* Keyboard-shortcut hint shown ON each flashcard button, at the point of use. */
+  kbd {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.68em; font-weight: 700;
+    background: rgba(0,0,0,0.06); border: 1px solid var(--border); border-radius: 4px;
+    padding: 0 5px; margin-left: 4px; vertical-align: baseline; color: inherit;
+  }
 
   .triage-btn-thisweek { border-color: var(--thisweek); color: var(--thisweek); }
   .triage-btn-thisweek:hover { background: var(--thisweek); color: white; }
@@ -537,6 +560,7 @@
     font-family: inherit;
     font-size: 0.82rem;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
     color: var(--thisweek);
     cursor: pointer;
     transition: all 0.12s ease;
@@ -592,7 +616,7 @@
   }
 
   .triage-done-screen h2 {
-    font-family: 'DM Serif Display', serif;
+    font-family: var(--sans);
     font-size: 1.6rem;
     font-weight: 400;
     margin-bottom: 8px;
@@ -620,7 +644,7 @@
     border-top: 1px solid var(--border);
   }
   .insights-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-  .insights-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; font-weight: 400; }
+  .insights-header h2 { font-family: var(--sans); font-size: 1.3rem; font-weight: 400; }
   .insights-sub { font-size: 0.82rem; color: var(--ink-muted); }
   .insight-card {
     border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
@@ -629,7 +653,7 @@
   .insight-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
   .insight-theme { font-weight: 600; font-size: 0.95rem; }
   .stall-badge {
-    font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
     padding: 2px 8px; border-radius: 999px; color: #fff; white-space: nowrap;
   }
   .stall-badge.decision-pending { background: #d4642a; }   /* act — orange */
@@ -668,7 +692,7 @@
   }
 
   .tabs-header h2 {
-    font-family: 'DM Serif Display', serif;
+    font-family: var(--sans);
     font-size: 1.3rem;
     font-weight: 400;
   }
@@ -700,7 +724,7 @@
     animation: slideIn 0.2s ease;
   }
 
-  .tab-item:hover { box-shadow: var(--shadow-lg); }
+  .tab-item:hover { box-shadow: var(--shadow-lg); border-color: #DBD4C8; }
 
   .tab-item-content { flex: 1; min-width: 0; }
 
@@ -833,7 +857,7 @@
   }
 
   .saved-header h2 {
-    font-family: 'DM Serif Display', serif;
+    font-family: var(--sans);
     font-size: 1.3rem;
     font-weight: 400;
   }
@@ -917,7 +941,7 @@
     border-top: 1px solid var(--border);
   }
   .readlater-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-  .readlater-header h2 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; font-weight: 400; }
+  .readlater-header h2 { font-family: var(--sans); font-size: 1.3rem; font-weight: 400; }
   .rl-search {
     width: 100%; padding: 10px 14px; border: 1px solid var(--border);
     border-radius: var(--radius); font-family: inherit; font-size: 0.88rem;
@@ -925,7 +949,7 @@
   }
   .rl-search:focus { outline: none; border-color: var(--accent); }
   .rl-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
-  .rl-filter-group { display: flex; gap: 4px; align-items: center; }
+  .rl-filter-group { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-width: 0; }
   .rl-filter-label { font-size: 0.68rem; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; margin-right: 2px; }
   .rl-chip-btn {
     font: inherit; font-size: 0.72rem; padding: 3px 10px; border-radius: 999px;
@@ -945,9 +969,10 @@
   .rl-mins {
     font-size: 0.66rem; font-weight: 700; color: var(--ink-muted);
     background: #F0ECE6; padding: 1px 7px; border-radius: 999px; margin-left: 6px; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
   .rl-state {
-    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.04em;
+    font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--ink-muted); margin-left: 6px;
   }
   .rl-keypoint { font-size: 0.8rem; color: var(--ink); margin-top: 3px; line-height: 1.4; }
@@ -966,9 +991,14 @@
   .rl-act-btn:hover { border-color: var(--accent); color: var(--accent); }
   .rl-act-spark { border-color: var(--accent); color: var(--accent); }
   .rl-act-garden { border-color: #4A7C59; color: #4A7C59; }
+  .rl-act-del:hover { border-color: #C0392B; color: #C0392B; }
   .rl-archived-toggle {
     margin-top: 12px; font: inherit; font-size: 0.74rem; color: var(--ink-muted);
     background: none; border: none; cursor: pointer; text-decoration: underline;
+  }
+  .rl-inline-link {
+    font: inherit; color: var(--accent); background: none; border: none;
+    cursor: pointer; text-decoration: underline; padding: 0;
   }
   .triage-btn-readlater { border-color: var(--accent); color: var(--accent); }
   .triage-btn-readlater:hover { background: var(--accent); color: white; }
@@ -981,7 +1011,7 @@
   }
 
   .journal-section h2 {
-    font-family: 'DM Serif Display', serif;
+    font-family: var(--sans);
     font-size: 1.3rem;
     font-weight: 400;
     margin-bottom: 4px;
@@ -1041,7 +1071,15 @@
     font-size: 0.88rem;
     line-height: 1.5;
     color: var(--ink);
+    flex: 1;
   }
+  .journal-del {
+    font: inherit; font-size: 0.72rem; background: none; border: none; cursor: pointer;
+    color: var(--ink-muted); opacity: 0; transition: opacity 0.1s; flex-shrink: 0; padding: 0 2px;
+  }
+  .journal-entry:hover .journal-del, .journal-entry:focus-within .journal-del { opacity: 1; }
+  .journal-del:hover { color: #C0392B; }
+  @media (max-width: 640px) { .journal-del { opacity: 1; } }
 
   .journal-age {
     font-size: 0.72rem;
@@ -1098,6 +1136,10 @@
 
   .nextstep-edit-btn:hover { text-decoration: underline; }
 
+  /* Inline ✎ on an existing next-step line: hover-reveal on desktop. */
+  .ns-edit-icon { opacity: 0; transition: opacity 0.15s; text-decoration: none; margin-left: 2px; }
+  .item:hover .ns-edit-icon { opacity: 1; }
+
   /* ── Help section ── */
   .help-section {
     margin-top: 48px;
@@ -1106,7 +1148,7 @@
   }
 
   .help-section h2 {
-    font-family: 'DM Serif Display', serif;
+    font-family: var(--sans);
     font-size: 1.3rem;
     font-weight: 400;
     margin-bottom: 16px;
@@ -1156,7 +1198,8 @@
   }
 
   /* ── Domain toggle (work/life/all) ── */
-  .domain-toggle { display: inline-flex; gap: 0; margin: 4px 0 14px; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: var(--surface); }
+  .header-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 4px; }
+  .domain-toggle { display: inline-flex; gap: 0; margin: 0; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: var(--surface); }
   .domain-toggle button {
     border: none; background: transparent; font-family: inherit; font-size: 0.82rem;
     padding: 5px 16px; cursor: pointer; color: var(--ink-muted); font-weight: 600;
@@ -1168,7 +1211,16 @@
     font-weight: 600; color: var(--ink-muted); cursor: pointer;
   }
   .travel-btn.on { background: var(--thisweek); color: #fff; border-color: var(--thisweek); }
-  .ea-btn.has-topics { background: var(--accent); color: #fff; border-color: var(--accent); }
+  /* The EA button is a "worth discussing" doorway, NOT a selected mode — it must
+     not impersonate the orange Work toggle. It stays a calm outline; the count
+     rides in a small amber badge (state-soon) so the signal reads without shouting. */
+  .ea-btn { color: var(--ink); }
+  .ea-btn.has-topics { background: var(--surface); color: var(--ink); border-color: var(--border); }
+  .ea-count {
+    display: inline-block; margin-left: 5px; padding: 1px 6px;
+    font-size: 0.72rem; font-weight: 700; border-radius: 10px;
+    background: rgba(192,122,31,0.15); color: var(--state-soon);
+  }
   .garden-link { color: #4A7C59; border-color: #4A7C59; text-decoration: none; }
   .garden-link:hover { background: #4A7C59; color: #fff; }
   .ea-popover {
@@ -1184,24 +1236,25 @@
     padding: 3px 10px; font-family: inherit; font-size: 0.78rem; font-weight: 600;
     color: var(--ink-muted); cursor: pointer;
   }
+  /* W/L/project are CATEGORIES, not states → calm-neutral chip standard (no green/teal). */
   .domain-chip {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 17px; height: 17px; border-radius: 5px; font-size: 0.62rem; font-weight: 700;
+    width: 17px; height: 17px; border-radius: 99px; font-size: 0.62rem; font-weight: 700;
     cursor: pointer; margin-left: 6px; vertical-align: middle; user-select: none;
     border: 1px solid var(--border);
+    background: var(--chip-bg); color: var(--ink-muted);
   }
-  .domain-chip.work { background: rgba(45,125,111,0.14); color: var(--thisweek); }
-  .domain-chip.life { background: rgba(184,134,11,0.14); color: var(--waiting); }
-  .domain-chip.none { background: var(--bg); color: var(--ink-muted); }
+  .domain-chip.none { background: var(--bg); }
   .project-chip {
-    display: inline-flex; align-items: center; height: 17px; border-radius: 5px;
-    font-size: 0.62rem; font-weight: 700; padding: 0 6px; margin-left: 6px;
+    display: inline-flex; align-items: center; height: 17px; border-radius: 99px;
+    font-size: 0.62rem; font-weight: 700; padding: 0 9px; margin-left: 6px;
     vertical-align: middle; cursor: pointer; user-select: none;
     border: 1px solid var(--border);
-    background: rgba(108,92,168,0.12); color: #6B6099;
+    background: var(--chip-bg); color: var(--ink-muted);
     max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .project-chip.none { background: var(--bg); color: var(--ink-muted); }
+  .project-chip.none { background: var(--bg); color: var(--ink-muted); opacity: 0.4; transition: opacity 0.15s; }
+  .item:hover .project-chip.none { opacity: 1; }
 
   /* ── Morning brief panel ── */
   .brief-panel {
@@ -1209,17 +1262,113 @@
     border-left: 4px solid var(--accent); border-radius: var(--radius);
     padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow);
   }
-  .brief-panel h1 { font-family: 'DM Serif Display', serif; font-size: 1.25rem; margin-bottom: 8px; }
+  .brief-panel h1 { font-family: var(--sans); font-size: 1.25rem; margin-bottom: 8px; }
   .brief-panel h2 { font-size: 0.92rem; margin: 12px 0 4px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  /* #26 round 2: each brief section as its own sub-card (the reference .lede
+     architecture). Quiet tint distinct from the panel surface; tight rhythm so
+     the panel reads ORGANIZED, not taller. */
+  .brief-panel .brief-sub {
+    background: var(--bg); border: 1px solid var(--hair); border-radius: 10px;
+    padding: 10px 14px; margin: 10px 0;
+  }
+  .brief-panel .brief-sub-head {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-muted); margin-bottom: 6px;
+  }
+  .brief-panel .brief-sub > ul { margin: 0; }
+  .brief-panel .brief-sub > *:last-child { margin-bottom: 0; }
+  .brief-panel .brief-sub p { font-size: 0.9rem; }
+  .brief-panel .brief-sub-footer { background: transparent; border-color: var(--hair); }
+  .brief-panel .brief-sub-footer p { margin: 0; }
   .brief-panel ul { list-style: none; margin: 0; }
   .brief-panel li { padding: 2px 0; font-size: 0.9rem; }
   .brief-panel em { color: var(--ink-muted); font-style: italic; font-size: 0.85rem; }
+  .brief-em { margin: 2px 0; }
+  /* #26: the "One sentence:" lede — a distinct box under the title (the panel is
+     var(--surface), so tint the lede var(--bg) to read as its own card). */
+  .brief-panel .brief-lede {
+    background: var(--bg); border: 1px solid var(--hair);
+    border-left: 3px solid var(--accent); border-radius: var(--radius);
+    padding: 12px 16px; margin: 4px 0 12px; font-size: 0.95rem; line-height: 1.5;
+    color: var(--ink);
+  }
+  .brief-panel .brief-lede strong { color: var(--accent); font-weight: 700; }
   .brief-panel .brief-dismiss { float: right; font-size: 0.78rem; }
 
   /* ── Deadlines ── */
   .deadlines-section { margin-top: 32px; }
   .deadlines-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .deadlines-header h2 { font-family: 'DM Serif Display', serif; }
+  .deadlines-header h2 { font-family: var(--sans); }
+
+  /* ── Section jump-nav (v-audit): tame the long scroll ── */
+  .section-nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+    padding: 8px 0; margin-bottom: 8px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  .section-nav::-webkit-scrollbar { display: none; }
+  .nav-chip {
+    font: inherit; font-size: 0.76rem; white-space: nowrap; cursor: pointer;
+    background: var(--surface); color: var(--ink-muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; flex: none;
+  }
+  .nav-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-chip .nav-dot { color: var(--danger); font-weight: 700; margin-left: 3px; }
+
+  /* ── Projects (v-audit): the strategic ledger, finally on the dashboard ── */
+  .projects-section { margin-top: 32px; }
+  .collapse-btn {
+    font: inherit; font-size: 0.9rem; background: none; border: none; cursor: pointer;
+    color: var(--ink-muted); padding: 0 4px; line-height: 1;
+  }
+  .project-add-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .project-add-form input {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem; flex: 1; min-width: 180px;
+  }
+  .project-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 3px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  /* Edge = STATE, not recency: neutral by default, urgent when stalled,
+     muted+dashed when paused. No moved-recently green (recency ≠ health). */
+  .project-item.is-stalled { border-left-color: var(--state-urgent); }
+  .project-item.is-paused { border-left-color: var(--ink-muted); border-left-style: dashed; }
+  .project-main { flex: 1; min-width: 0; }
+  .proj-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .proj-title { font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+  .proj-domain { font-size: 0.64rem; font-weight: 700; border-radius: 4px; padding: 1px 5px; border: 1px solid currentColor; }
+  .proj-domain-work { color: var(--thisweek); }
+  .proj-domain-life { color: var(--someday); }
+  .proj-paused { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-muted); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
+  .proj-moved { font-size: 0.74rem; color: var(--ink-muted); }
+  .proj-stalled { font-size: 0.72rem; font-weight: 700; color: var(--state-urgent); }
+  .proj-goal { font-size: 0.8rem; color: var(--ink-muted); margin-top: 3px; }
+  .proj-state { font-size: 0.86rem; color: var(--ink); margin-top: 6px; line-height: 1.5; border-left: 2px solid var(--border); padding-left: 10px; font-style: italic; }
+  /* De-repeated: the add-a-note prompt is on 7 of 9 cards — hover/focus-reveal
+     it so it's not a wall of identical placeholders (shown on touch below). */
+  .proj-state-placeholder { font-size: 0.8rem; color: var(--ink-muted); margin-top: 6px; cursor: pointer; opacity: 0; transition: opacity 0.1s; }
+  .project-item:hover .proj-state-placeholder, .project-item:focus-within .proj-state-placeholder { opacity: 1; }
+  .proj-state-placeholder:hover { color: var(--accent); }
+  .proj-state-edit { margin-top: 6px; }
+  .proj-state-edit textarea {
+    width: 100%; font: inherit; font-size: 0.88rem; padding: 8px 10px; resize: vertical;
+    border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--ink);
+  }
+  .proj-state-actions { display: flex; gap: 6px; margin-top: 6px; }
+  .project-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
+  .project-item:hover .project-actions, .project-item:focus-within .project-actions { opacity: 1; }
+  .proj-act {
+    font: inherit; font-size: 0.72rem; background: none; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--ink-muted); cursor: pointer; padding: 2px 8px;
+  }
+  .proj-act:hover { border-color: var(--accent); color: var(--accent); }
+  .proj-act-del:hover { border-color: var(--danger); color: var(--danger); }
+  .health-item.clickable { cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
   .deadline-add-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .deadline-add-form input, .deadline-add-form select {
     padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem;
@@ -1234,10 +1383,21 @@
   .deadline-main { flex: 1; min-width: 0; }
   .deadline-title { font-weight: 600; }
   .deadline-meta { font-size: 0.8rem; color: var(--ink-muted); margin-top: 3px; }
-  .dl-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-  .dl-badge.far { background: var(--bg); color: var(--ink-muted); }
-  .dl-badge.open { background: rgba(184,134,11,0.15); color: var(--waiting); }
-  .dl-badge.soon { background: rgba(192,57,43,0.13); color: var(--danger); }
+  /* Long secondary prose reads at 2 lines, expands on demand. .clampable
+     (added by wireClamps only when the text actually overflows) supplies
+     the pointer + trailing hint; .expanded lifts the clamp. */
+  .clamp-2 {
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
+  .clamp-2.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .clamp-2.clampable { cursor: pointer; }
+  /* Deadline / meeting day-pills: color = STATE, mapped by days-out.
+     ≤1d or overdue → urgent, 2-7d → soon, >7d → calm neutral. Tints stay
+     luminance-distinct (urgent text darkest, soon lightest, neutral between). */
+  .dl-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; font-variant-numeric: tabular-nums; }
+  .dl-badge.far { background: var(--chip-bg); color: var(--ink-muted); }
+  .dl-badge.urgent { background: rgba(179,54,42,0.13); color: var(--state-urgent); }
+  .dl-badge.soon { background: rgba(192,122,31,0.13); color: var(--state-soon); }
 
   /* ── Connect gate (hosted mode only) ── */
   .connect-gate {
@@ -1256,7 +1416,8 @@
   /* ── Health strip ── */
   .health-strip {
     display: flex; flex-wrap: wrap; align-items: center; gap: 18px;
-    padding: 10px 14px; margin-bottom: 20px;
+    /* Pulled up so it reads as one status cluster with the stat row above. */
+    padding: 10px 14px; margin-top: -12px; margin-bottom: 20px;
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); box-shadow: var(--shadow);
     font-size: 0.86rem; color: var(--ink-muted);
@@ -1265,10 +1426,13 @@
   .health-strip .health-warn strong { color: var(--waiting); }
   .health-strip .health-sep { color: var(--border); }
   .health-strip .catchup-btn { margin-left: auto; }
-  /* v7 Stage 2: overdue-agent chip (a silent writing agent) — red, unmissable. */
+  /* v7 Stage 2: overdue-agent chip (a silent writing agent) — red, unmissable.
+     #12b: the glyph is gone; the badge itself IS the warning (reference .badge —
+     uppercase micro-label, colored bg/text), so it reads as an alert on its own. */
   .health-strip .health-overdue {
     background: rgba(192,57,43,0.12); color: var(--danger);
-    font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 2px 8px; border-radius: 999px;
     border: 1px solid rgba(192,57,43,0.35);
   }
   /* v7 Stage 2: Dropbox-conflict banner — top of page, unmissable. Detection
@@ -1284,11 +1448,118 @@
     display: block; margin-top: 6px; font-weight: 400; color: var(--ink);
     font-size: 0.82rem; word-break: break-word;
   }
+  .server-down-banner {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 12px 16px; margin-bottom: 16px;
+    background: rgba(192,57,43,0.10); border: 1px solid var(--danger);
+    border-left: 4px solid var(--danger); border-radius: var(--radius);
+    box-shadow: var(--shadow); font-size: 0.88rem; color: var(--danger); font-weight: 600;
+  }
+  .server-down-banner button {
+    font: inherit; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+    background: var(--danger); color: #fff; border: none; border-radius: 8px; padding: 5px 14px;
+  }
+
+  /* ── Needs-attention strip (design pass D): ≤4 exception signals, computed
+     client-side from data already fetched. Each chip is suppressed at zero; the
+     whole strip hides when all four are zero (no "all clear" decoration). Color
+     = state — each tint derives from a state token, so the four survive
+     grayscale via their distinct token luminance (set in B1). Text-first:
+     tabular count + uppercase micro-label. ── */
+  .needs-attention {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .na-chip {
+    display: inline-flex; align-items: baseline; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid transparent; cursor: pointer;
+    font: inherit; text-align: left;
+  }
+  .na-chip .na-count {
+    font-variant-numeric: tabular-nums; font-weight: 700;
+    font-size: 0.95rem; line-height: 1;
+  }
+  .na-chip .na-label {
+    text-transform: uppercase; font-size: 0.72rem;
+    letter-spacing: 0.06em; font-weight: 600;
+  }
+  .na-urgent {
+    background: color-mix(in srgb, var(--state-urgent) 12%, var(--surface));
+    color: var(--state-urgent);
+    border-color: color-mix(in srgb, var(--state-urgent) 30%, transparent);
+  }
+  .na-soon {
+    background: color-mix(in srgb, var(--state-soon) 14%, var(--surface));
+    color: var(--state-soon);
+    border-color: color-mix(in srgb, var(--state-soon) 30%, transparent);
+  }
+  .na-waiting {
+    background: color-mix(in srgb, var(--state-waiting) 16%, var(--surface));
+    color: var(--state-waiting);
+    border-color: color-mix(in srgb, var(--state-waiting) 32%, transparent);
+  }
+  .na-chip:hover { filter: brightness(0.97); }
+  .na-chip:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  /* Renegotiate flashcard (#13b): the overdue count beside the title. */
+  .reneg-overdue {
+    color: var(--state-urgent); font-weight: 700;
+    font-size: 0.8rem; margin-left: 8px; white-space: nowrap;
+  }
+
+  /* ── Library divider (design pass D): a single quiet labeled rule marking the
+     boundary before the reference/keep sections. Always rendered (it marks the
+     boundary even when some library sections are hidden). Not in the jump-nav. ── */
+  .library-divider {
+    display: flex; align-items: center; gap: 14px;
+    margin: 48px 0 4px; color: var(--ink-muted);
+  }
+  .library-divider::before, .library-divider::after {
+    content: ""; flex: 1; height: 1px; background: var(--hair);
+  }
+  .library-divider span {
+    text-transform: uppercase; font-size: 0.72rem;
+    letter-spacing: 0.14em; font-weight: 600;
+  }
 
   /* ── Recipes ── */
   .recipes-section, .sparks-section { margin-top: 40px; }
   .recipes-header, .sparks-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .recipes-header h2, .sparks-header h2 { font-family: 'DM Serif Display', serif; }
+  .recipes-header h2, .sparks-header h2 { font-family: var(--sans); }
+
+  /* ══ Composed section system (visual refresh) — one rhythm for every section ══
+     Overrides the divergent per-section rules above: uniform spacing, one subtle
+     divider, one heading size, one calm count chip. */
+  .tasks-section, .deadlines-section, .projects-section, .insights-section,
+  .tabs-section, .saved-section, .readlater-section,
+  .newsletter-section, .recipes-section, .sparks-section, .journal-section {
+    margin-top: 40px;
+    padding-top: 30px;
+    border-top: 1px solid var(--hair);
+  }
+  /* Deliberate first-section exception (#tasks): the task area sits at the TOP of
+     the section flow, right under the jump-nav, so a divider above it would float
+     with nothing before it. Drop the top border/rule; keep a tight top pad. */
+  .tasks-section { margin-top: 20px; padding-top: 12px; border-top: none; }
+  .tasks-header, .deadlines-header, .insights-header, .tabs-header, .saved-header,
+  .readlater-header, .newsletter-header, .recipes-header, .sparks-header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .tasks-header h2, .deadlines-header h2, .insights-header h2, .tabs-header h2, .saved-header h2,
+  .readlater-header h2, .newsletter-header h2, .recipes-header h2, .sparks-header h2, .journal-section h2 {
+    /* Section layer (#25): weight, not typeface, carries the hierarchy. */
+    font-family: var(--sans); font-size: 1.28rem; font-weight: 650;
+    letter-spacing: -0.01em; color: var(--ink);
+  }
+  /* Section subtitle (e.g. Sweep insights) — quiet, consistent */
+  .insights-sub { font-size: 0.8rem; color: var(--ink-muted); }
+  /* Calm, consistent count chip on section headers (distinct from the tab-bar nav) */
+  .tasks-header .tab-count, .deadlines-header .tab-count, .tabs-header .tab-count, .saved-header .tab-count,
+  .readlater-header .tab-count, .newsletter-header .tab-count, .recipes-header .tab-count, .sparks-header .tab-count,
+  .insights-header .tab-count, #projects-count, #meetings-count {
+    background: var(--chip-bg); color: var(--ink-muted); font-weight: 600;
+    font-size: 0.72rem; padding: 2px 9px; border-radius: 99px; font-variant-numeric: tabular-nums;
+  }
   .recipes-filters { display: flex; gap: 8px; margin-bottom: 14px; }
   .recipes-filters input { flex: 1; }
   .recipes-filters input, .recipes-filters select, .sparks-section > input {
@@ -1300,8 +1571,10 @@
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
   }
-  .recipe-row { display: flex; align-items: flex-start; gap: 12px; }
-  .recipe-btns { display: flex; flex-direction: column; gap: 4px; }
+  .recipe-row { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  /* Buttons ride in a wrapping row (not a tall vertical stack) so a card
+     collapses to title+meta height; they wrap below the meta on narrow widths. */
+  .recipe-btns { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px; margin-left: auto; }
   .recipe-edit-input { width: 100%; font-family: inherit; font-size: 0.85rem; padding: 6px 9px;
     border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--ink); box-sizing: border-box; }
   .recipe-edit-input:focus { outline: none; border-color: var(--accent); }
@@ -1342,7 +1615,7 @@
   .recipe-meta .dot { margin: 0 6px; opacity: 0.5; }
   .tier-badge {
     display: inline-block; font-size: 0.68rem; text-transform: uppercase;
-    letter-spacing: 0.04em; padding: 2px 7px; border-radius: 20px; font-weight: 600;
+    letter-spacing: 0.06em; padding: 2px 7px; border-radius: 20px; font-weight: 700;
   }
   .tier-full { background: rgba(45,125,111,0.13); color: var(--thisweek); }
   .tier-bookmark { background: rgba(107,96,153,0.13); color: var(--someday); }
@@ -1355,10 +1628,25 @@
     background: var(--surface); border: 1px solid var(--border);
     border-left: 3px solid var(--someday); border-radius: 8px;
     padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 10px;
   }
+  .spark-main { flex: 1; min-width: 0; }
   .spark-reaction { color: var(--ink); font-size: 0.94rem; }
   .spark-link { display: block; font-size: 0.8rem; color: var(--accent); text-decoration: none; margin-top: 4px; word-break: break-all; }
   .spark-date { font-size: 0.74rem; color: var(--ink-muted); margin-top: 4px; }
+  .spark-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
+  .spark-item:hover .spark-actions, .spark-item:focus-within .spark-actions { opacity: 1; }
+  .spark-act {
+    font: inherit; font-size: 0.72rem; background: none; border: 1px solid var(--border);
+    border-radius: 6px; color: var(--ink-muted); cursor: pointer; padding: 2px 7px;
+  }
+  .spark-act:hover { border-color: var(--accent); color: var(--accent); }
+  .spark-act-del:hover { border-color: #C0392B; color: #C0392B; }
+  .spark-edit-input {
+    width: 100%; font: inherit; font-size: 0.9rem; padding: 8px 10px; resize: vertical;
+    border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--ink);
+  }
+  .spark-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
 
   /* ── Plan This Week modal ── */
   .plan-card {
@@ -1366,7 +1654,7 @@
     max-width: 620px; width: 92%; max-height: 86vh; overflow-y: auto;
     box-shadow: var(--shadow-lg);
   }
-  .plan-card h2 { font-family: 'DM Serif Display', serif; margin-bottom: 4px; }
+  .plan-card h2 { font-family: var(--sans); margin-bottom: 4px; }
   .plan-card .plan-sub { color: var(--ink-muted); font-size: 0.86rem; margin-bottom: 16px; }
   .plan-constraints { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
   .plan-constraints input, .plan-constraints select {
@@ -1388,7 +1676,7 @@
   .presort-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
   .presort-row select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; }
   .presort-row .p-theme { font-size: 0.72rem; color: var(--ink-muted); background: var(--bg); padding: 2px 6px; border-radius: 10px; }
-  .unsorted-flag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em;
+  .unsorted-flag { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
     background: rgba(184,134,11,0.15); color: var(--waiting); padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
 
   @media (max-width: 640px) {
@@ -1396,7 +1684,16 @@
     header, main { padding-left: 20px; padding-right: 20px; }
     header h1 { font-size: 1.8rem; }
     .stats-bar { gap: 16px; flex-wrap: wrap; }
-    .item-actions { opacity: 1; }
+    /* Hover-reveal is a no-op on touch — show every list's actions on mobile
+       (task rows AND tab-sweep/saved rows, whose ✕/RL/SV/IN were untappable). */
+    .item-actions,
+    .tab-item-actions,
+    .saved-item-actions,
+    .spark-actions,
+    .project-actions,
+    .proj-state-placeholder,
+    .ns-edit-icon,
+    .project-chip.none { opacity: 1; }
     .add-form-row { flex-direction: column; }
     .triage-card { padding: 24px; }
     .triage-actions { flex-direction: column; }
@@ -1422,7 +1719,24 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.25s ease, transform 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
   }
+  #toast.show { pointer-events: auto; }
+  .toast-action {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 3px 12px;
+    border-radius: 8px;
+    flex: none;
+  }
+  .toast-action:hover { background: rgba(255,255,255,0.15); }
+  .toast-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   #toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -1435,6 +1749,13 @@
      health payload reports conflict files. Detection only, no file-touching buttons. -->
 <div class="conflict-banner" id="conflict-banner" style="display:none"></div>
 
+<!-- v-audit: the LOCAL server is unreachable — fetchItems() failed. Distinguishes
+     "server down" from a genuinely empty dashboard (which used to look identical). -->
+<div class="server-down-banner" id="server-down" style="display:none">
+  <span>Can't reach the Triage server — is it running?</span>
+  <button onclick="retryFetch()">Retry</button>
+</div>
+
 <div class="connect-gate" id="connect-gate" style="display:none">
   <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
   <button class="cg-btn" onclick="DBX.connect()">Connect Dropbox</button>
@@ -1445,17 +1766,19 @@
 <header>
   <h1>Triage</h1>
   <p class="subtitle">Capture everything. Decide once a week. Close the loops.</p>
-  <div class="domain-toggle" id="domain-toggle">
-    <button data-domain="work">Work</button>
-    <button data-domain="life">Life</button>
-    <button data-domain="all">All</button>
+  <div class="header-controls">
+    <div class="domain-toggle" id="domain-toggle">
+      <button data-domain="work">Work</button>
+      <button data-domain="life">Life</button>
+      <button data-domain="all">All</button>
+    </div>
+    <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
+    <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in the Triage repo, then /checkin">🤖 EA</button>
+    <a class="travel-btn garden-link" id="garden-link" href="/garden" style="display:none" title="Your Garden — kept, digested knowledge">🌱 Garden</a>
   </div>
-  <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
-  <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in the Triage repo, then /checkin">🤖 EA</button>
-  <a class="travel-btn garden-link" id="garden-link" href="/garden" style="display:none" title="Your Garden — kept, digested knowledge">🌱 Garden</a>
   <div id="ea-popover" class="ea-popover" style="display:none">
     <code id="ea-cmd">cd ~/Dropbox/Apps/Triage_Kuk &amp;&amp; claude</code>
-    <button class="ea-copy" onclick="copyEACmd()">Copy</button>
+    <button class="ea-copy" onclick="copyEACmd(event)">Copy</button>
     <span>then <code>/checkin</code></span>
   </div>
   <div class="stats-bar">
@@ -1463,20 +1786,20 @@
       <span class="stat-number" id="stat-total">0</span>
       <span class="stat-label">Open</span>
     </div>
-    <div class="stat">
-      <span class="stat-number" style="color:var(--inbox)" id="stat-inbox">0</span>
+    <div class="stat stat-link" role="button" tabindex="0" onclick="selectList('inbox')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectList('inbox')}">
+      <span class="stat-number" id="stat-inbox">0</span>
       <span class="stat-label">Inbox</span>
     </div>
-    <div class="stat">
-      <span class="stat-number" style="color:var(--thisweek)" id="stat-thisweek">0</span>
+    <div class="stat stat-link" role="button" tabindex="0" onclick="selectList('thisweek')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectList('thisweek')}">
+      <span class="stat-number" id="stat-thisweek">0</span>
       <span class="stat-label">This Week</span>
     </div>
-    <div class="stat">
-      <span class="stat-number" style="color:var(--waiting)" id="stat-waiting">0</span>
+    <div class="stat stat-link" role="button" tabindex="0" onclick="selectList('waiting')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectList('waiting')}">
+      <span class="stat-number" id="stat-waiting">0</span>
       <span class="stat-label">Waiting</span>
     </div>
     <div class="stat">
-      <span class="stat-number" style="color:var(--done)" id="stat-done-week">0</span>
+      <span class="stat-number" id="stat-done-week">0</span>
       <span class="stat-label">Done this week</span>
     </div>
   </div>
@@ -1486,11 +1809,25 @@
   <!-- Morning brief panel (shows when fresh) -->
   <div class="brief-panel" id="brief-panel" style="display:none"></div>
 
+  <!-- Needs-attention strip (design pass D): ≤4 exception signals, client-
+       computed from data the page already fetches. Suppress-at-zero per chip;
+       whole strip hidden when all-clear. Domain-lens aware. -->
+  <div class="needs-attention" id="needs-attention" style="display:none"></div>
+
   <!-- System health strip -->
   <div class="health-strip" id="health-strip" style="display:none"></div>
 
-  <!-- Task Section -->
-  <div class="tab-bar">
+  <!-- Section jump-nav (v-audit): built from whichever sections are visible -->
+  <nav class="section-nav" id="section-nav" style="display:none"></nav>
+
+  <!-- Task Section — the primordial zone (tab bar + capture + lists), now titled
+       to join the composed section treatment (the last section that lacked a header). -->
+  <div class="tasks-section" id="tasks-section">
+  <div class="tasks-header">
+    <h2>Tasks</h2>
+    <span class="tab-count" id="tasks-count"></span>
+  </div>
+  <div class="tab-bar" id="tab-bar">
     <button class="tab active" data-list="inbox">Inbox <span class="tab-count" id="count-inbox">0</span></button>
     <button class="tab" data-list="thisweek">This Week <span class="tab-count" id="count-thisweek">0</span></button>
     <button class="tab" data-list="someday">Someday <span class="tab-count" id="count-someday">0</span></button>
@@ -1512,6 +1849,7 @@
   </div>
 
   <div class="item-list" id="item-list"></div>
+  </div><!-- /tasks-section -->
 
   <!-- Deadlines ledger -->
   <div class="deadlines-section" id="deadlines-section" style="display:none">
@@ -1555,6 +1893,25 @@
     <div id="meetings-list"></div>
   </div>
 
+  <!-- Projects (v-audit): the strategic ledger — was invisible on the dashboard.
+       Collapsible; state notes lead; stalled surfaces. Domain-lens filtered. -->
+  <div class="projects-section" id="projects-section" style="display:none">
+    <div class="deadlines-header">
+      <button class="collapse-btn" id="projects-collapse-btn" onclick="toggleProjectsCollapse()" title="Collapse / expand">▾</button>
+      <h2>Projects</h2>
+      <span class="tab-count" id="projects-count">0</span>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-small" onclick="toggleProjectAdd()">+ Add</button>
+    </div>
+    <div class="project-add-form" id="project-add-form" style="display:none">
+      <input type="text" id="pr-title" placeholder="Project title (e.g. R&amp;R — placebo tests)"
+             onkeydown="if(event.key==='Enter')addProject()">
+      <input type="text" id="pr-goal" placeholder="Goal / definition of done (optional)">
+      <button class="btn btn-primary btn-small" onclick="addProject()">Add</button>
+    </div>
+    <div id="projects-list"></div>
+  </div>
+
   <!-- Sweep Insights: proposed tasks from clustered tabs (above Tab Sweep) -->
   <div class="insights-section" id="insights-section" style="display:none">
     <div class="insights-header">
@@ -1575,6 +1932,10 @@
     <div id="tabs-list"></div>
   </div>
 
+  <!-- Library divider (design pass D): a quiet labeled rule marking the boundary
+       before the reference/keep sections. Always rendered; not in the jump-nav. -->
+  <div class="library-divider" id="library-divider"><span>Library</span></div>
+
   <!-- Saved References -->
   <div class="saved-section" id="saved-section">
     <div class="saved-header">
@@ -1594,6 +1955,19 @@
     <div class="rl-filters" id="rl-filters"></div>
     <div id="readlater-list"></div>
     <button class="rl-archived-toggle" id="rl-archived-toggle" onclick="toggleReadLaterArchived()">Show archived</button>
+  </div>
+
+  <!-- Newsletter digest — the FULL tier (the brief carries only the teaser) -->
+  <div class="newsletter-section" id="newsletter-section" style="display:none">
+    <div class="newsletter-header">
+      <h2>Newsletter digest</h2>
+      <span class="tab-count" id="newsletter-count"></span>
+      <span class="insights-sub" id="newsletter-date"></span>
+    </div>
+    <div id="newsletter-body"></div>
+    <button class="rl-archived-toggle" id="newsletter-archive-toggle" style="display:none"
+            onclick="toggleNewsletterArchive()">Past digests</button>
+    <div id="newsletter-archive" style="display:none"></div>
   </div>
 
   <!-- Recipes -->
@@ -1657,12 +2031,12 @@
       <div class="help-card">
         <h3>Capture from your phone</h3>
         <p>Share sheet or Home Screen → <strong>Capture</strong> shortcut. First option is <strong>Just capture</strong> — no filing decision needed; it lands in Inbox flagged <em>unsorted</em>.</p>
-        <p style="margin-top:8px">Or file directly as Task, Garden, Spark, or Recipe. Files sync via Dropbox and route within ~3 min.</p>
+        <p style="margin-top:8px">Or file directly as Task, Deadline, Read, Garden, Spark, or Recipe. Files sync via Dropbox and route within ~3 min.</p>
       </div>
       <div class="help-card">
         <h3>Sparks &amp; Recipes</h3>
         <p><strong>Spark</strong> = a link + your one-sentence reaction (permanent commonplace log).</p>
-        <p style="margin-top:8px"><strong>Recipe</strong> = paste a link; scrapeable pages become full recipes, Instagram/Threads become bookmarks. Drop Osta PDFs in <code>recipes/raw/</code>. Use <strong>Plan This Week</strong> for a grocery list.</p>
+        <p style="margin-top:8px"><strong>Recipe</strong> = paste a link (or share screenshots); scrapeable pages become full recipes, Instagram/Threads become bookmarks. Use <strong>Plan This Week</strong> for a grocery list.</p>
       </div>
       <div class="help-card">
         <h3>Task Triage shortcuts</h3>
@@ -1692,8 +2066,9 @@
         <p>
           <code>1</code>/<code>k</code> Keep &nbsp;
           <code>2</code>/<code>w</code> Promote (then pick day)<br>
-          <code>x</code> Delete &nbsp;
-          <code>Space</code> Skip &nbsp;
+          <code>3</code>/<code>a</code> Waiting &nbsp;
+          <code>x</code> Delete<br>
+          <code>Space</code> Keep &nbsp;
           <code>Esc</code> Close
         </p>
         <p style="margin-top:8px">Items in Someday for 90+ days get a "consider deleting" hint.</p>
@@ -1714,8 +2089,8 @@
 </main>
 
 <!-- Triage Mode Overlay -->
-<div class="triage-overlay" id="triage-overlay">
-  <div class="triage-card" id="triage-card"></div>
+<div class="triage-overlay" id="triage-overlay" role="dialog" aria-modal="true" aria-label="Triage">
+  <div class="triage-card" id="triage-card" tabindex="-1"></div>
 </div>
 
 <!-- Plan This Week / Pre-sort Overlay -->
@@ -1775,7 +2150,7 @@
     const d = item.domain === 'work' ? 'work' : (item.domain === 'life' ? 'life' : 'none');
     const label = d === 'work' ? 'W' : (d === 'life' ? 'L' : '?');
     const title = d === 'none' ? 'Unclassified — click to set Work' : `${item.domain} — click to flip`;
-    return `<span class="domain-chip ${d}" title="${title}" onclick="event.stopPropagation(); flipDomain('${item.id}')">${label}</span>`;
+    return `<span class="domain-chip ${d}" role="button" tabindex="0" aria-label="${title}" title="${title}" onclick="event.stopPropagation(); flipDomain('${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();flipDomain('${item.id}')}">${label}</span>`;
   }
   async function flipDomain(id) {
     const it = items.find(i => i.id === id);
@@ -1791,7 +2166,7 @@
         showToast(`→ ${next} (hidden by the ${currentDomain} lens)`);
       }
     } catch (e) {
-      showToast('⚠ Flip failed — server busy? Tap again.');
+      showToast('Flip failed — server busy? Tap again.');
     }
     await fetchItems();
   }
@@ -1804,14 +2179,204 @@
       const data = await res.json();
       projectsCache = (data && data.projects) || [];
     } catch (e) { projectsCache = []; }
+    renderProjects();
   }
+
+  // ── Projects section (v-audit): the strategic ledger, on the dashboard ──
+  let projectsCollapsed = localStorage.getItem('triage-projects-collapsed') === '1';
+  let editingProjectStateId = null;
+
+  // Enable click-to-expand on any .clamp-2 element that actually overflows its
+  // 2-line clamp (checked post-render so it reflects real wrapped height). Clicks
+  // on inner buttons/links are ignored so edit flows are preserved.
+  function wireClamps(root) {
+    if (!root) return;
+    root.querySelectorAll('.clamp-2').forEach(el => {
+      if (el.scrollHeight - el.clientHeight > 1) {
+        el.classList.add('clampable');
+        el.title = 'click to expand';
+        el.addEventListener('click', e => {
+          if (e.target.closest('button, a')) return;
+          const now = el.classList.toggle('expanded');
+          el.title = now ? 'click to collapse' : 'click to expand';
+        });
+      }
+    });
+  }
+
+  function renderProjects() {
+    const section = document.getElementById('projects-section');
+    const listEl = document.getElementById('projects-list');
+    if (!section || !listEl) return;
+    // Active + paused, domain-filtered; done projects don't clutter the ledger.
+    const list = (projectsCache || []).filter(p => (p.status || 'active') !== 'done' && inDomain(p));
+    document.getElementById('projects-count').textContent = list.length;
+    section.style.display = list.length ? '' : 'none';
+    const collapseBtn = document.getElementById('projects-collapse-btn');
+    if (collapseBtn) collapseBtn.textContent = projectsCollapsed ? '▸' : '▾';
+    if (projectsCollapsed) { listEl.style.display = 'none'; renderSectionNav(); return; }
+    listEl.style.display = '';
+    // Stalled first, then most-stale by movement age.
+    list.sort((a, b) => (b.stalled ? 1 : 0) - (a.stalled ? 1 : 0) ||
+                        (b.days_since_movement || 0) - (a.days_since_movement || 0));
+    listEl.innerHTML = list.map(projectCardHtml).join('');
+    wireClamps(listEl);
+    renderSectionNav();
+  }
+
+  function projectCardHtml(p) {
+    const dsm = p.days_since_movement;
+    const movedLabel = dsm == null ? '' : (dsm <= 0 ? 'moved today' : `moved ${dsm}d ago`);
+    const movement = p.stalled
+      ? `<span class="proj-stalled">stalled${dsm != null ? ` · ${dsm}d` : ''}</span>`
+      : (movedLabel ? `<span class="proj-moved">${movedLabel}</span>` : '');
+    const dchip = p.domain
+      ? `<span class="proj-domain proj-domain-${p.domain}" title="${p.domain}">${p.domain === 'work' ? 'W' : 'L'}</span>` : '';
+    const paused = p.status === 'paused' ? `<span class="proj-paused">paused</span>` : '';
+    const goal = p.goal ? `<div class="proj-goal">${escapeHtml(p.goal)}</div>` : '';
+    let stateBlock;
+    if (p.id === editingProjectStateId) {
+      stateBlock = `
+        <div class="proj-state-edit">
+          <textarea id="proj-state-${p.id}" rows="2" placeholder="Where it stands, and the next physical step…">${escapeHtml(p.state_note || '')}</textarea>
+          <div class="proj-state-actions">
+            <button class="btn btn-primary btn-small" onclick="saveProjectState('${p.id}')">Save</button>
+            <button class="btn btn-ghost btn-small" onclick="cancelProjectState()">Cancel</button>
+          </div>
+        </div>`;
+    } else if (p.state_note) {
+      stateBlock = `<div class="proj-state clamp-2">${escapeHtml(p.state_note)} <button class="nextstep-edit-btn" onclick="editProjectState('${p.id}')">edit</button></div>`;
+    } else {
+      stateBlock = `<div class="proj-state-placeholder" onclick="editProjectState('${p.id}')">+ add a state note (where it stands)</div>`;
+    }
+    return `
+      <div class="project-item ${p.stalled ? 'is-stalled' : ''} ${p.status === 'paused' ? 'is-paused' : ''}" id="project-${p.id}">
+        <div class="project-main">
+          <div class="proj-title-row">
+            <span class="proj-title">${escapeHtml(p.title)}</span>
+            ${dchip}${paused}${movement}
+          </div>
+          ${goal}
+          ${stateBlock}
+        </div>
+        <div class="project-actions">
+          <button class="proj-act" onclick="editProjectState('${p.id}')" title="Update state note">note</button>
+          <button class="proj-act" onclick="toggleProjectPause('${p.id}')">${p.status === 'paused' ? 'Resume' : 'Pause'}</button>
+          <button class="proj-act proj-act-del" onclick="deleteProject('${p.id}', event)" title="Delete project">✕</button>
+        </div>
+      </div>`;
+  }
+
+  function toggleProjectsCollapse() {
+    projectsCollapsed = !projectsCollapsed;
+    localStorage.setItem('triage-projects-collapsed', projectsCollapsed ? '1' : '0');
+    renderProjects();
+  }
+  function toggleProjectAdd() {
+    const f = document.getElementById('project-add-form');
+    if (!f) return;
+    const show = f.style.display === 'none';
+    f.style.display = show ? 'flex' : 'none';
+    if (show) document.getElementById('pr-title').focus();
+  }
+  async function addProject() {
+    const t = document.getElementById('pr-title'), g = document.getElementById('pr-goal');
+    const title = (t.value || '').trim();
+    if (!title) { t.focus(); return; }
+    const domain = currentDomain === 'life' ? 'life' : (currentDomain === 'work' ? 'work' : null);
+    const res = await apiFetch(`${API}/api/projects/add`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, goal: (g.value || '').trim() || null, domain })
+    });
+    if (res && res.ok) {
+      t.value = ''; g.value = '';
+      document.getElementById('project-add-form').style.display = 'none';
+      await fetchProjects();
+      showToast('Project added');
+    } else { showToast('Couldn’t add — try on the desktop'); }
+  }
+
+  function editProjectState(id) {
+    editingProjectStateId = id;
+    renderProjects();
+    const t = document.getElementById(`proj-state-${id}`);
+    if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+  }
+  function cancelProjectState() { editingProjectStateId = null; renderProjects(); }
+  async function saveProjectState(id) {
+    const t = document.getElementById(`proj-state-${id}`);
+    if (!t) return;
+    const res = await apiFetch(`${API}/api/projects/state`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, note: t.value.trim() })
+    });
+    editingProjectStateId = null;
+    if (res && res.ok) { await fetchProjects(); showToast('State note saved — movement logged'); }
+    else { renderProjects(); showToast('Couldn’t save — try on the desktop'); }
+  }
+  async function toggleProjectPause(id) {
+    const p = (projectsCache || []).find(x => x.id === id);
+    if (!p) return;
+    const status = p.status === 'paused' ? 'active' : 'paused';
+    const res = await apiFetch(`${API}/api/projects/update`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, fields: { status } })
+    });
+    if (res && res.ok) { await fetchProjects(); showToast(status === 'paused' ? 'Paused' : 'Resumed'); }
+    else { showToast('Couldn’t update — try on the desktop'); }
+  }
+  function deleteProject(id, ev) {
+    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.project-item') : null;
+    if (row) row.style.display = 'none';
+    undoable('Project deleted',
+      async () => { await apiFetch(`${API}/api/projects/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); await fetchProjects(); },
+      () => { if (row) row.style.display = ''; });
+  }
+  function jumpToProjects() {
+    if (projectsCollapsed) { projectsCollapsed = false; localStorage.setItem('triage-projects-collapsed', '0'); renderProjects(); }
+    const el = document.getElementById('projects-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── Section jump-nav: chips for whichever sections are currently visible ──
+  const NAV_SECTIONS = [
+    ['tasks-section', 'Tasks'], ['deadlines-section', 'Deadlines'], ['meetings-section', 'Meetings'],
+    ['projects-section', 'Projects'], ['insights-section', 'Sweep'], ['tabs-section', 'Tabs'],
+    ['saved-section', 'Saved'], ['readlater-section', 'Reading'],
+    ['newsletter-section', 'Newsletters'], ['recipes-section', 'Recipes'],
+    ['sparks-section', 'Sparks'], ['journal-section', 'Journal']
+  ];
+  function renderSectionNav() {
+    const nav = document.getElementById('section-nav');
+    if (!nav) return;
+    const chips = NAV_SECTIONS.filter(([id]) => {
+      const el = document.getElementById(id);
+      return el && el.offsetParent !== null;   // visible (not display:none)
+    });
+    if (chips.length < 3) { nav.style.display = 'none'; return; }
+    nav.style.display = '';
+    nav.innerHTML = chips.map(([id, label]) =>
+      `<button class="nav-chip" onclick="jumpToSection('${id}')">${label}</button>`).join('');
+  }
+  function jumpToSection(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // Rebuild the nav whenever any section's visibility (inline style) changes —
+  // one observer set instead of scattering renderSectionNav() through every render.
+  NAV_SECTIONS.forEach(([id]) => {
+    const el = document.getElementById(id);
+    if (el) new MutationObserver(renderSectionNav).observe(el, { attributes: true, attributeFilter: ['style'] });
+  });
+  renderSectionNav();
   function projectChip(item) {
     if (!projectsCache.length && !item.project_id) return '';
     const p = projectsCache.find(x => x.id === item.project_id);
-    const label = p ? escapeHtml(p.title) : '·';
+    const label = p ? escapeHtml(p.title) : '+';
     const cls = p ? '' : 'none';
+    const aria = p ? `Project: ${escapeHtml(p.title)} — click to change` : 'assign project';
     const title = p ? `Project: ${escapeHtml(p.title)} — click to change` : 'Link to a project';
-    return `<span class="project-chip ${cls}" title="${title}" onclick="event.stopPropagation(); openProjectPicker('${item.id}')">${label}</span>`;
+    return `<span class="project-chip ${cls}" role="button" tabindex="0" aria-label="${aria}" title="${title}" onclick="event.stopPropagation(); openProjectPicker('${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();openProjectPicker('${item.id}')}">${label}</span>`;
   }
   async function openProjectPicker(id) {
     const it = items.find(i => i.id === id);
@@ -1839,6 +2404,7 @@
     render(); renderTabs && renderTabs();
     if (typeof renderDeadlines === 'function') renderDeadlines();
     if (typeof renderMeetings === 'function') renderMeetings();
+    renderProjects();
     fetchHealth();
   }
   document.querySelectorAll('#domain-toggle button').forEach(b =>
@@ -1851,15 +2417,66 @@
   let journalEntries = [];
 
   async function fetchItems() {
-    const res = await apiFetch(`${API}/api/items`);
-    items = await res.json();
+    try {
+      const res = await apiFetch(`${API}/api/items`);
+      const data = await res.json();
+      items = Array.isArray(data) ? data : [];
+      setServerDown(false);
+    } catch (e) {
+      // The core fetch failed — on a Mac that means the local server is down.
+      // Surface it instead of silently rendering an all-zeros dashboard.
+      // (Hosted mode has its own connect-gate, so don't double-report there.)
+      if (LOCAL) { setServerDown(true); return; }
+    }
     await fetchProjects();   // refresh the project cache once per render cycle
     render();
     renderTabs();
     renderSaved();
     fetchInsights();         // sweep-insight proposal cards (own async, never blocks)
     fetchReadLater();        // Read Later store (own async, never blocks)
+    fetchNewsletterDigest(); // newsletter digest full tier (own async, never blocks)
   }
+
+  // ── Server-reachability banner + auto-refresh (v-audit) ──────────────
+  function setServerDown(down) {
+    const el = document.getElementById('server-down');
+    if (el) el.style.display = down ? '' : 'none';
+  }
+  function retryFetch() { refreshAll(); }
+
+  // Re-pull every store. Called on load, on Retry, and on tab re-focus so a
+  // capture from the phone or extension shows up without a manual reload.
+  function refreshAll() {
+    fetchItems();
+    fetchJournal();
+    fetchHealth();
+    fetchSparks();
+    fetchRecipes();
+    fetchDeadlines();
+    fetchMeetings();
+    fetchBrief();
+    fetchNewsletterDigest();
+  }
+
+  // Never auto-refresh over an open edit, an open flashcard, or active typing —
+  // a wholesale re-render would drop unsaved keystrokes / interrupt triage.
+  function _canAutoRefresh() {
+    if (typeof activeTriageMode !== 'undefined' && activeTriageMode) return false;
+    if (editingSparkId || editingRecipeId || editingProjectStateId) return false;
+    const ae = document.activeElement;
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return false;
+    return true;
+  }
+  let _lastRefresh = Date.now();
+  function _maybeRefreshOnFocus() {
+    if (document.visibilityState !== 'visible') return;
+    if (Date.now() - _lastRefresh < 4000) return;   // throttle
+    if (!_canAutoRefresh()) return;
+    _lastRefresh = Date.now();
+    refreshAll();
+  }
+  document.addEventListener('visibilitychange', _maybeRefreshOnFocus);
+  window.addEventListener('focus', _maybeRefreshOnFocus);
 
   async function fetchJournal() {
     const res = await apiFetch(`${API}/api/logs`);
@@ -1911,14 +2528,72 @@
   // Minimal toast: shows a line bottom-center, fades out after ~4s. No-op on
   // empty text. Never throws.
   let _toastTimer = null;
-  function showToast(msg) {
+  // showToast(msg) for a plain notice, or showToast(msg, {actionLabel, onAction,
+  // duration}) to attach a clickable button (used by the undo primitive below).
+  function showToast(msg, opts) {
     if (!msg) return;
     const el = document.getElementById('toast');
     if (!el) return;
-    el.textContent = msg;
+    el.textContent = '';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    el.appendChild(span);
+    if (opts && opts.onAction) {
+      const btn = document.createElement('button');
+      btn.className = 'toast-action';
+      btn.textContent = opts.actionLabel || 'Undo';
+      btn.onclick = () => {
+        el.classList.remove('show');
+        if (_toastTimer) clearTimeout(_toastTimer);
+        opts.onAction();
+      };
+      el.appendChild(btn);
+    }
     el.classList.add('show');
     if (_toastTimer) clearTimeout(_toastTimer);
-    _toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), (opts && opts.duration) || 4000);
+  }
+
+  // ── Undo primitive ──────────────────────────────────────────────────
+  // Destructive actions defer their server commit for a 5s window instead of
+  // firing immediately, so a mis-tap is recoverable. Exactly ONE action is
+  // pending at a time; starting a new one commits the previous immediately (no
+  // silent stacking, no lost writes). Undo cancels the commit and restores.
+  let _undo = null;   // { commit, timer }
+  const UNDO_MS = 5000;
+
+  function undoable(label, commit, restore) {
+    commitPendingUndo();                       // flush any prior pending action
+    const u = { commit };
+    u.timer = setTimeout(commitPendingUndo, UNDO_MS);
+    _undo = u;
+    showToast(label, {
+      actionLabel: 'Undo', duration: UNDO_MS,
+      onAction: () => {
+        if (_undo !== u) return;               // already committed — nothing to undo
+        clearTimeout(u.timer);
+        _undo = null;
+        if (restore) restore();
+      }
+    });
+  }
+
+  function commitPendingUndo() {
+    if (!_undo) return;
+    const u = _undo; _undo = null;
+    clearTimeout(u.timer);
+    try { u.commit(); } catch (e) { /* fire-and-forget commit */ }
+  }
+  // Commit any pending deletion before the page unloads, so a queued delete is
+  // never silently dropped by a reload/close.
+  window.addEventListener('beforeunload', commitPendingUndo);
+
+  async function serverDelete(id) {
+    await apiFetch(`${API}/api/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
   }
 
   // Build the chained-effect line from a /api/done response, or '' for a plain
@@ -1945,13 +2620,17 @@
     }
   }
 
-  async function deleteItem(id) {
-    await apiFetch(`${API}/api/delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    });
-    await fetchItems();
+  // List ✕ delete (task list, tab sweep, saved, read later). Optimistically
+  // hides the row now; commits the server delete after the undo window, or
+  // un-hides on undo. Pass `event` from the onclick so we can find the row.
+  function deleteItem(id, ev) {
+    const row = ev && ev.currentTarget
+      ? ev.currentTarget.closest('.item, .tab-item, .saved-item, .rl-item')
+      : null;
+    if (row) row.style.display = 'none';
+    undoable('Deleted',
+      async () => { await serverDelete(id); await fetchItems(); },
+      () => { if (row) row.style.display = ''; });
   }
 
   // ── Helpers ──
@@ -1970,9 +2649,25 @@
   }
 
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    // Must escape quotes too: this is used inside value="${…}" / href="${…}"
+    // attributes, and innerHTML alone leaves " and ' intact — a title/note
+    // containing a " truncated the field on save (data loss).
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // Render-time only: bold a conservative leading KIND prefix in a task title
+  // ("Reply:", "Action:", "Runway open:", "Idea:"…). Title strings are load-bearing
+  // (email dedupe matches on them) — this NEVER mutates data, only display HTML.
+  // Guardrails: start-of-string, letters+spaces only (no digits — protects
+  // "8:30 meeting"), ≤15 chars, must be followed by ": ".
+  function titleHtml(text) {
+    return escapeHtml(text).replace(/^([A-Za-z][A-Za-z ]{0,14}):\s/,
+      '<strong>$1:</strong> ');
   }
 
   // A task accepted from a sweep insight carries research_trail = the tabs it
@@ -2001,6 +2696,27 @@
     } catch { return url.slice(0, 50); }
   }
 
+  // Display label for a task's URL (href stays raw, through safeUrl). Email-sourced
+  // tasks carry a `message://…outlook.com%3E` URL that is garbage as link text →
+  // show "✉ open in Mail"; http(s) shows just the hostname; anything else falls
+  // back to truncateUrl.
+  function urlLabel(item) {
+    const url = item.url || '';
+    if (item.source === 'email' || /^message:\/\//i.test(url)) return '✉ open in Mail';
+    try { return new URL(url).hostname; } catch { return truncateUrl(url); }
+  }
+
+  // Only ever put http(s)/mailto/relative URLs into an href — a captured
+  // `javascript:`/`data:` URL must never become a live link.
+  function safeUrl(url) {
+    const u = (url || '').trim();
+    if (!u) return '#';
+    if (/^(https?:|mailto:)/i.test(u)) return u;   // allowed schemes
+    if (/^[/#?]/.test(u)) return u;                // relative / anchor / query
+    if (!/^[a-z][a-z0-9+.\-]*:/i.test(u)) return u; // no scheme → relative
+    return '#';                                     // disallowed scheme (javascript:, data:, …)
+  }
+
   function doneThisWeek() {
     const now = new Date();
     const monday = new Date(now);
@@ -2012,6 +2728,7 @@
   // ── Render ──
 
   function render() {
+    renderNeedsAttention();   // recompute the exception strip on every task re-render
     const listEl = document.getElementById('item-list');
     // Domain lens applies to the task lists everywhere.
     const dItems = items.filter(inDomain);
@@ -2024,7 +2741,19 @@
     });
 
     document.getElementById('stat-total').textContent = active.length;
-    document.getElementById('stat-inbox').textContent = dItems.filter(i => i.list === 'inbox').length;
+    // Tasks-section header count = the lens-filtered OPEN task count (same set as
+    // the "OPEN" stat: inbox+thisweek+someday+waiting, excludes done/tabs).
+    document.getElementById('tasks-count').textContent = active.length;
+    const inboxStat = document.getElementById('stat-inbox');
+    inboxStat.textContent = dItems.filter(i => i.list === 'inbox').length;
+    // Color = state, not category: the Inbox number goes amber ONLY when the
+    // real inbox+unsorted backlog crosses the catch-up threshold (same signal
+    // that raises the Pre-sort button — reuse the health value, never a 2nd copy;
+    // falls back to config.CATCHUP_THRESHOLD=25 before health has loaded).
+    const catchupN = (healthData && healthData.catchup_threshold) || 25;
+    const overloaded = healthData &&
+      (healthData.inbox + (healthData.unsorted || 0)) > catchupN;
+    inboxStat.style.color = overloaded ? 'var(--state-soon)' : '';
     document.getElementById('stat-thisweek').textContent = dItems.filter(i => i.list === 'thisweek').length;
     document.getElementById('stat-waiting').textContent = dItems.filter(i => i.list === 'waiting').length;
     document.getElementById('stat-done-week').textContent = doneThisWeek();
@@ -2059,7 +2788,7 @@
         const action = l === 'thisweek'
           ? `showInlineDayPicker('${item.id}')`
           : `moveItem('${item.id}','${l}')`;
-        return `<button class="move-btn" onclick="${action}">
+        return `<button class="move-btn" aria-label="Move to ${labels[l]}" onclick="${action}">
           ${icons[l]}
           <span class="tooltip">${labels[l]}</span>
         </button>`;
@@ -2068,8 +2797,8 @@
       const nsValue = item.nextStep ? escapeHtml(item.nextStep) : '';
       const nextStepHtml = item.nextStep
         ? `<div class="item-next-step">
-             <strong>Next step</strong> ${nsValue}
-             <button class="nextstep-edit-btn" onclick="toggleNextStepEdit('${item.id}')">edit</button>
+             <span class="ns-arrow">→</span> ${nsValue}
+             <button class="nextstep-edit-btn ns-edit-icon" aria-label="edit next step" onclick="toggleNextStepEdit('${item.id}')">✎</button>
            </div>`
         : `<button class="nextstep-edit-btn" onclick="toggleNextStepEdit('${item.id}')" style="margin-top:4px">+ add next step</button>`;
 
@@ -2085,25 +2814,25 @@
       return `
         <div class="item">
           <div class="item-content">
-            <div class="item-text">${escapeHtml(item.text)}${item.source === 'email' ? ' <span class="unsorted-flag" style="background:rgba(45,125,111,0.13);color:var(--thisweek)">email</span>' : ''}${domainChip(item)}${projectChip(item)}</div>
+            <div class="item-text">${titleHtml(item.text)}</div>
             ${nextStepHtml}
             ${editHtml}
-            ${item.url ? `<a class="item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>` : ''}
             ${researchTrailHtml(item)}
             <div class="item-meta">
+              ${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
               <span class="item-date">${formatDate(item.created)}</span>
-              ${item.scheduled ? `<span class="item-date" style="color:var(--thisweek)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
+              ${item.scheduled ? `<span class="item-date" style="color:var(--state-info)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
               ${stale ? '<span class="stale-badge">Stale — triage me</span>' : ''}
               ${somedayStale ? `<span class="stale-badge" style="background:#F0EDF8;color:#6B6099">${days} days old — consider deleting</span>` : ''}
             </div>
           </div>
           <div class="item-actions">
-            <button class="move-btn done-btn" onclick="doneItem('${item.id}')">
+            <button class="move-btn done-btn" aria-label="Mark done" onclick="doneItem('${item.id}')">
               ✓
               <span class="tooltip">Done</span>
             </button>
             ${moveButtons}
-            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+            <button class="move-btn delete-btn" aria-label="Delete" onclick="deleteItem('${item.id}', event)">
               ✕
               <span class="tooltip">Delete</span>
             </button>
@@ -2129,7 +2858,7 @@
     if (triageTotal === 0) return;
 
     activeTriageMode = 'task';
-    document.getElementById('triage-overlay').classList.add('active');
+    openTriageOverlay();
     // Weekly pre-screen: nudge stale project state notes before the flashcards.
     // Zero friction when nothing is stale — proceeds straight to the cards.
     maybeStateStallScreen().then(shown => { if (!shown) beginTriageCards(); });
@@ -2265,7 +2994,7 @@
       : '';
 
     const urlHtml = item.url
-      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>`
+      ? `<a class="triage-item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>`
       : '';
 
     card.innerHTML = `
@@ -2276,17 +3005,17 @@
           <div class="triage-progress-fill" style="width:${pct}%"></div>
         </div>
       </div>
-      <div class="triage-item-text">${escapeHtml(item.text)}${item.unsorted ? '<span class="unsorted-flag">unsorted</span>' : ''}${domainChip(item)}</div>
+      <div class="triage-item-text">${titleHtml(item.text)}${item.unsorted ? '<span class="unsorted-flag">unsorted</span>' : ''}${domainChip(item)}</div>
       ${nextStepHtml}
       ${urlHtml}
       <div class="triage-item-age">Captured ${formatDate(item.created)}</div>
       <div class="triage-actions" id="triage-actions">
-        <button class="triage-btn triage-btn-thisweek" onclick="showDayPicker('${item.id}')">This Week</button>
-        <button class="triage-btn triage-btn-someday" onclick="triageAction('${item.id}','someday')">Someday</button>
-        <button class="triage-btn triage-btn-waiting" onclick="triageAction('${item.id}','waiting')">Waiting</button>
-        <button class="triage-btn triage-btn-done" onclick="triageActionDone('${item.id}')">Done</button>
-        <button class="triage-btn triage-btn-skip" onclick="triageSkip()">Skip</button>
-        <button class="triage-btn triage-btn-delete" onclick="triageActionDelete('${item.id}')">Delete</button>
+        <button class="triage-btn triage-btn-thisweek" onclick="showDayPicker('${item.id}')">This Week <kbd>1</kbd></button>
+        <button class="triage-btn triage-btn-someday" onclick="triageAction('${item.id}','someday')">Someday <kbd>2</kbd></button>
+        <button class="triage-btn triage-btn-waiting" onclick="triageAction('${item.id}','waiting')">Waiting <kbd>3</kbd></button>
+        <button class="triage-btn triage-btn-done" onclick="triageActionDone('${item.id}')">Done <kbd>4</kbd></button>
+        <button class="triage-btn triage-btn-skip" onclick="triageSkip()">Skip <kbd>space</kbd></button>
+        <button class="triage-btn triage-btn-delete" onclick="triageActionDelete('${item.id}')">Delete <kbd>x</kbd></button>
       </div>
     `;
     triageDayPickerVisible = false;
@@ -2302,7 +3031,9 @@
     for (let i = 0; i < 7; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
-      const iso = d.toISOString().slice(0, 10);
+      // Local date parts — NOT toISOString(), which is UTC and rolls an
+      // evening capture (after ~8pm ET) onto tomorrow's calendar day.
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const name = d.toLocaleDateString('en-US', { weekday: 'short' });
       const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const isToday = i === 0;
@@ -2354,10 +3085,15 @@
     renderTriageCard();
   }
 
-  async function triageActionDelete(id) {
-    await deleteItem(id);
+  function triageActionDelete(id) {
+    const idx = triageQueue.findIndex(i => i.id === id);
+    if (idx < 0) return;
+    const item = triageQueue[idx];
     triageQueue = triageQueue.filter(i => i.id !== id);
     renderTriageCard();
+    undoable('Deleted',
+      async () => { await serverDelete(id); await fetchItems(); },
+      () => { triageQueue.splice(idx, 0, item); renderTriageCard(); });
   }
 
   function triageSkip() {
@@ -2376,9 +3112,20 @@
     renderTriageCard();
   }
 
+  // Move focus INTO the dialog on open and restore it to the trigger on close,
+  // so keyboard/SR users aren't stranded behind the modal.
+  let _triageReturnFocus = null;
+  function openTriageOverlay() {
+    _triageReturnFocus = document.activeElement;
+    document.getElementById('triage-overlay').classList.add('active');
+    const card = document.getElementById('triage-card');
+    if (card) card.focus();
+  }
   function closeTriage() {
     document.getElementById('triage-overlay').classList.remove('active');
     activeTriageMode = null;
+    if (_triageReturnFocus && _triageReturnFocus.focus) _triageReturnFocus.focus();
+    _triageReturnFocus = null;
     fetchItems();
   }
 
@@ -2407,7 +3154,7 @@
         case '3': case 't': sweepPromote(item.id); break;
         case '4': case 'd': sweepDone(item.id); break;
         case '5': case 'r': sweepReadLater(item.id); break;
-        case 'Backspace': case 'x': sweepDelete(item.id); break;
+        case 'x': sweepDelete(item.id); break;
         case ' ': case 'ArrowRight': e.preventDefault(); sweepSkip(); break;
         case 'Escape': closeTriage(); break;
       }
@@ -2415,6 +3162,14 @@
     }
 
     if (activeTriageMode === 'review') {
+      // Day picker is showing (promote) — number keys pick a day, Esc/Back returns.
+      if (reviewPickerId) {
+        const days = getWeekDays();
+        const num = parseInt(e.key);
+        if (num >= 1 && num <= 7 && days[num - 1]) { reviewSchedule(reviewPickerId, days[num - 1].iso); return; }
+        if (e.key === 'Escape' || e.key === 'Backspace') { reviewPickerBack(); return; }
+        return;
+      }
       if (reviewIndex >= reviewQueue.length) return;
       const item = reviewQueue[reviewIndex];
       if (!item) return;
@@ -2422,8 +3177,33 @@
       switch (e.key) {
         case '1': case 'k': reviewKeep(); break;
         case '2': case 'w': reviewPromote(item.id); break;
-        case 'Backspace': case 'x': reviewDelete(item.id); break;
+        case '3': case 'a': reviewWaiting(item.id); break;
+        case 'x': reviewDelete(item.id); break;
         case ' ': case 'ArrowRight': e.preventDefault(); reviewKeep(); break;
+        case 'Escape': closeTriage(); break;
+      }
+      return;
+    }
+
+    // Renegotiate mode (#13b) — its own branch, keyed off the mode var; never
+    // falls through to the task-triage key map below.
+    if (activeTriageMode === 'renegotiate') {
+      // New-date day picker showing — number keys pick a day; Esc/Back returns to
+      // the card (hold-until-chosen — nothing is written on Back).
+      if (renegPicker) {
+        const days = getWeekDays();
+        const num = parseInt(e.key);
+        if (num >= 1 && num <= 7 && days[num - 1]) { renegSchedule(days[num - 1].iso); return; }
+        if (e.key === 'Escape' || e.key === 'Backspace') { renderRenegCard(); return; }
+        return;
+      }
+      if (renegIndex >= renegQueue.length) { if (e.key === 'Escape') closeTriage(); return; }
+      switch (e.key) {
+        case '1': case 't': renegToday(); break;
+        case '2': case 'n': renegNewDate(); break;
+        case '3': case 's': renegSomeday(); break;
+        case 'x': renegDrop(); break;
+        case ' ': case 'ArrowRight': e.preventDefault(); renegSkip(); break;
         case 'Escape': closeTriage(); break;
       }
       return;
@@ -2456,7 +3236,7 @@
       case '4': case 'd': triageActionDone(item.id); break;
       case 'f': flipTriageDomain(item); break;
       case ' ': case 'ArrowRight': e.preventDefault(); triageSkip(); break;
-      case 'Backspace': case 'x': triageActionDelete(item.id); break;
+      case 'x': triageActionDelete(item.id); break;
       case 'Escape': closeTriage(); break;
     }
   });
@@ -2530,13 +3310,15 @@
 
   // ── Event listeners ──
 
+  function selectList(list) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.list === list));
+    currentList = list;
+    render();
+    const bar = document.getElementById('tab-bar');
+    if (bar) bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentList = tab.dataset.list;
-      render();
-    });
+    tab.addEventListener('click', () => selectList(tab.dataset.list));
   });
 
   document.getElementById('add-btn').addEventListener('click', async () => {
@@ -2577,12 +3359,21 @@
       const dateStr = daysSince(entry.timestamp) === 0 ? '' : formatDate(entry.timestamp) + ', ';
 
       return `
-        <div class="journal-entry ${fading ? 'fading' : ''}">
+        <div class="journal-entry ${fading ? 'fading' : ''}" id="journal-${entry.id}">
           <span class="journal-time">${dateStr}${timeStr}</span>
           <span class="journal-text">${escapeHtml(entry.text)}</span>
+          <button class="journal-del" onclick="deleteJournal('${entry.id}', event)" title="Delete entry">✕</button>
         </div>
       `;
     }).join('');
+  }
+
+  function deleteJournal(id, ev) {
+    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.journal-entry') : null;
+    if (row) row.style.display = 'none';
+    undoable('Entry deleted',
+      async () => { await apiFetch(`${API}/api/log/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); await fetchJournal(); },
+      () => { if (row) row.style.display = ''; });
   }
 
   document.getElementById('journal-btn').addEventListener('click', async () => {
@@ -2697,7 +3488,7 @@
       return `
         <div class="tab-item">
           <div class="tab-item-content">
-            <a class="tab-item-url" href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener">
+            <a class="tab-item-url" href="${escapeHtml(safeUrl(item.url || '#'))}" target="_blank" rel="noopener">
               ${escapeHtml(item.text || truncateUrl(item.url || ''))}
             </a>
             ${memoHtml}
@@ -2717,7 +3508,7 @@
               IN
               <span class="tooltip">Make task</span>
             </button>
-            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}', event)">
               ✕
               <span class="tooltip">Delete</span>
             </button>
@@ -2815,7 +3606,7 @@
                  placeholder="What should this become?">
           <div class="insight-actions">
             <button class="btn btn-primary btn-small" onclick="acceptInsight('${p.fingerprint}')">Accept</button>
-            ${p.garden_candidate ? `<button class="btn btn-ghost btn-small" onclick="gardenInsight('${p.fingerprint}')">→ Garden</button>` : ''}
+            ${(LOCAL && p.garden_candidate) ? `<button class="btn btn-ghost btn-small" onclick="gardenInsight('${p.fingerprint}')">→ Garden</button>` : ''}
             <button class="btn btn-ghost btn-small" onclick="dismissInsight('${p.fingerprint}')">Dismiss</button>
           </div>
           <details class="insight-evidence">
@@ -2853,25 +3644,31 @@
     const p = insightsPending.find(x => x.fingerprint === fp);
     if (!p) return;
     const tabs = p.tabs || [];
+    let planted = 0;
     for (const t of tabs) {
       try {
-        await apiFetch(`${API}/api/garden/add`, {
+        const added = await apiFetch(`${API}/api/garden/add`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: t.text || '', url: t.url || '', note: t.memo || '' })
         });
+        // Only remove the tab once it is actually in the Garden — never delete
+        // on a failed/absent add (the hosted data-loss bug).
+        if (!added || !added.ok) continue;
+        planted++;
         await apiFetch(`${API}/api/delete`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: t.id })
         });
       } catch (e) { /* best-effort per tab */ }
     }
+    if (!planted) { showToast('Could not reach the Garden — tabs left in place'); return; }
     try {
       await apiFetch(`${API}/api/insights/dismiss`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fingerprint: fp })
       });
     } catch (e) { /* the tabs are already filed; a stale proposal prunes on next read */ }
-    showToast(`🌱 ${tabs.length} tab${tabs.length === 1 ? '' : 's'} planted in the Garden`);
+    showToast(`🌱 ${planted} tab${planted === 1 ? '' : 's'} planted in the Garden`);
     await fetchItems();
   }
 
@@ -2912,7 +3709,7 @@
     if (sweepTotal === 0) return;
 
     activeTriageMode = 'sweep';
-    document.getElementById('triage-overlay').classList.add('active');
+    openTriageOverlay();
     renderSweepCard();
   }
 
@@ -2939,7 +3736,7 @@
       : '';
 
     const urlHtml = item.url
-      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(item.url)}</a>`
+      ? `<a class="triage-item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(item.url)}</a>`
       : '';
 
     card.innerHTML = `
@@ -2954,12 +3751,12 @@
       ${memoHtml}
       <div class="triage-item-age">Saved ${formatDate(item.created)}</div>
       <div class="triage-actions" id="sweep-actions">
-        <button class="triage-btn triage-btn-keep" onclick="sweepSkip()">Keep</button>
-        <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save</button>
-        <button class="triage-btn triage-btn-readlater" onclick="sweepReadLater('${item.id}')">Read Later</button>
-        <button class="triage-btn triage-btn-promote" onclick="sweepPromote('${item.id}')">Make Task</button>
-        <button class="triage-btn triage-btn-done" onclick="sweepDone('${item.id}')">Done Reading</button>
-        <button class="triage-btn triage-btn-delete" onclick="sweepDelete('${item.id}')">Delete</button>
+        <button class="triage-btn triage-btn-keep" onclick="sweepSkip()">Keep <kbd>1</kbd></button>
+        <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save <kbd>2</kbd></button>
+        <button class="triage-btn triage-btn-promote" onclick="sweepPromote('${item.id}')">Make Task <kbd>3</kbd></button>
+        <button class="triage-btn triage-btn-done" onclick="sweepDone('${item.id}')">Done Reading <kbd>4</kbd></button>
+        <button class="triage-btn triage-btn-readlater" onclick="sweepReadLater('${item.id}')">Read Later <kbd>5</kbd></button>
+        <button class="triage-btn triage-btn-delete" onclick="sweepDelete('${item.id}')">Delete <kbd>x</kbd></button>
       </div>
     `;
   }
@@ -2976,15 +3773,22 @@
   }
 
   async function sweepDone(id) {
-    await deleteItem(id);
+    // "Done reading" is a completion, not an accidental delete — commit now.
+    await serverDelete(id);
     sweepQueue = sweepQueue.filter(i => i.id !== id);
     renderSweepCard();
+    await fetchItems();
   }
 
-  async function sweepDelete(id) {
-    await deleteItem(id);
+  function sweepDelete(id) {
+    const idx = sweepQueue.findIndex(i => i.id === id);
+    if (idx < 0) return;
+    const item = sweepQueue[idx];
     sweepQueue = sweepQueue.filter(i => i.id !== id);
     renderSweepCard();
+    undoable('Deleted',
+      async () => { await serverDelete(id); await fetchItems(); },
+      () => { sweepQueue.splice(idx, 0, item); renderSweepCard(); });
   }
 
   async function sweepSave(id) {
@@ -3010,6 +3814,7 @@
   let rlMaxMinutes = null;   // 15 | 30 | 60 | null(any)
   let rlProjectFilter = null;
   let rlShowArchived = false;
+  let rlTopicsExpanded = false;   // "+N more" toggle for the topic filter row
   let rlShowAll = false;   // Read Later collapses to a few by default (the list runs long)
 
   async function readLaterTab(id) {
@@ -3021,9 +3826,90 @@
     await fetchItems();      // tab is gone; refreshes tabs + Read Later
   }
 
+  // ── Newsletter digest (full tier — the brief carries only the teaser) ──
+  let _newsletterArchive = [];
+  async function fetchNewsletterDigest() {
+    let data = null;
+    try {
+      const res = await apiFetch(`${API}/api/newsletter-digest`);
+      data = await res.json();
+    } catch (e) { data = null; }
+    renderNewsletterDigest(data);
+  }
+
+  function renderNewsletterDigest(d) {
+    const section = document.getElementById('newsletter-section');
+    if (!section) return;
+    const body = document.getElementById('newsletter-body');
+    const md = d && typeof d.markdown === 'string' ? d.markdown.trim() : '';
+    // Suppress-at-zero: show whenever there's a digest, latest-regardless-of-date
+    // (the dashboard is the archive reader; the date subtitle carries freshness —
+    // the brief teaser is the same-day surface).
+    if (!md) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    body.innerHTML = briefMdToHtml(md);
+
+    const countEl = document.getElementById('newsletter-count');
+    if (countEl) countEl.textContent = d.count ? String(d.count) : '';
+    const dateEl = document.getElementById('newsletter-date');
+    if (dateEl) {
+      let label = '';
+      if (d.date) {
+        const dt = new Date(d.date + 'T00:00:00');
+        label = isNaN(dt) ? d.date
+          : dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        if (d.fresh === false) label += ' (last digest)';
+      }
+      dateEl.textContent = label;
+    }
+
+    // Past-digests archive (LOCAL-only — hosted returns []; hide when empty).
+    _newsletterArchive = Array.isArray(d.archive) ? d.archive : [];
+    const toggle = document.getElementById('newsletter-archive-toggle');
+    const archEl = document.getElementById('newsletter-archive');
+    if (toggle) {
+      if (_newsletterArchive.length) {
+        toggle.style.display = '';
+        toggle.textContent = `Past digests (${_newsletterArchive.length})`;
+      } else {
+        toggle.style.display = 'none';
+        if (archEl) { archEl.style.display = 'none'; archEl.innerHTML = ''; }
+      }
+    }
+  }
+
+  async function toggleNewsletterArchive() {
+    const archEl = document.getElementById('newsletter-archive');
+    if (!archEl) return;
+    if (archEl.style.display !== 'none' && archEl.innerHTML) {
+      archEl.style.display = 'none';
+      return;
+    }
+    // Render the list of past digest dates; each expands its file inline on click.
+    archEl.innerHTML = _newsletterArchive.map(name => {
+      const date = name.replace(/\.md$/, '');
+      return `<div class="nl-archive-item"><a href="#" onclick="openNewsletterArchive('${encodeURIComponent(name)}');return false;">${escapeHtml(date)}</a><div class="nl-archive-body" id="nl-arch-${escapeHtml(date)}"></div></div>`;
+    }).join('');
+    archEl.style.display = '';
+  }
+
+  async function openNewsletterArchive(name) {
+    const date = decodeURIComponent(name).replace(/\.md$/, '');
+    const el = document.getElementById(`nl-arch-${date}`);
+    if (!el) return;
+    if (el.innerHTML) { el.innerHTML = ''; return; }   // toggle closed
+    try {
+      const res = await apiFetch(`${API}/newsletters/${encodeURIComponent(decodeURIComponent(name))}`);
+      const md = await res.text();
+      el.innerHTML = briefMdToHtml(md || '');
+    } catch (e) { el.textContent = 'could not load'; }
+  }
+
   async function fetchReadLater() {
     try {
-      const res = await apiFetch(`${API}/api/readlater${rlShowArchived ? '?status=all' : ''}`);
+      // Always fetch archived too, so the "Show archived" toggle and its count
+      // stay reachable even when every item is archived (filter is client-side).
+      const res = await apiFetch(`${API}/api/readlater?status=all`);
       const data = await res.json();
       readLaterRecords = Array.isArray(data) ? data : [];
     } catch (e) { readLaterRecords = []; }
@@ -3035,14 +3921,30 @@
     const listEl = document.getElementById('readlater-list');
     if (!section || !listEl) return;
 
-    // Archived hidden unless the toggle is on (server already filters, but the
-    // 'all' fetch also carries archived — filter defensively here).
+    const archivedCount = readLaterRecords.filter(r => r.status === 'archived').length;
+    // Keep the whole section — and its "Show archived" toggle — reachable
+    // whenever ANY reading exists, so archiving the last unread item never
+    // orphans the archive (the toggle lives inside this section).
+    section.style.display = readLaterRecords.length ? '' : 'none';
+
+    const toggleBtn = document.getElementById('rl-archived-toggle');
+    if (toggleBtn) {
+      toggleBtn.textContent = rlShowArchived ? 'Hide archived' : `Show archived${archivedCount ? ` (${archivedCount})` : ''}`;
+      toggleBtn.style.display = (rlShowArchived || archivedCount) ? '' : 'none';
+    }
+
+    if (!readLaterRecords.length) { listEl.innerHTML = ''; renderReadLaterFilters([]); return; }
+
+    // Archived hidden unless the toggle is on (the 'all' fetch carries archived).
     let base = readLaterRecords.slice();
     if (!rlShowArchived) base = base.filter(r => r.status !== 'archived');
-    section.style.display = base.length ? '' : 'none';
-    if (!base.length) { listEl.innerHTML = ''; renderReadLaterFilters(base); return; }
 
     renderReadLaterFilters(base);
+
+    if (!base.length) {
+      listEl.innerHTML = `<div class="saved-no-results">Nothing unread — all caught up.${(!rlShowArchived && archivedCount) ? ` <button class="rl-inline-link" onclick="toggleReadLaterArchived()">Show ${archivedCount} archived</button>` : ''}</div>`;
+      return;
+    }
 
     let filtered = base;
     if (rlSearchQuery) {
@@ -3052,6 +3954,8 @@
         (r.key_point || '').toLowerCase().includes(q) ||
         (r.summary || '').toLowerCase().includes(q) ||
         (r.source_domain || '').toLowerCase().includes(q) ||
+        (r.url || '').toLowerCase().includes(q) ||
+        (r.my_take || '').toLowerCase().includes(q) ||
         (r.topics || []).some(t => (t || '').toLowerCase().includes(q)));
     }
     if (rlTopicFilter) filtered = filtered.filter(r => (r.topics || []).includes(rlTopicFilter));
@@ -3071,28 +3975,37 @@
         : (r.key_point ? `<div class="rl-keypoint">${escapeHtml(r.key_point)}</div>` : '');
       const domain = r.source_domain ? escapeHtml(r.source_domain) : '';
       const topics = (r.topics || []).map(t => `<span class="rl-topic">#${escapeHtml(t)}</span>`).join('');
+      const isUnread = !r.status || r.status === 'unread';
       const canSpark = r.status === 'read' && r.my_take;
       const sparkBtn = canSpark
         ? `<button class="rl-act-btn rl-act-spark" onclick="sparkReadLater('${r.id}')">→ spark</button>` : '';
       // Knowledge worth KEEPING → Garden (no take required, unlike → spark).
-      const gardenBtn = r.status === 'read'
+      const gardenBtn = (LOCAL && r.status === 'read')
         ? `<button class="rl-act-btn rl-act-garden" onclick="gardenReadLater('${r.id}')">→ Garden</button>` : '';
+      // Read/archived items can return to unread; the take input saves on Enter.
+      const readBtn = isUnread
+        ? `<button class="rl-act-btn" onclick="markReadLater('${r.id}')">Mark read</button>`
+        : `<button class="rl-act-btn" onclick="unreadReadLater('${r.id}')">Unread</button>`;
+      const archiveBtn = r.status !== 'archived'
+        ? `<button class="rl-act-btn" onclick="archiveReadLater('${r.id}')">Archive</button>` : '';
       return `
         <div class="rl-item">
           <div class="rl-item-main">
-            <a class="rl-item-title" href="${escapeHtml(r.url || '#')}" target="_blank" rel="noopener">${title}</a>
+            <a class="rl-item-title" href="${escapeHtml(safeUrl(r.url || '#'))}" target="_blank" rel="noopener">${title}</a>
             <span class="rl-mins">${mins}</span>
             <span class="rl-state">${escapeHtml(r.status || '')}</span>
             ${kp}
             <div class="rl-meta">${domain}${topics}</div>
           </div>
           <div class="rl-item-actions">
-            <input class="rl-take" id="rltake-${r.id}" placeholder="my take (optional)" value="${escapeHtml(r.my_take || '')}">
-            <div style="display:flex;gap:4px;">
-              <button class="rl-act-btn" onclick="markReadLater('${r.id}')">Mark read</button>
-              <button class="rl-act-btn" onclick="archiveReadLater('${r.id}')">Archive</button>
+            <input class="rl-take" id="rltake-${r.id}" placeholder="my take (Enter to save)" value="${escapeHtml(r.my_take || '')}"
+                   onkeydown="if(event.key==='Enter')saveReadLaterTake('${r.id}')">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;">
+              ${readBtn}
+              ${archiveBtn}
               ${sparkBtn}
               ${gardenBtn}
+              <button class="rl-act-btn rl-act-del" onclick="deleteReadLater('${r.id}', event)" title="Delete">✕</button>
             </div>
           </div>
         </div>`;
@@ -3124,9 +4037,15 @@
     if (topics.length) {
       html += `<span class="rl-filter-group"><span class="rl-filter-label">topic</span>`;
       html += chip('all', !rlTopicFilter, `setRlTopic(null)`);
-      topics.slice(0, 12).forEach(t => {
+      const CAP = 12;
+      const shown = rlTopicsExpanded ? topics : topics.slice(0, CAP);
+      shown.forEach(t => {
         html += chip('#' + escapeHtml(t), rlTopicFilter === t, `setRlTopic(${JSON.stringify(t)})`);
       });
+      if (topics.length > CAP) {
+        html += chip(rlTopicsExpanded ? 'show less' : `+${topics.length - CAP} more`,
+                     false, `toggleRlTopicsExpanded()`);
+      }
       html += `</span>`;
     }
     // projects
@@ -3146,12 +4065,12 @@
   function setRlMinutes(v) { rlMaxMinutes = v; renderReadLater(); }
   function setRlTopic(t) { rlTopicFilter = t; renderReadLater(); }
   function setRlProject(p) { rlProjectFilter = p; renderReadLater(); }
+  function toggleRlTopicsExpanded() { rlTopicsExpanded = !rlTopicsExpanded; renderReadLater(); }
 
   function toggleReadLaterArchived() {
+    // Records already include archived (fetched with ?status=all) — just re-render.
     rlShowArchived = !rlShowArchived;
-    const btn = document.getElementById('rl-archived-toggle');
-    if (btn) btn.textContent = rlShowArchived ? 'Hide archived' : 'Show archived';
-    fetchReadLater();
+    renderReadLater();
   }
 
   async function markReadLater(id) {
@@ -3170,6 +4089,33 @@
       body: JSON.stringify({ id })
     });
     await fetchReadLater();
+  }
+
+  async function unreadReadLater(id) {
+    await apiFetch(`${API}/api/readlater/unread`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    await fetchReadLater();
+  }
+
+  async function saveReadLaterTake(id) {
+    const input = document.getElementById(`rltake-${id}`);
+    if (!input) return;
+    const res = await apiFetch(`${API}/api/readlater/update`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, fields: { my_take: input.value.trim() } })
+    });
+    if (res && res.ok) { await fetchReadLater(); showToast('Take saved'); }
+    else { showToast('Couldn’t save — try on the desktop'); }
+  }
+
+  function deleteReadLater(id, ev) {
+    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.rl-item') : null;
+    if (row) row.style.display = 'none';
+    undoable('Removed from Read Later',
+      async () => { await apiFetch(`${API}/api/readlater/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); await fetchReadLater(); },
+      () => { if (row) row.style.display = ''; });
   }
 
   async function sparkReadLater(id) {
@@ -3208,6 +4154,7 @@
   let reviewKept = 0;
   let reviewPromoted = 0;
   let reviewDeleted = 0;
+  let reviewWaited = 0;
 
   function startSomedayReview() {
     reviewQueue = items
@@ -3219,10 +4166,11 @@
     reviewKept = 0;
     reviewPromoted = 0;
     reviewDeleted = 0;
+    reviewWaited = 0;
     if (reviewTotal === 0) return;
 
     activeTriageMode = 'review';
-    document.getElementById('triage-overlay').classList.add('active');
+    openTriageOverlay();
     renderReviewCard();
   }
 
@@ -3235,7 +4183,7 @@
           <div class="done-icon">○</div>
           <h2>Review complete</h2>
           <p>Reviewed ${reviewTotal} item${reviewTotal === 1 ? '' : 's'}.<br>
-             ${reviewKept} kept, ${reviewPromoted} promoted, ${reviewDeleted} deleted.</p>
+             ${reviewKept} kept, ${reviewPromoted} promoted${reviewWaited ? `, ${reviewWaited} → waiting` : ''}, ${reviewDeleted} deleted.</p>
           <button class="btn btn-primary" onclick="closeTriage()">Back to dashboard</button>
         </div>
       `;
@@ -3251,7 +4199,7 @@
       : '';
 
     const urlHtml = item.url
-      ? `<a class="triage-item-url" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>`
+      ? `<a class="triage-item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(item.url))}</a>`
       : '';
 
     const ageNote = days >= 90
@@ -3270,9 +4218,10 @@
       ${urlHtml}
       ${ageNote}
       <div class="triage-actions">
-        <button class="triage-btn triage-btn-keep" onclick="reviewKeep()">Keep in Someday</button>
-        <button class="triage-btn triage-btn-thisweek" onclick="reviewPromote('${item.id}')">Promote to This Week</button>
-        <button class="triage-btn triage-btn-delete" onclick="reviewDelete('${item.id}')">Delete</button>
+        <button class="triage-btn triage-btn-keep" onclick="reviewKeep()">Keep in Someday <kbd>1</kbd></button>
+        <button class="triage-btn triage-btn-thisweek" onclick="reviewPromote('${item.id}')">Promote to This Week <kbd>2</kbd></button>
+        <button class="triage-btn triage-btn-waiting" onclick="reviewWaiting('${item.id}')">Waiting <kbd>3</kbd></button>
+        <button class="triage-btn triage-btn-delete" onclick="reviewDelete('${item.id}')">Delete <kbd>x</kbd></button>
       </div>
     `;
   }
@@ -3283,11 +4232,22 @@
     renderReviewCard();
   }
 
-  async function reviewPromote(id) {
-    reviewPromoted++;
-    reviewQueue = reviewQueue.filter(i => i.id !== id);
-    // Show day picker for scheduling
+  let reviewPickerId = null;   // item awaiting a day in Someday-review promote
+  function reviewPromote(id) {
+    // Hold the item — do NOT count or remove it until a day is actually picked,
+    // else exiting the picker loses the write and miscounts it as promoted.
+    reviewPickerId = id;
     showReviewDayPicker(id);
+  }
+  function reviewPickerBack() {
+    reviewPickerId = null;
+    renderReviewCard();   // the item is still in the queue at reviewIndex
+  }
+  async function reviewWaiting(id) {
+    reviewWaited++;
+    reviewQueue = reviewQueue.filter(i => i.id !== id);
+    renderReviewCard();
+    await moveItem(id, 'waiting');
   }
 
   function showReviewDayPicker(itemId) {
@@ -3304,6 +4264,7 @@
       <div class="triage-day-picker">
         <p>When?</p>
         <div class="triage-days">${dayButtons}</div>
+        <button class="btn btn-ghost btn-small" style="margin-top:10px" onclick="reviewPickerBack()">← Back</button>
       </div>
     `;
   }
@@ -3314,15 +4275,24 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, day })
     });
+    // Count + remove ONLY after the schedule write succeeds.
+    reviewPromoted++;
+    reviewQueue = reviewQueue.filter(i => i.id !== id);
+    reviewPickerId = null;
     await fetchItems();
     renderReviewCard();
   }
 
-  async function reviewDelete(id) {
+  function reviewDelete(id) {
+    const idx = reviewQueue.findIndex(i => i.id === id);
+    if (idx < 0) return;
+    const item = reviewQueue[idx];
     reviewDeleted++;
-    await deleteItem(id);
     reviewQueue = reviewQueue.filter(i => i.id !== id);
     renderReviewCard();
+    undoable('Deleted',
+      async () => { await serverDelete(id); await fetchItems(); },
+      () => { reviewDeleted--; reviewQueue.splice(idx, 0, item); renderReviewCard(); });
   }
 
   document.getElementById('review-someday-btn').addEventListener('click', startSomedayReview);
@@ -3359,18 +4329,32 @@
 
     listEl.innerHTML = filtered.map(item => {
       const title = item.text || truncateUrl(item.url || '');
+      const memoValue = item.memo ? escapeHtml(item.memo) : '';
+      // Reuse the Tab-Sweep memo-edit affordance (same id pattern + saveMemo →
+      // /api/update-memo; an item is in only one list, so ids never collide).
+      const memoHtml = item.memo
+        ? `<div class="saved-item-memo">${memoValue} <button class="nextstep-edit-btn" onclick="toggleMemoEdit('${item.id}')">edit</button></div>`
+        : `<div class="tab-item-memo-placeholder" onclick="toggleMemoEdit('${item.id}')">+ add note</div>`;
+      const editHtml = `
+        <div class="tab-memo-edit" id="memo-edit-${item.id}">
+          <input type="text" value="${memoValue}" placeholder="Add a note" id="memo-input-${item.id}"
+                 onkeydown="if(event.key==='Enter')saveMemo('${item.id}')">
+          <button onclick="saveMemo('${item.id}')">Save</button>
+          <button onclick="toggleMemoEdit('${item.id}')">Cancel</button>
+        </div>`;
       return `
         <div class="saved-item">
           <div class="saved-item-content">
-            <a class="saved-item-title" href="${escapeHtml(item.url || '#')}" target="_blank" rel="noopener">${escapeHtml(title)}</a>
-            ${item.memo ? `<div class="saved-item-memo">${escapeHtml(item.memo)}</div>` : ''}
+            <a class="saved-item-title" href="${escapeHtml(safeUrl(item.url || '#'))}" target="_blank" rel="noopener">${escapeHtml(title)}</a>
+            ${memoHtml}
+            ${editHtml}
           </div>
           <div class="saved-item-actions">
             <button class="move-btn promote-btn" onclick="promoteTab('${item.id}')" title="Make task">
               IN
               <span class="tooltip">Make task</span>
             </button>
-            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}')">
+            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}', event)">
               ✕
               <span class="tooltip">Delete</span>
             </button>
@@ -3417,7 +4401,7 @@
     if (!el) return;
     const files = (healthData && healthData.conflicts) || [];
     if (!files.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
-    el.innerHTML = `⚠ Dropbox conflict files detected — data may be forking:`
+    el.innerHTML = `Dropbox conflict files detected — data may be forking:`
       + `<span class="cb-files">${files.map(escapeHtml).join('<br>')}</span>`;
     el.style.display = '';
   }
@@ -3428,25 +4412,26 @@
     if (!healthData) { el.style.display = 'none'; return; }
     const h = healthData;
     const parts = [];
-    // A red chip per overdue writing agent ('⚠ router 3h') — a silent agent is
-    // exactly what the user must not miss.
+    // A red badge per overdue writing agent ('router 3h') — the styled badge IS
+    // the warning (no glyph, #12b); a silent agent is what the user must not miss.
     (h.overdue || []).forEach(a => {
       const age = h.agents && h.agents[a] != null ? ' ' + humanizeMin(h.agents[a]) : '';
-      parts.push(`<span class="health-item health-overdue">⚠ ${escapeHtml(a)}${age}</span>`);
+      parts.push(`<span class="health-item health-overdue">${escapeHtml(a)}${age}</span>`);
     });
     // Calendar coverage: gcal can only see your primary calendar — meetings on
     // other calendars are invisible. A red chip so the blindness is never silent.
     if (h.calendar && h.calendar.degraded) {
-      parts.push(`<span class="health-item health-overdue" title="Triage can only read your primary Google calendar (calendar-list access blocked). Re-authorize Google with the calendar.readonly scope.">⚠ calendar partial</span>`);
+      parts.push(`<span class="health-item health-overdue" title="Triage can only read your primary Google calendar (calendar-list access blocked). Re-authorize Google with the calendar.readonly scope.">calendar partial</span>`);
     }
     if (h.travel) parts.push(`<span class="health-item" style="color:var(--thisweek);font-weight:600">✈ Travel</span>`);
-    parts.push(`<span class="health-item${h.stale ? ' health-warn' : ''}">Inbox: <strong>${h.inbox}</strong>${h.stale ? ` (${h.stale} stale)` : ''}</span>`);
+    // Inbox (and its stale count) is NOT repeated here — it already leads the stat
+    // row 80px above and the brief; the strip carries only what's unique to it.
     if (h.unsorted) parts.push(`<span class="health-item health-warn">Unsorted: <strong>${h.unsorted}</strong></span>`);
     if (h.recipe_queue) parts.push(`<span class="health-item">Recipe queue: <strong>${h.recipe_queue}</strong></span>`);
-    parts.push(`<span class="health-item">Sparks this week: <strong>${h.sparks_week}</strong></span>`);
-    if (h.stalled) parts.push(`<span class="health-item" style="color:var(--waiting)">Stalled: <strong>${h.stalled}</strong></span>`);
+    if (h.sparks_week) parts.push(`<span class="health-item">Sparks this week: <strong>${h.sparks_week}</strong></span>`);
+    if (h.stalled) parts.push(`<span class="health-item clickable" style="color:var(--waiting)" onclick="jumpToProjects()" title="Jump to Projects">Stalled: <strong>${h.stalled}</strong></span>`);
     if (h.recipe_backlog) parts.push(`<span class="health-item">Backlog: <strong>${h.recipe_backlog}</strong> archived</span>`);
-    if (h.recipes_missing_info) parts.push(`<span class="health-item">${h.recipes_missing_info} bookmarks missing info</span>`);
+    if (h.recipes_missing_info) parts.push(`<span class="health-item">${h.recipes_missing_info} bookmark${h.recipes_missing_info === 1 ? '' : 's'} missing info</span>`);
 
     let html = parts.join('<span class="health-sep">·</span>');
     const overload = (h.inbox + h.unsorted) > h.catchup_threshold;
@@ -3456,9 +4441,287 @@
     if (h.unclassified) {
       html += `<button class="btn btn-ghost btn-small" style="margin-left:8px" onclick="backfillDomains(this)">Classify ${h.unclassified}</button>`;
     }
+    // Suppress-at-zero: with Inbox no longer always-present, an all-clear state
+    // leaves the strip empty — hide it rather than render a bare bar.
+    if (!html) { el.style.display = 'none'; renderEA(); return; }
     el.innerHTML = html;
     el.style.display = '';
     renderEA();
+  }
+
+  // ══ Needs-attention strip (design pass D) ════════════════════════════
+  // ≤4 exception signals computed CLIENT-SIDE from data the page already
+  // fetches (deadlines, meetings, items). Each chip suppresses at zero; the
+  // whole strip hides when all are zero (no "all-clear" decoration). Domain-lens
+  // aware (reuses inDomain). Recomputed from render()/renderDeadlines()/
+  // renderMeetings() — wherever the underlying data re-renders — so it stays in
+  // sync with one shared function and no fetch of its own.
+
+  // 'YYYY-MM-DD' → integer days from that LOCAL date to today (positive = past).
+  // Built from local parts (NOT new Date(str), which is UTC and would roll an
+  // evening boundary), mirroring getWeekDays()'s local-date discipline.
+  function _localDaysPast(dateStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+    if (!m) return null;
+    const then = new Date(+m[1], +m[2] - 1, +m[3]);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((today - then) / 86400000);
+  }
+
+  // The overdue set that feeds BOTH the strip's first chip and the Renegotiate
+  // flashcard (commit 2): open deadlines past due + This-Week tasks scheduled
+  // more than 3 days ago. Domain-lens filtered. Each entry tagged
+  // kind:'deadline'|'task' with the record and its overdueDays.
+  function computeOverdue() {
+    const out = [];
+    (deadlines || []).forEach(d => {
+      if (['done', 'dismissed'].includes(d.status)) return;
+      if (!inDomain(d)) return;
+      if (d.days_left != null && d.days_left < 0)
+        out.push({ kind: 'deadline', rec: d, overdueDays: -d.days_left });
+    });
+    (items || []).forEach(it => {
+      if (it.list !== 'thisweek' || !inDomain(it)) return;
+      const past = _localDaysPast(it.scheduled);
+      if (past != null && past > 3)
+        out.push({ kind: 'task', rec: it, overdueDays: past });
+    });
+    return out;
+  }
+
+  function renderNeedsAttention() {
+    const el = document.getElementById('needs-attention');
+    if (!el) return;
+    const chips = [];
+
+    // 1. Overdue → renegotiate (deadlines past due + tasks scheduled >3d ago).
+    const overdue = computeOverdue();
+    if (overdue.length) {
+      chips.push(`<button class="na-chip na-urgent" onclick="renegotiateOverdue()"
+        aria-label="${overdue.length} overdue — renegotiate">
+        <span class="na-count">${overdue.length}</span>
+        <span class="na-label">Overdue · Renegotiate</span></button>`);
+    }
+
+    // 2. Due ≤2d (open deadlines, 0..2 days left) → jump to deadlines.
+    const dueSoon = (deadlines || []).filter(d =>
+      !['done', 'dismissed'].includes(d.status) && inDomain(d) &&
+      d.days_left != null && d.days_left >= 0 && d.days_left <= 2).length;
+    if (dueSoon) {
+      chips.push(`<button class="na-chip na-soon" onclick="jumpToSection('deadlines-section')"
+        aria-label="${dueSoon} due within two days">
+        <span class="na-count">${dueSoon}</span>
+        <span class="na-label">Due ≤2d</span></button>`);
+    }
+
+    // 3. Unconfirmed meeting(s) (proposed, not past) → jump to meetings.
+    const unconfirmed = (meetings || []).filter(m =>
+      m.proposed && !m.past && !['done', 'cancelled'].includes(m.status) && inDomain(m)).length;
+    if (unconfirmed) {
+      chips.push(`<button class="na-chip na-soon" onclick="jumpToSection('meetings-section')"
+        aria-label="${unconfirmed} unconfirmed meeting${unconfirmed === 1 ? '' : 's'}">
+        <span class="na-count">${unconfirmed}</span>
+        <span class="na-label">Meeting${unconfirmed === 1 ? '' : 's'} unconfirmed</span></button>`);
+    }
+
+    // 4. Waiting >7d (waiting-list items) → switch to the Waiting tab + scroll.
+    const waiting7 = (items || []).filter(it =>
+      it.list === 'waiting' && inDomain(it) &&
+      daysSince(it.waitingSince || it.created) > 7).length;
+    if (waiting7) {
+      chips.push(`<button class="na-chip na-waiting" onclick="jumpToWaiting()"
+        aria-label="${waiting7} waiting more than seven days">
+        <span class="na-count">${waiting7}</span>
+        <span class="na-label">Waiting &gt;7d</span></button>`);
+    }
+
+    if (!chips.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+    el.innerHTML = chips.join('');
+    el.style.display = '';
+  }
+
+  // Switch the task tab to Waiting and scroll it into view (selectList already
+  // re-renders + scrolls to the tab bar).
+  function jumpToWaiting() { selectList('waiting'); }
+
+  // ══ Renegotiate flashcard (#13b) ═════════════════════════════════════
+  // Reuses the existing flashcard overlay + keyboard machinery (its own mode
+  // branch in the dispatcher, keyed off activeTriageMode==='renegotiate'). The
+  // queue is the strip's overdue set — computeOverdue() entries tagged
+  // kind:'deadline' (past-due open deadline) or kind:'task' (This-Week task
+  // scheduled >3d ago). Actions mirror the triage grammar; the New-date sub-mode
+  // reuses the day-picker with hold-until-chosen semantics (nothing is written
+  // until a day is actually picked). Also exposed globally so future surfaces
+  // can call it, not just the strip's overdue chip.
+  let renegQueue = [];
+  let renegIndex = 0;
+  let renegTotal = 0;
+  let renegPicker = null;   // the entry awaiting a day in the New-date sub-mode
+
+  function renegotiateOverdue() {
+    renegQueue = computeOverdue();
+    renegIndex = 0;
+    renegTotal = renegQueue.length;
+    renegPicker = null;
+    if (!renegTotal) { showToast('Nothing overdue — nicely done.'); return; }
+    activeTriageMode = 'renegotiate';
+    openTriageOverlay();
+    renderRenegCard();
+  }
+
+  function renderRenegCard() {
+    renegPicker = null;   // any re-render leaves the day-picker sub-mode
+    const card = document.getElementById('triage-card');
+    if (renegIndex >= renegQueue.length) {
+      card.innerHTML = `
+        <div class="triage-done-screen">
+          <div class="done-icon">○</div>
+          <h2>All renegotiated</h2>
+          <p>You worked through ${renegTotal} overdue item${renegTotal === 1 ? '' : 's'}.</p>
+          <button class="btn btn-primary" onclick="closeTriage()">Back to dashboard</button>
+        </div>`;
+      return;
+    }
+    const entry = renegQueue[renegIndex];
+    const rec = entry.rec;
+    const pct = Math.round((renegIndex / renegTotal) * 100);
+    const title = entry.kind === 'deadline' ? rec.title : rec.text;
+    const kindTag = `<span class="unsorted-flag">${entry.kind === 'deadline' ? 'deadline' : 'task'}</span>`;
+    const overdue = `<span class="reneg-overdue">${entry.overdueDays}d overdue</span>`;
+    const detail = entry.kind === 'deadline'
+      ? `<div class="triage-item-age">${escapeHtml(rec.type || 'deadline')} · due ${escapeHtml(rec.due_date || '')}</div>`
+      : (rec.scheduled ? `<div class="triage-item-age">was scheduled ${escapeHtml(formatDate(rec.scheduled + 'T00:00:00Z'))}</div>` : '');
+    card.innerHTML = `
+      <div class="triage-progress">
+        <span>${renegIndex + 1} of ${renegTotal}</span>
+        <div class="triage-progress-bar"><div class="triage-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="triage-item-text">${titleHtml(title)}${kindTag}${overdue}</div>
+      ${detail}
+      <div class="triage-actions" id="triage-actions">
+        <button class="triage-btn triage-btn-thisweek" onclick="renegToday()">Today <kbd>1</kbd></button>
+        <button class="triage-btn triage-btn-someday" onclick="renegNewDate()">New date <kbd>2</kbd></button>
+        <button class="triage-btn triage-btn-waiting" onclick="renegSomeday()">Someday <kbd>3</kbd></button>
+        <button class="triage-btn triage-btn-skip" onclick="renegSkip()">Skip <kbd>space</kbd></button>
+        <button class="triage-btn triage-btn-delete" onclick="renegDrop()">Drop <kbd>x</kbd></button>
+      </div>`;
+  }
+
+  // Remove the current entry, re-render the next, and re-pull the stores so the
+  // dashboard + strip reflect the change.
+  async function renegAdvance() {
+    renegQueue.splice(renegIndex, 1);
+    renderRenegCard();
+    await fetchDeadlines();
+    await fetchItems();
+  }
+
+  // Today (1/t): task → schedule today (9AM default); deadline → schedule its
+  // linked task for today if present, else pull the deadline's due_date to today.
+  async function renegToday() {
+    const entry = renegQueue[renegIndex];
+    if (!entry) return;
+    const today = getWeekDays()[0].iso;
+    if (entry.kind === 'task') {
+      await _post('/api/schedule', { id: entry.rec.id, day: today });
+    } else if (entry.rec.linked_task_id) {
+      await _post('/api/schedule', { id: entry.rec.linked_task_id, day: today });
+    } else {
+      await _post('/api/deadlines/update', { id: entry.rec.id, fields: { due_date: today } });
+    }
+    await renegAdvance();
+  }
+
+  // New date (2/n): open the shared day picker (with ← Back). Hold-until-chosen —
+  // the entry stays in the queue until a day is actually picked.
+  function renegNewDate() {
+    const entry = renegQueue[renegIndex];
+    if (!entry) return;
+    renegPicker = entry;
+    const actionsEl = document.getElementById('triage-actions');
+    const days = getWeekDays();
+    const dayButtons = days.map(d =>
+      `<button class="triage-day-btn ${d.isToday ? 'today' : ''}" onclick="renegSchedule('${d.iso}')">
+        <span class="day-name">${d.isToday ? 'Today' : d.name}</span>
+        ${d.date}
+      </button>`).join('');
+    actionsEl.innerHTML = `
+      <div class="triage-day-picker">
+        <p>New date?</p>
+        <div class="triage-days">${dayButtons}</div>
+        <button class="triage-back-btn" onclick="renderRenegCard()">← Back</button>
+      </div>`;
+  }
+
+  async function renegSchedule(day) {
+    const entry = renegPicker;
+    if (!entry) return;
+    if (entry.kind === 'task') {
+      await _post('/api/schedule', { id: entry.rec.id, day });
+      // A task got a NEW date at the user's request — record it as a deferral so
+      // the EA confrontation loop sees repeat slippage (20h-debounced server-side,
+      // which is fine). Deadlines have NO deferrals field, so this is task-only.
+      try { apiFetch(`${API}/api/skip`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: entry.rec.id }) }).catch(() => {}); } catch (e) { /* ignore */ }
+    } else {
+      await _post('/api/deadlines/update', { id: entry.rec.id, fields: { due_date: day } });
+    }
+    renegPicker = null;
+    await renegAdvance();
+  }
+
+  // Someday (3/s): task → move to someday; deadline → its intent survives as a
+  // dateless someday task (move the linked task, or create one), then mark the
+  // deadline done so it stops being a runway.
+  async function renegSomeday() {
+    const entry = renegQueue[renegIndex];
+    if (!entry) return;
+    if (entry.kind === 'task') {
+      await _post('/api/move', { id: entry.rec.id, list: 'someday' });
+    } else {
+      if (entry.rec.linked_task_id) {
+        await _post('/api/move', { id: entry.rec.linked_task_id, list: 'someday' });
+      } else {
+        // /api/capture only honors inbox|waiting|tabs (someday falls back to
+        // inbox), so create the task then move it into someday explicitly.
+        const res = await _post('/api/capture', { text: entry.rec.title });
+        let created = null; try { created = await res.json(); } catch (e) { /* ignore */ }
+        if (created && created.id) await _post('/api/move', { id: created.id, list: 'someday' });
+      }
+      await _post('/api/deadlines/update', { id: entry.rec.id, fields: { status: 'done' } });
+    }
+    await renegAdvance();
+  }
+
+  // Drop (x): task → the undoable delete path; deadline → undoable delete of the
+  // deadline record. Both defer the server commit for the 5s undo window.
+  function renegDrop() {
+    const idx = renegIndex;
+    const entry = renegQueue[idx];
+    if (!entry) return;
+    renegQueue.splice(idx, 1);
+    renderRenegCard();
+    if (entry.kind === 'task') {
+      undoable('Dropped',
+        async () => { await serverDelete(entry.rec.id); await fetchItems(); },
+        () => { renegQueue.splice(idx, 0, entry); renderRenegCard(); });
+    } else {
+      undoable('Dropped',
+        async () => { await _post('/api/deadlines/delete', { id: entry.rec.id }); await fetchDeadlines(); },
+        () => { renegQueue.splice(idx, 0, entry); renderRenegCard(); });
+    }
+  }
+
+  // Skip (space): move on WITHOUT removing or deferring (unlike triage Skip,
+  // renegotiate Skip never increments a deferral).
+  function renegSkip() { renegIndex++; renderRenegCard(); }
+
+  // Small POST helper used by the renegotiate actions.
+  async function _post(path, body) {
+    return apiFetch(`${API}${path}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
   }
 
   async function backfillDomains(btn) {
@@ -3559,12 +4822,52 @@
 
     const el = document.getElementById('sparks-list');
     if (!list.length) { el.innerHTML = '<div class="saved-no-results">No matches</div>'; return; }
-    el.innerHTML = list.map(s => `
-      <div class="spark-item">
-        ${s.reaction ? `<div class="spark-reaction">${escapeHtml(s.reaction)}</div>` : ''}
-        ${s.url ? `<a class="spark-link" href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(s.url))}</a>` : ''}
-        <div class="spark-date">${formatDate(s.created)}</div>
-      </div>`).join('');
+    el.innerHTML = list.map(s => {
+      if (s.id === editingSparkId) {
+        return `
+          <div class="spark-item" id="spark-${s.id}">
+            <div class="spark-main">
+              <textarea class="spark-edit-input" id="spark-edit-${s.id}" rows="2">${escapeHtml(s.reaction || '')}</textarea>
+              <div class="spark-edit-actions">
+                <button class="btn btn-primary btn-small" onclick="saveSpark('${s.id}')">Save</button>
+                <button class="btn btn-ghost btn-small" onclick="cancelSparkEdit()">Cancel</button>
+              </div>
+            </div>
+          </div>`;
+      }
+      return `
+      <div class="spark-item" id="spark-${s.id}">
+        <div class="spark-main">
+          ${s.reaction ? `<div class="spark-reaction">${escapeHtml(s.reaction)}</div>` : ''}
+          ${s.url ? `<a class="spark-link" href="${escapeHtml(safeUrl(s.url))}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(s.url))}</a>` : ''}
+          <div class="spark-date">${formatDate(s.created)}</div>
+        </div>
+        <div class="spark-actions">
+          <button class="spark-act" onclick="editSpark('${s.id}')" title="Edit reaction">edit</button>
+          <button class="spark-act spark-act-del" onclick="deleteSpark('${s.id}', event)" title="Delete spark">✕</button>
+        </div>
+      </div>`; }).join('');
+  }
+
+  let editingSparkId = null;
+  function editSpark(id) { editingSparkId = id; renderSparks(); const t = document.getElementById(`spark-edit-${id}`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
+  function cancelSparkEdit() { editingSparkId = null; renderSparks(); }
+  async function saveSpark(id) {
+    const t = document.getElementById(`spark-edit-${id}`);
+    if (!t) return;
+    const res = await apiFetch(`${API}/api/sparks/update`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, fields: { reaction: t.value.trim() } }) });
+    editingSparkId = null;
+    if (res && res.ok) { await fetchSparks(); showToast('Spark updated'); }
+    else { renderSparks(); showToast('Couldn’t save — try on the desktop'); }
+  }
+  function deleteSpark(id, ev) {
+    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.spark-item') : null;
+    if (row) row.style.display = 'none';
+    undoable('Spark deleted',
+      async () => { await apiFetch(`${API}/api/sparks/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); await fetchSparks(); },
+      () => { if (row) row.style.display = ''; });
   }
 
   // ══ Recipes ══════════════════════════════════════════════════════
@@ -3624,13 +4927,20 @@
     document.getElementById('recipes-count').textContent = showHidden ? recipes.length : visibleTotal;
     section.style.display = recipes.length ? '' : 'none';
 
-    // Purge / show-hidden controls appear only when something is excluded.
+    // Show-hidden checkbox appears whenever something is excluded. The Purge
+    // button (destructive — its endpoint once destroyed 143 records) is demoted
+    // OUT of the hero row: it renders ONLY while "show hidden" is checked, so
+    // the hero row keeps just the checkbox + Plan This Week.
     const purgeBtn = document.getElementById('purge-hidden-btn');
     const hiddenWrap = document.getElementById('show-hidden-wrap');
     if (excludedCount > 0) {
-      purgeBtn.style.display = '';
-      purgeBtn.textContent = `Purge ${excludedCount} hidden`;
       hiddenWrap.style.display = 'inline-flex';
+      if (showHidden) {
+        purgeBtn.style.display = '';
+        purgeBtn.textContent = `Purge ${excludedCount} hidden`;
+      } else {
+        purgeBtn.style.display = 'none';
+      }
     } else {
       purgeBtn.style.display = 'none';
       hiddenWrap.style.display = 'none';
@@ -3807,10 +5117,16 @@
     await fetchRecipes();
   }
 
-  async function markCooked(id) {
+  async function serverCooked(id) {
     await apiFetch(`${API}/api/recipes/cooked`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) });
     await fetchRecipes();
     await fetchHealth();
+  }
+
+  // "Cooked" only ever increments, so a mis-tap corrupts the count (and skews
+  // Plan-This-Week). Defer the bump through the undo window so it's reversible.
+  function markCooked(id) {
+    undoable('Marked cooked', () => serverCooked(id), null);
   }
 
   const resetRecipeCap = () => { recipeShowCap = 60; };
@@ -3918,7 +5234,7 @@
       <div class="plan-grocery">
         <h3>Grocery list</h3>
         ${grocery || '<p class="plan-sub">No ingredients recorded on these picks.</p>'}
-        <button class="btn btn-ghost btn-small" style="margin-top:10px" onclick="copyGrocery()">Copy list</button>
+        <button class="btn btn-ghost btn-small" style="margin-top:10px" onclick="copyGrocery(event)">Copy list</button>
       </div>`;
   }
 
@@ -3928,7 +5244,7 @@
   }
 
   async function planCooked(id) {
-    await markCooked(id);
+    await serverCooked(id);   // plan modal mutates its own output, so commit now
     if (planResult) planResult.picks = planResult.picks.filter(p => p.id !== id);
     renderPlanOutput();
   }
@@ -3949,12 +5265,14 @@
     renderPlanOutput();
   }
 
-  function copyGrocery() {
+  function copyGrocery(ev) {
     if (!planResult) return;
+    const btn = ev && ev.currentTarget;
     const lines = (planResult.grocery||[]).slice();
     (planResult.grocery_approx||[]).forEach(a => lines.push(`${a.ingredients.join(', ')} (check video — ${a.title})`));
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      const btn = event.target; const t = btn.textContent; btn.textContent = 'Copied ✓';
+      if (!btn) return;
+      const t = btn.textContent; btn.textContent = 'Copied ✓';
       setTimeout(() => btn.textContent = t, 1200);
     });
   }
@@ -3982,6 +5300,7 @@
   }
 
   function renderDeadlines() {
+    renderNeedsAttention();   // deadlines feed 3 of the 4 exception signals
     const section = document.getElementById('deadlines-section');
     // Active = not done/dismissed, in the current domain lens.
     const active = deadlines.filter(d =>
@@ -4001,9 +5320,11 @@
     }
     el.innerHTML = active.map(d => {
       const dl = d.days_left;
-      let badgeCls = 'far', badgeTxt = dl == null ? '—' : `${dl}d`;
-      if (dl != null && dl <= 3) badgeCls = 'soon';
-      else if (d.runway_open) badgeCls = 'open';
+      const badgeTxt = dl == null ? '—' : `${dl}d`;
+      // State by days-out: overdue/≤1d urgent, 2-7d soon, else calm neutral.
+      let badgeCls = 'far';
+      if (dl != null && dl <= 1) badgeCls = 'urgent';
+      else if (dl != null && dl <= 7) badgeCls = 'soon';
       const actions = d.proposed
         ? `<button class="btn btn-primary btn-small" onclick="confirmDeadline('${d.id}')">Confirm</button>
            <button class="btn btn-ghost btn-small" onclick="deleteDeadline('${d.id}')">Dismiss</button>`
@@ -4014,11 +5335,12 @@
           <span class="dl-badge ${badgeCls}">${badgeTxt}</span>
           <div class="deadline-main">
             <div class="deadline-title">${escapeHtml(d.title)}${d.proposed ? ' <span class="unsorted-flag">proposed</span>' : ''}${domainChip(d)}</div>
-            <div class="deadline-meta">due ${d.due_date} · ${d.type} · runway ${d.lead_time_days}d${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
+            <div class="deadline-meta clamp-2">due ${d.due_date} · ${d.type} · runway ${d.lead_time_days}d${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
           </div>
           ${actions}
         </div>`;
     }).join('') || '<div class="saved-no-results">No deadlines yet — <strong>+ Add</strong> one above, or run <code>python3 deadlines-interview.py</code> to populate them in 5 minutes.</div>';
+    wireClamps(el);
   }
 
   let meetings = [];
@@ -4043,6 +5365,7 @@
   }
 
   function renderMeetings() {
+    renderNeedsAttention();   // proposed meetings feed the unconfirmed signal
     const section = document.getElementById('meetings-section');
     // Past meetings drop off on their own (server computes `past`).
     const active = meetings.filter(m =>
@@ -4061,16 +5384,22 @@
         ? `<button class="btn btn-primary btn-small" onclick="confirmMeeting('${m.id}')">Confirm</button>
            <button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">Dismiss</button>`
         : `<button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">✕</button>`;
+      // Same state-by-days mapping as deadlines: ≤1d urgent, 2-7d soon, else neutral.
+      const du = m.days_until;
+      let mCls = 'far';
+      if (du != null && du <= 1) mCls = 'urgent';
+      else if (du != null && du <= 7) mCls = 'soon';
       return `
         <div class="deadline-item ${m.proposed ? 'proposed' : ''}">
-          <span class="dl-badge ${m.days_until != null && m.days_until <= 1 ? 'soon' : 'open'}">${m.days_until == null ? '—' : m.days_until + 'd'}</span>
+          <span class="dl-badge ${mCls}">${du == null ? '—' : du + 'd'}</span>
           <div class="deadline-main">
             <div class="deadline-title">${escapeHtml(m.title)}${m.proposed ? ' <span class="unsorted-flag">unconfirmed</span>' : ''}${domainChip(m)}</div>
-            <div class="deadline-meta">${fmtMeetingWhen(m.start)}${meta ? ' · ' + meta : ''}</div>
+            <div class="deadline-meta clamp-2">${fmtMeetingWhen(m.start)}${meta ? ' · ' + meta : ''}</div>
           </div>
           ${actions}
         </div>`;
     }).join('');
+    wireClamps(document.getElementById('meetings-list'));
   }
 
   async function confirmMeeting(id) {
@@ -4147,17 +5476,36 @@
 
   // ══ Morning brief panel ══════════════════════════════════════════
 
-  function briefMdToHtml(md) {
+  /* boxed=true (brief panel only, #26 round 2): each `## Section` and its content
+     become a `.brief-sub` sub-card headed by the section name — the reference
+     `.lede` architecture, with the "One sentence:" box as the model every section
+     now matches. Header zone (title, lede, SYSTEM lines, travel banner, Monday
+     evidence) stays ABOVE the sub-boxes; trailing meta (the `_Stale:_` line onward)
+     collects into one muted footer sub-box. boxed=false keeps the flat rendering
+     the newsletter section + archive still use — do NOT change that path. */
+  function briefMdToHtml(md, boxed) {
     const out = [];
-    let inList = false;
+    let inList = false, inSub = false, inFooter = false;
+    const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+    const closeSub = () => { closeList(); if (inSub) { out.push('</div>'); inSub = false; } };
     for (let line of md.split('\n')) {
-      if (/^#\s/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h1>${escapeHtml(line.replace(/^#\s/, ''))}</h1>`); }
-      else if (/^##\s/.test(line)) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<h2>${escapeHtml(line.replace(/^##\s/, ''))}</h2>`); }
+      const t = line.trim();
+      if (/^#\s/.test(line)) { if (boxed) closeSub(); else closeList(); out.push(`<h1>${escapeHtml(line.replace(/^#\s/, ''))}</h1>`); }
+      else if (/^##\s/.test(line)) {
+        const name = escapeHtml(line.replace(/^##\s/, ''));
+        if (boxed) { closeSub(); inFooter = false; out.push(`<div class="brief-sub"><div class="brief-sub-head">${name}</div>`); inSub = true; }
+        else { closeList(); out.push(`<h2>${name}</h2>`); }
+      }
+      else if (boxed && !inFooter && /^_Stale:/.test(t)) {  /* footer boundary: pull trailing meta out of the last section into one muted box */
+        closeSub(); out.push('<div class="brief-sub brief-sub-footer">'); inSub = true; inFooter = true;
+        out.push(`<p class="brief-em"><em>${escapeHtml(t.replace(/^_|_$/g, ''))}</em></p>`);
+      }
       else if (/^-\s/.test(line)) { if (!inList) { out.push('<ul>'); inList = true; } out.push(`<li>${mdInline(line.replace(/^-\s/, ''))}</li>`); }
-      else if (/^_.*_$/.test(line.trim())) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<em>${escapeHtml(line.trim().replace(/^_|_$/g, ''))}</em>`); }
-      else if (line.trim()) { if (inList) { out.push('</ul>'); inList = false; } out.push(`<p>${mdInline(line)}</p>`); }
+      else if (/^_.*_$/.test(t)) { closeList(); out.push(`<p class="brief-em"><em>${escapeHtml(t.replace(/^_|_$/g, ''))}</em></p>`); }
+      else if (/^\*\*One sentence:\*\*/.test(t)) { closeList(); out.push(`<p class="brief-lede">${mdInline(line)}</p>`); }  /* #26: the "One sentence:" synthesis, boxed */
+      else if (t) { closeList(); out.push(`<p>${mdInline(line)}</p>`); }
     }
-    if (inList) out.push('</ul>');
+    if (boxed) closeSub(); else closeList();
     return out.join('');
   }
   function mdInline(s) { return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); }
@@ -4169,7 +5517,7 @@
       const panel = document.getElementById('brief-panel');
       const todayKey = new Date().toISOString().slice(0, 10);
       if (b.fresh && b.markdown && localStorage.getItem('brief-dismissed') !== todayKey) {
-        panel.innerHTML = `<button class="btn btn-ghost btn-small brief-dismiss" onclick="dismissBrief()">Dismiss for today</button>${briefMdToHtml(b.markdown)}`;
+        panel.innerHTML = `<button class="btn btn-ghost btn-small brief-dismiss" onclick="dismissBrief()">Dismiss for today</button>${briefMdToHtml(b.markdown, true)}`;
         panel.style.display = '';
       } else {
         panel.style.display = 'none';
@@ -4224,8 +5572,8 @@
     const pop = document.getElementById('ea-popover');
     pop.style.display = pop.style.display === 'none' ? 'flex' : 'none';
   }
-  function copyEACmd() {
-    const btn = event.target;
+  function copyEACmd(ev) {
+    const btn = (ev && ev.currentTarget) || document.querySelector('.ea-copy');
     const cmd = 'cd ~/Dropbox/Apps/Triage_Kuk && claude';
     const flash = () => { const t = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = t, 1200); };
     const fallback = () => {
@@ -4242,7 +5590,7 @@
     const btn = document.getElementById('ea-btn');
     if (!btn || !LOCAL) return;
     const n = (healthData && healthData.ea_topics) || 0;
-    btn.textContent = n > 0 ? `🤖 EA (${n})` : '🤖 EA';
+    btn.innerHTML = n > 0 ? `🤖 EA <span class="ea-count">${n}</span>` : '🤖 EA';
     btn.classList.toggle('has-topics', n > 0);
   }
 

@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Garden</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
   /* v8: the Vault (a dark link-graveyard) became the Garden — warm, light,
      living. Same layout bones; opposite mood. Palette: cream + garden green. */
@@ -17,12 +16,15 @@
     --accent-soft: rgba(74, 124, 89, 0.10);
     --border: #E4DCCB;
     --radius: 10px;
+    /* Type system (design pass 3.5, #25): native system stack, no webfonts. */
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'DM Sans', -apple-system, sans-serif;
+    font-family: var(--sans);
     background: var(--bg);
     color: var(--ink);
     min-height: 100vh;
@@ -34,10 +36,11 @@
   }
 
   h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2.1rem;
-    font-weight: 400;
+    font-family: var(--sans);
+    font-size: clamp(1.8rem, 4vw, 2.1rem);
+    font-weight: 700;
     letter-spacing: -0.02em;
+    line-height: 1.08;
     margin-bottom: 4px;
     color: var(--accent);
   }
@@ -62,9 +65,10 @@
     line-height: 1.55;
   }
   .harvest h2 {
-    font-family: 'DM Serif Display', serif;
-    font-weight: 400;
+    font-family: var(--sans);
+    font-weight: 650;
     font-size: 1.15rem;
+    letter-spacing: -0.01em;
     color: var(--accent);
     margin-bottom: 8px;
   }
@@ -190,8 +194,13 @@
   .garden-item-url a { color: #9A9488; text-decoration: none; }
   .garden-item-url a:hover { text-decoration: underline; }
 
-  .garden-item-delete {
-    opacity: 0;
+  .garden-item-tools {
+    display: flex; gap: 4px; flex-shrink: 0; margin-top: 2px;
+    opacity: 0; transition: opacity 0.1s;
+  }
+  .garden-item:hover .garden-item-tools,
+  .garden-item:focus-within .garden-item-tools { opacity: 1; }
+  .garden-item-edit, .garden-item-delete {
     background: none;
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -199,10 +208,25 @@
     width: 24px; height: 24px;
     cursor: pointer; font-size: 0.7rem;
     display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; margin-top: 2px; transition: all 0.1s;
+    flex-shrink: 0; transition: all 0.1s;
   }
-  .garden-item:hover .garden-item-delete { opacity: 1; }
+  .garden-item-edit:hover { border-color: var(--accent); color: var(--accent); }
   .garden-item-delete:hover { border-color: #C0392B; color: #C0392B; }
+
+  .garden-item-editing { display: block; background: var(--surface); box-shadow: 0 1px 4px rgba(46,58,47,0.06); }
+  .garden-edit { display: flex; flex-direction: column; gap: 4px; }
+  .garden-edit label { font-size: 0.72rem; color: var(--ink-muted); margin-top: 6px; }
+  .garden-edit textarea, .garden-edit input {
+    font: inherit; font-size: 0.88rem; padding: 8px 10px; resize: vertical;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--ink);
+  }
+  .garden-edit textarea:focus, .garden-edit input:focus { outline: none; border-color: var(--accent); }
+  .garden-edit-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .garden-edit-actions button {
+    font: inherit; font-size: 0.82rem; cursor: pointer; border-radius: 8px; padding: 6px 14px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+  }
+  .garden-edit-actions .g-save { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   .empty { text-align: center; color: var(--ink-muted); padding: 60px 20px; font-size: 0.92rem; line-height: 1.6; }
   .no-results { text-align: center; color: var(--ink-muted); padding: 40px 20px; font-size: 0.88rem; }
@@ -214,11 +238,29 @@
 
   @media (max-width: 640px) {
     body { padding: 60px 16px 40px; }
+    /* Hover-reveal is a no-op on touch — always show the edit/delete controls. */
+    .garden-item-tools { opacity: 1; }
   }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(12px);
+    max-width: 90vw; background: #2C3A30; color: #fff; padding: 11px 18px; border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25); font-size: 0.9rem; z-index: 400;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+    display: inline-flex; align-items: center; gap: 14px;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast-action {
+    background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff; font: inherit;
+    font-weight: 700; cursor: pointer; padding: 3px 12px; border-radius: 8px; flex: none;
+  }
+  .toast-action:hover { background: rgba(255,255,255,0.15); }
+  .toast-action:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 </style>
 </head>
 <body>
 
+<div id="toast"></div>
 <a class="back-link" href="/">&larr; Triage</a>
 
 <h1>Garden</h1>
@@ -248,19 +290,68 @@
     render();
   }
 
-  async function deleteItem(id) {
-    await fetch(`${API}/api/garden/delete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    });
-    await fetchGarden();
+  // ── Undo toast ──────────────────────────────────────────────────────
+  let _toastTimer = null, _undo = null;
+  const UNDO_MS = 5000;
+  function showToast(msg, opts) {
+    const el = document.getElementById('toast');
+    if (!el || !msg) return;
+    el.textContent = '';
+    const span = document.createElement('span'); span.textContent = msg; el.appendChild(span);
+    if (opts && opts.onAction) {
+      const btn = document.createElement('button');
+      btn.className = 'toast-action'; btn.textContent = opts.actionLabel || 'Undo';
+      btn.onclick = () => { el.classList.remove('show'); if (_toastTimer) clearTimeout(_toastTimer); opts.onAction(); };
+      el.appendChild(btn);
+    }
+    el.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), (opts && opts.duration) || 4000);
+  }
+  function undoable(label, commit, restore) {
+    commitPendingUndo();
+    const u = { commit }; u.timer = setTimeout(commitPendingUndo, UNDO_MS); _undo = u;
+    showToast(label, { actionLabel: 'Undo', duration: UNDO_MS, onAction: () => {
+      if (_undo !== u) return; clearTimeout(u.timer); _undo = null; if (restore) restore();
+    }});
+  }
+  function commitPendingUndo() {
+    if (!_undo) return;
+    const u = _undo; _undo = null; clearTimeout(u.timer);
+    try { u.commit(); } catch (e) { /* fire-and-forget */ }
+  }
+  window.addEventListener('beforeunload', commitPendingUndo);
+
+  // Delete a Garden item — its memo is the primary voice, so make it reversible:
+  // optimistically hide the card, commit the server delete after the undo window.
+  function deleteItem(id, ev) {
+    const card = ev && ev.currentTarget ? ev.currentTarget.closest('.garden-item') : null;
+    if (card) card.style.display = 'none';
+    undoable('Removed from Garden',
+      async () => {
+        await fetch(`${API}/api/garden/delete`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        await fetchGarden();
+      },
+      () => { if (card) card.style.display = ''; });
   }
 
+  // Must escape quotes too — escapeHtml feeds href="${…}" attributes here.
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str == null ? '' : str;
-    return div.innerHTML;
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  // Never let a captured javascript:/data: URL become a live link.
+  function safeUrl(url) {
+    const u = (url || '').trim();
+    if (!u) return '#';
+    if (/^(https?:|mailto:)/i.test(u)) return u;
+    if (/^[/#?]/.test(u)) return u;
+    if (!/^[a-z][a-z0-9+.\-]*:/i.test(u)) return u;
+    return '#';
   }
 
   function highlight(text, query) {
@@ -352,8 +443,25 @@
 
     resultsEl.innerHTML = filtered.map(item => {
       const head = headline(item);
+      if (item.id === editingGardenId) {
+        return `
+          <div class="garden-item garden-item-editing">
+            <div class="garden-edit">
+              <label>Your note (your angle — leads the card)</label>
+              <textarea id="g-note-${item.id}" rows="2">${escapeHtml(item.note || '')}</textarea>
+              <label>Title</label>
+              <input id="g-title-${item.id}" value="${escapeHtml(item.title || '')}" placeholder="Title">
+              <label>Theme</label>
+              <input id="g-theme-${item.id}" value="${escapeHtml(item.theme || '')}" placeholder="Theme (shelf label)">
+              <div class="garden-edit-actions">
+                <button class="g-save" onclick="saveGardenItem('${item.id}')">Save</button>
+                <button class="g-cancel" onclick="cancelGardenEdit()">Cancel</button>
+              </div>
+            </div>
+          </div>`;
+      }
       const titleHtml = item.url
-        ? `<a class="garden-item-title" href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(head, query)}</a>`
+        ? `<a class="garden-item-title" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${highlight(head, query)}</a>`
         : `<div class="garden-item-title" style="cursor:default">${highlight(head, query)}</div>`;
       const memo = item.note ? `<div class="garden-item-memo">${highlight(item.note, query)}</div>` : '';
       const kp = item.key_point ? `<div class="garden-item-kp">${highlight(item.key_point, query)}</div>` : '';
@@ -365,7 +473,7 @@
       if (item.theme) metaBits.push(`<span class="theme-tag">${escapeHtml(item.theme)}</span>`);
       if (item.est_minutes) metaBits.push(`${item.est_minutes} min`);
       if (item.link_dead) metaBits.push('<span class="badge-dead" title="The server can\'t log in to read this (social post / paywall). Re-capture it with the browser extension to grab its caption and digest it.">🔒 couldn\'t read &mdash; re-capture in browser</span>');
-      if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
+      if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
       if (item.images && item.images.length) metaBits.unshift('<span title="Saved from a screenshot">📷</span>');
       const meta = metaBits.length ? `<div class="garden-item-meta">${metaBits.join('')}</div>` : '';
       const imgs = (item.images && item.images.length)
@@ -382,10 +490,41 @@
             ${imgs}
             ${meta}
           </div>
-          <button class="garden-item-delete" onclick="deleteItem('${item.id}')" title="Delete">✕</button>
+          <div class="garden-item-tools">
+            <button class="garden-item-edit" onclick="editGardenItem('${item.id}')" title="Edit">✎</button>
+            <button class="garden-item-delete" onclick="deleteItem('${item.id}', event)" title="Delete">✕</button>
+          </div>
         </div>
       `;
     }).join('');
+  }
+
+  let editingGardenId = null;
+  function editGardenItem(id) {
+    editingGardenId = id;
+    render();
+    const t = document.getElementById(`g-note-${id}`);
+    if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+  }
+  function cancelGardenEdit() { editingGardenId = null; render(); }
+  async function saveGardenItem(id) {
+    const note = document.getElementById(`g-note-${id}`);
+    const title = document.getElementById(`g-title-${id}`);
+    const theme = document.getElementById(`g-theme-${id}`);
+    const fields = {};
+    if (note) fields.note = note.value.trim();
+    if (title) fields.title = title.value.trim();
+    if (theme) fields.theme = theme.value.trim();
+    editingGardenId = null;
+    try {
+      const res = await fetch(`${API}/api/garden/update`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, fields })
+      });
+      if (res.ok) { await fetchGarden(); showToast('Saved'); return; }
+    } catch (e) { /* fall through */ }
+    render();
+    showToast('Couldn’t save');
   }
 
   // ── Weekly harvest (the Monday digest) ──────────────────────────────

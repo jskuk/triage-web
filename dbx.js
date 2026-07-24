@@ -245,6 +245,19 @@
     if (path === '/api/garden' || path === '/api/vault') return resp(await readJson('vault.json', []));
     if (path === '/api/travel') { const t = await readJson('travel.flag', null); return resp(t ? { on: true, since: t.since, note: t.note } : { on: false }); }
     if (path === '/api/brief') { const md = await download('brief.md'); const fresh = md != null; return resp({ markdown: md, generated: null, fresh }); }
+    if (path === '/api/newsletter-digest') {
+      // Read-only mirror of the cloud-written digest. Strip the digested_ids ring;
+      // archive listing is LOCAL-only (a Dropbox folder listing per load is too
+      // chatty on a phone — same carve-out as the conflict scan), so the UI hides
+      // "Past digests" when archive is empty. Local date (not toISOString) per the
+      // UTC-rollover gotcha.
+      const st = await readJson('newsletter-digest.json', null);
+      if (!st) return resp({ date: null, markdown: null, teaser: null, themes: [], count: 0, senders: [], mode: null, fresh: false, archive: [] });
+      delete st.digested_ids;
+      st.archive = [];
+      st.fresh = st.date === new Date().toLocaleDateString('en-CA');
+      return resp(st);
+    }
     // Sweep Insights (v6): read-only join here — the browser prunes <2-live-tab
     // proposals for display but does NOT write the pruned state back (the Mac /
     // cloud sweep run owns insights-state.json; a phone read must not race it).
