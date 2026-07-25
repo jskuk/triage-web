@@ -1293,6 +1293,14 @@
     color: var(--ink);
   }
   .brief-panel .brief-lede strong { color: var(--accent); font-weight: 700; }
+  /* Markdown links in the brief/newsletter render as QUIET links, not loud accents. */
+  .brief-panel .brief-sub a, .brief-panel .brief-lede a, .brief-panel a, .newsletter-section a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .brief-panel a:hover, .newsletter-section a:hover {
+    border-bottom-color: var(--accent); text-decoration: underline;
+  }
   .brief-panel .brief-dismiss { float: right; font-size: 0.78rem; }
 
   /* ── Deadlines ── */
@@ -5532,7 +5540,17 @@
     if (boxed) closeSub(); else closeList();
     return out.join('');
   }
-  function mdInline(s) { return escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); }
+  function mdInline(s) {
+    let h = escapeHtml(s);
+    // markdown links [text](url) — the synthesis prompts (Weekend reading, Garden
+    // harvest, newsletters) emit these. href MUST pass through safeUrl (house rule).
+    // Input is already escapeHtml'd, so `&` in a URL arrives as `&amp;`; un-double-
+    // escape before safeUrl, then re-escape via escapeHtml for the attribute.
+    h = h.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) =>
+      `<a href="${escapeHtml(safeUrl(url.replace(/&amp;/g, '&')))}" target="_blank" rel="noopener">${text}</a>`);
+    // Bold runs AFTER links so `**` inside link text still works.
+    return h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
 
   async function fetchBrief() {
     try {

@@ -532,7 +532,7 @@
     s = escapeHtml(s);
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g,
-      (m, t, u) => `<a href="${u}" target="_blank" rel="noopener">${t}</a>`);
+      (m, t, u) => `<a href="${escapeHtml(safeUrl(u.replace(/&amp;/g, '&')))}" target="_blank" rel="noopener">${t}</a>`);
     return s;
   }
 
