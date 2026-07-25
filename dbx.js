@@ -239,6 +239,26 @@
       const ps = await readJson('projects.json', []);
       return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled }; }) });
     }
+    if (path === '/api/meetings') {
+      // Mirror server.py _meetings_with_computed: start is naive-local
+      // 'YYYY-MM-DDTHH:MM' — parse the parts directly (never feed the bare string
+      // to new Date(), which TZ-shifts it). past = start < now; days_until = the
+      // calendar-day difference (both dropped to midnight, like start.date()-now.date()).
+      const ms = await readJson('meetings.json', []);
+      const now = new Date();
+      const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return resp(ms.map(m => {
+        const p = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(m.start || '');
+        let past = false, days_until = null;
+        if (p) {
+          const start = new Date(+p[1], +p[2] - 1, +p[3], +p[4], +p[5]);
+          const startMid = new Date(+p[1], +p[2] - 1, +p[3]);
+          past = start < now;
+          days_until = Math.round((startMid - todayMid) / 86400000);
+        }
+        return { ...m, past, days_until };
+      }));
+    }
     if (path === '/api/sparks') return resp(await readJson('sparks.json', []));
     if (path === '/api/recipes') return resp(await readJson('recipes/recipes.json', []));
     if (path === '/api/logs') return resp(await readJson('journal.json', []));

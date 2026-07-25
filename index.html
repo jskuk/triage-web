@@ -1460,6 +1460,9 @@
     background: var(--danger); color: #fff; border: none; border-radius: 8px; padding: 5px 14px;
   }
 
+  /* Visible UI-error bar — the phone has no console, so a thrown error paints here. */
+  #ui-error-bar { display:none; background:#FBEBE8; color:#B3362A; font-size:0.78rem; padding:8px 14px; border-bottom:1px solid #B3362A; word-break:break-all; position:sticky; top:0; z-index:999; }
+
   /* ── Needs-attention strip (design pass D): ≤4 exception signals, computed
      client-side from data already fetched. Each chip is suppressed at zero; the
      whole strip hides when all four are zero (no "all clear" decoration). Color
@@ -2100,6 +2103,21 @@
 
 <script src="dbx.js"></script>
 <script>
+  // ── Visible error reporter (the phone has no console — make the screen the console) ──
+  // Registered FIRST so it catches throws in any later inline code. reportUiError is a
+  // hoisted function declaration, so the listeners below can reference it immediately.
+  window.addEventListener('error', ev => reportUiError(ev.error || ev.message, ev.filename ? ev.filename.split('/').pop() + ':' + ev.lineno : ''));
+  window.addEventListener('unhandledrejection', ev => reportUiError(ev.reason, 'promise'));
+  function reportUiError(err, where) {
+    try {
+      let bar = document.getElementById('ui-error-bar');
+      if (!bar) { bar = document.createElement('div'); bar.id = 'ui-error-bar'; document.body.prepend(bar); }
+      const msg = (err && (err.stack || err.message)) || String(err);
+      bar.textContent = '⚠️ UI error' + (where ? ' [' + where + ']' : '') + ': ' + msg.split('\n').slice(0,2).join(' · ');
+      bar.style.display = 'block';
+    } catch (_) {}
+  }
+
   const API = window.location.origin;
   const LISTS = ['inbox', 'thisweek', 'someday', 'waiting'];
 
@@ -2480,7 +2498,8 @@
 
   async function fetchJournal() {
     const res = await apiFetch(`${API}/api/logs`);
-    journalEntries = await res.json();
+    const data = await res.json();
+    journalEntries = Array.isArray(data) ? data : [];   // guard against a non-array (unmatched dbx route)
     renderJournal();
   }
 
@@ -2728,7 +2747,8 @@
   // ── Render ──
 
   function render() {
-    renderNeedsAttention();   // recompute the exception strip on every task re-render
+    // Contain the strip: any throw here must NEVER take the whole task paint down (hosted regression, 2026-07-24).
+    try { renderNeedsAttention(); } catch (e) { console.error('needs-attention strip failed', e); reportUiError(e, 'needs-attention'); }
     const listEl = document.getElementById('item-list');
     // Domain lens applies to the task lists everywhere.
     const dItems = items.filter(inDomain);
@@ -4803,7 +4823,8 @@
   async function fetchSparks() {
     try {
       const res = await apiFetch(`${API}/api/sparks`);
-      sparks = await res.json();
+      const data = await res.json();
+      sparks = Array.isArray(data) ? data : [];   // guard against a non-array (unmatched dbx route)
       renderSparks();
     } catch (e) { /* ignore */ }
   }
@@ -4878,7 +4899,8 @@
   async function fetchRecipes() {
     try {
       const res = await apiFetch(`${API}/api/recipes`);
-      recipes = await res.json();
+      const data = await res.json();
+      recipes = Array.isArray(data) ? data : [];   // guard against a non-array (unmatched dbx route)
       renderRecipes();
     } catch (e) { /* ignore */ }
   }
@@ -5294,13 +5316,14 @@
   async function fetchDeadlines() {
     try {
       const res = await apiFetch(`${API}/api/deadlines`);
-      deadlines = await res.json();
+      const data = await res.json();
+      deadlines = Array.isArray(data) ? data : [];   // an unmatched dbx route returns an error object — never poison the cache
       renderDeadlines();
     } catch (e) { /* ignore */ }
   }
 
   function renderDeadlines() {
-    renderNeedsAttention();   // deadlines feed 3 of the 4 exception signals
+    try { renderNeedsAttention(); } catch (e) { console.error('needs-attention strip failed', e); reportUiError(e, 'needs-attention'); }   // deadlines feed 3 of the 4 exception signals
     const section = document.getElementById('deadlines-section');
     // Active = not done/dismissed, in the current domain lens.
     const active = deadlines.filter(d =>
@@ -5347,7 +5370,8 @@
   async function fetchMeetings() {
     try {
       const res = await apiFetch(`${API}/api/meetings`);
-      meetings = await res.json();
+      const data = await res.json();
+      meetings = Array.isArray(data) ? data : [];   // an unmatched dbx route returns an error object — never poison the cache
       renderMeetings();
     } catch (e) { /* ignore */ }
   }
@@ -5365,7 +5389,7 @@
   }
 
   function renderMeetings() {
-    renderNeedsAttention();   // proposed meetings feed the unconfirmed signal
+    try { renderNeedsAttention(); } catch (e) { console.error('needs-attention strip failed', e); reportUiError(e, 'needs-attention'); }   // proposed meetings feed the unconfirmed signal
     const section = document.getElementById('meetings-section');
     // Past meetings drop off on their own (server computes `past`).
     const active = meetings.filter(m =>
