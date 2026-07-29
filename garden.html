@@ -491,6 +491,7 @@
             ${meta}
           </div>
           <div class="garden-item-tools">
+            <button class="garden-item-edit" onclick="promoteGardenTask('${item.id}')" title="Make a task from this (the item stays)">→ task</button>
             <button class="garden-item-edit" onclick="editGardenItem('${item.id}')" title="Edit">✎</button>
             <button class="garden-item-delete" onclick="deleteItem('${item.id}', event)" title="Delete">✕</button>
           </div>
@@ -525,6 +526,19 @@
     } catch (e) { /* fall through */ }
     render();
     showToast('Couldn’t save');
+  }
+
+  // Phase E: the library-face → working-face graduation. Creates an Inbox task
+  // FROM this item (knowledge that has become an action); the item STAYS.
+  async function promoteGardenTask(id) {
+    try {
+      const res = await fetch(`${API}/api/garden/promote-task`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) { showToast('→ task added to Inbox'); return; }
+    } catch (e) { /* fall through */ }
+    showToast('Couldn’t reach the server');
   }
 
   // ── Weekly harvest (the Monday digest) ──────────────────────────────

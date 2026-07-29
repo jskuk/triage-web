@@ -135,6 +135,34 @@
     };
   }
 
+  // records._SHELL_FINGERPRINTS / _is_shell_text port (drop a page-grab that
+  // fired before a client-rendered app painted real content). Keep in sync.
+  const _SHELL_FINGERPRINTS = ['a collaborative ai workspace, built on your company context'];
+  function isShellText(text) {
+    if (!text) return false;
+    const head = String(text).slice(0, 300).toLowerCase();
+    return _SHELL_FINGERPRINTS.some(fp => head.includes(fp));
+  }
+  // records.make_vault_item mirror (minimal — the digestion fields fill lazily on
+  // the Mac/cloud backfill; a hosted capture just needs to LAND, never blocks).
+  function makeVaultItem(body) {
+    const url = (body.url || '').trim() || null;
+    let captured = (body.page_text || body.captured_text || '').trim();
+    if (isShellText(captured)) captured = '';
+    const topics = Array.isArray(body.topics) ? body.topics.slice(0, 4).map(t => String(t).trim()).filter(Boolean) : [];
+    const est = Number.isInteger(body.est_minutes) && body.est_minutes > 0 ? body.est_minutes : null;
+    const imgs = Array.isArray(body.images) ? body.images.map(x => String(x).trim()).filter(Boolean) : [];
+    return {
+      id: genId(), text: (body.text || '').trim(), url, url_norm: normalizeUrl(url),
+      note: (body.note || '').trim() || null, created: nowIso(),
+      title: (body.title || '').trim() || null, summary: (body.summary || '').trim() || null,
+      key_point: (body.key_point || '').trim() || null, topics,
+      theme: (body.theme || '').trim() || null, est_minutes: est,
+      enrich_attempts: 0, link_dead: false, captured_text: captured.slice(0, 5000) || null,
+      images: imgs, capture_src: (body.capture_src || '').trim() || null,
+    };
+  }
+
   function heuristicDomain(text) {
     const t = (text || '').toLowerCase();
     const work = /referee|review|r&r|revise|paper|grant|nsf|student|syllabus|dept|letter|journal|conference|editor|\.edu|논문|학회|강의|학생/;
@@ -589,6 +617,26 @@
       return resp({ ok: true, spark });
     }
 
+    // — Garden writes (Phase E): the hosted Tab-Sweep "Save" files into the
+    //   Garden. Only /api/garden/add is implemented here (the ADD case of the old
+    //   "Garden chips are LOCAL-only" known-issue); digestion still runs on the
+    //   Mac/cloud backfill. /api/sparks/add mirrors it (spark → note) for parity.
+    if (path === '/api/garden/add' || path === '/api/vault/add') {
+      const text = (body.text || '').trim(); const url = (body.url || '').trim();
+      if (!text && !url) return resp({ error: 'text or url required' }, 400);
+      const item = makeVaultItem(body);
+      await updateJson('vault.json', a => { a.push(item); return a; }, []);
+      return resp(item, 201);
+    }
+    if (path === '/api/sparks/add') {
+      const reaction = (body.text || body.reaction || '').trim();
+      const url = (body.url || '').trim();
+      if (!reaction && !url) return resp({ error: 'text or url required' }, 400);
+      const item = makeVaultItem({ url, note: reaction });
+      await updateJson('vault.json', a => { a.push(item); return a; }, []);
+      return resp(item, 201);
+    }
+
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —
     if (path === '/api/email/stage-draft') {
       const draftText = (body.draft_text || '').trim();
@@ -679,13 +727,14 @@
       unsorted: items.filter(i => i.unsorted && i.list !== 'done' && inDom(i)).length,
       unclassified: items.filter(i => ['inbox','thisweek','someday','waiting'].includes(i.list) && !['work','life'].includes(i.domain)).length,
       waiting_overdue: items.filter(i => i.list === 'waiting' && inDom(i) && (now - new Date(i.waitingSince || i.created)) / day >= 7).length,
-      recipe_queue: 0, sparks_week: 0, stalled, ea_topics, catchup_threshold: 25, travel,
+      recipe_queue: 0, stalled, ea_topics, catchup_threshold: 25, travel,
       agents, overdue, conflicts,
     };
   }
   async function computeWeekly() {
     const items = await readJson('data.json', []); const cut = Date.now() - 7 * 86400000;
-    return { done: items.filter(i => i.list === 'done' && i.completed && new Date(i.completed) >= cut).length, recipes_cooked: 0, sparks: 0 };
+    // Phase E: sparks folded into the Garden — dropped from the evidence line.
+    return { done: items.filter(i => i.list === 'done' && i.completed && new Date(i.completed) >= cut).length, recipes_cooked: 0 };
   }
 
   // ready resolves once the OAuth redirect (?code=) has been exchanged for a token,

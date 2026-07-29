@@ -842,91 +842,8 @@
     font-size: 0.88rem;
   }
 
-  /* ── Saved References ── */
-  .saved-section {
-    margin-top: 48px;
-    padding-top: 32px;
-    border-top: 1px solid var(--border);
-  }
-
-  .saved-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .saved-header h2 {
-    font-family: var(--sans);
-    font-size: 1.3rem;
-    font-weight: 400;
-  }
-
-  .saved-header .tab-count {
-    font-size: 0.72rem;
-    background: var(--thisweek);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-weight: 700;
-  }
-
-  .saved-search {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-family: inherit;
-    font-size: 0.88rem;
-    background: var(--surface);
-    margin-bottom: 16px;
-  }
-
-  .saved-search:focus {
-    outline: none;
-    border-color: var(--thisweek);
-  }
-
-  .saved-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid #F0ECE6;
-  }
-
-  .saved-item-content { flex: 1; min-width: 0; }
-
-  .saved-item-title {
-    font-size: 0.82rem;
-    color: var(--accent);
-    text-decoration: none;
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 500;
-  }
-
-  .saved-item-title:hover { text-decoration: underline; }
-
-  .saved-item-memo {
-    font-size: 0.78rem;
-    color: var(--ink-muted);
-    margin-top: 2px;
-    line-height: 1.4;
-  }
-
-  .saved-item-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.15s;
-    flex-shrink: 0;
-  }
-
-  .saved-item:hover .saved-item-actions { opacity: 1; }
-
+  /* .saved-no-results is retained (reused by Read Later + other empty states);
+     the Saved References section itself retired in Phase E (folded into Garden). */
   .saved-no-results {
     text-align: center;
     padding: 20px;
@@ -1534,16 +1451,16 @@
   }
 
   /* ── Recipes ── */
-  .recipes-section, .sparks-section { margin-top: 40px; }
-  .recipes-header, .sparks-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .recipes-header h2, .sparks-header h2 { font-family: var(--sans); }
+  .recipes-section { margin-top: 40px; }
+  .recipes-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .recipes-header h2 { font-family: var(--sans); }
 
   /* ══ Composed section system (visual refresh) — one rhythm for every section ══
      Overrides the divergent per-section rules above: uniform spacing, one subtle
      divider, one heading size, one calm count chip. */
   .tasks-section, .deadlines-section, .projects-section, .insights-section,
-  .tabs-section, .saved-section, .readlater-section,
-  .newsletter-section, .recipes-section, .sparks-section, .journal-section {
+  .tabs-section, .readlater-section,
+  .newsletter-section, .recipes-section, .journal-section {
     margin-top: 40px;
     padding-top: 30px;
     border-top: 1px solid var(--hair);
@@ -1552,12 +1469,12 @@
      the section flow, right under the jump-nav, so a divider above it would float
      with nothing before it. Drop the top border/rule; keep a tight top pad. */
   .tasks-section { margin-top: 20px; padding-top: 12px; border-top: none; }
-  .tasks-header, .deadlines-header, .insights-header, .tabs-header, .saved-header,
-  .readlater-header, .newsletter-header, .recipes-header, .sparks-header {
+  .tasks-header, .deadlines-header, .insights-header, .tabs-header,
+  .readlater-header, .newsletter-header, .recipes-header {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
   }
-  .tasks-header h2, .deadlines-header h2, .insights-header h2, .tabs-header h2, .saved-header h2,
-  .readlater-header h2, .newsletter-header h2, .recipes-header h2, .sparks-header h2, .journal-section h2 {
+  .tasks-header h2, .deadlines-header h2, .insights-header h2, .tabs-header h2,
+  .readlater-header h2, .newsletter-header h2, .recipes-header h2, .journal-section h2 {
     /* Section layer (#25): weight, not typeface, carries the hierarchy. */
     font-family: var(--sans); font-size: 1.28rem; font-weight: 650;
     letter-spacing: -0.01em; color: var(--ink);
@@ -1565,19 +1482,18 @@
   /* Section subtitle (e.g. Sweep insights) — quiet, consistent */
   .insights-sub { font-size: 0.8rem; color: var(--ink-muted); }
   /* Calm, consistent count chip on section headers (distinct from the tab-bar nav) */
-  .tasks-header .tab-count, .deadlines-header .tab-count, .tabs-header .tab-count, .saved-header .tab-count,
-  .readlater-header .tab-count, .newsletter-header .tab-count, .recipes-header .tab-count, .sparks-header .tab-count,
+  .tasks-header .tab-count, .deadlines-header .tab-count, .tabs-header .tab-count,
+  .readlater-header .tab-count, .newsletter-header .tab-count, .recipes-header .tab-count,
   .insights-header .tab-count, #projects-count, #meetings-count {
     background: var(--chip-bg); color: var(--ink-muted); font-weight: 600;
     font-size: 0.72rem; padding: 2px 9px; border-radius: 99px; font-variant-numeric: tabular-nums;
   }
   .recipes-filters { display: flex; gap: 8px; margin-bottom: 14px; }
   .recipes-filters input { flex: 1; }
-  .recipes-filters input, .recipes-filters select, .sparks-section > input {
+  .recipes-filters input, .recipes-filters select {
     padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
     font-family: inherit; font-size: 0.9rem; background: var(--surface);
   }
-  .sparks-section > input { width: 100%; margin-bottom: 12px; }
   .recipe-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
@@ -1633,31 +1549,7 @@
   .recipe-cooked-badge { font-size: 0.75rem; color: var(--done); white-space: nowrap; }
   .recipe-card .cook-btn { white-space: nowrap; }
 
-  /* ── Sparks ── */
-  .sparks-subtitle { color: var(--ink-muted); font-size: 0.88rem; margin-bottom: 10px; }
-  .spark-item {
-    background: var(--surface); border: 1px solid var(--border);
-    border-left: 3px solid var(--someday); border-radius: 8px;
-    padding: 12px 14px; margin-bottom: 8px;
-    display: flex; align-items: flex-start; gap: 10px;
-  }
-  .spark-main { flex: 1; min-width: 0; }
-  .spark-reaction { color: var(--ink); font-size: 0.94rem; }
-  .spark-link { display: block; font-size: 0.8rem; color: var(--accent); text-decoration: none; margin-top: 4px; word-break: break-all; }
-  .spark-date { font-size: 0.74rem; color: var(--ink-muted); margin-top: 4px; }
-  .spark-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
-  .spark-item:hover .spark-actions, .spark-item:focus-within .spark-actions { opacity: 1; }
-  .spark-act {
-    font: inherit; font-size: 0.72rem; background: none; border: 1px solid var(--border);
-    border-radius: 6px; color: var(--ink-muted); cursor: pointer; padding: 2px 7px;
-  }
-  .spark-act:hover { border-color: var(--accent); color: var(--accent); }
-  .spark-act-del:hover { border-color: #C0392B; color: #C0392B; }
-  .spark-edit-input {
-    width: 100%; font: inherit; font-size: 0.9rem; padding: 8px 10px; resize: vertical;
-    border: 1px solid var(--accent); border-radius: 8px; background: var(--surface); color: var(--ink);
-  }
-  .spark-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+  /* (Sparks section retired in Phase E — folded into the Garden.) */
 
   /* ── Plan This Week modal ── */
   .plan-card {
@@ -1696,11 +1588,9 @@
     header h1 { font-size: 1.8rem; }
     .stats-bar { gap: 16px; flex-wrap: wrap; }
     /* Hover-reveal is a no-op on touch — show every list's actions on mobile
-       (task rows AND tab-sweep/saved rows, whose ✕/RL/SV/IN were untappable). */
+       (task rows AND tab-sweep rows, whose ✕/RL/IN were untappable). */
     .item-actions,
     .tab-item-actions,
-    .saved-item-actions,
-    .spark-actions,
     .project-actions,
     .proj-state-placeholder,
     .ns-edit-icon,
@@ -1944,18 +1834,10 @@
   </div>
 
   <!-- Library divider (design pass D): a quiet labeled rule marking the boundary
-       before the reference/keep sections. Always rendered; not in the jump-nav. -->
+       where asks (Tasks/Deadlines/…) end and the reference/keep sections begin.
+       Phase E: Saved + Sparks folded into the Garden, so Reading is now first
+       under the divider. Always rendered; not in the jump-nav. -->
   <div class="library-divider" id="library-divider"><span>Library</span></div>
-
-  <!-- Saved References -->
-  <div class="saved-section" id="saved-section">
-    <div class="saved-header">
-      <h2>Saved</h2>
-      <span class="tab-count" id="saved-count">0</span>
-    </div>
-    <input type="text" class="saved-search" id="saved-search" placeholder="Search saved links...">
-    <div id="saved-list"></div>
-  </div>
 
   <!-- Read Later -->
   <div class="readlater-section" id="readlater-section" style="display:none">
@@ -2015,16 +1897,9 @@
     <div id="recipes-list"></div>
   </div>
 
-  <!-- Sparks -->
-  <div class="sparks-section" id="sparks-section" style="display:none">
-    <div class="sparks-header">
-      <h2>Sparks</h2>
-      <span class="tab-count" id="sparks-count">0</span>
-    </div>
-    <p class="sparks-subtitle">Things you saw + what you thought. A permanent commonplace log.</p>
-    <input type="text" id="sparks-search" placeholder="Search sparks...">
-    <div id="sparks-list"></div>
-  </div>
+  <!-- Sparks section retired in Phase E: `spark` remains a capture type, but it
+       now folds into the Garden (reaction → note). Historic sparks.json is read-
+       only; search + retrieval live on the Garden page. -->
 
   <div class="journal-section">
     <h2>Journal</h2>
@@ -2368,9 +2243,9 @@
   const NAV_SECTIONS = [
     ['tasks-section', 'Tasks'], ['deadlines-section', 'Deadlines'], ['meetings-section', 'Meetings'],
     ['projects-section', 'Projects'], ['insights-section', 'Sweep'], ['tabs-section', 'Tabs'],
-    ['saved-section', 'Saved'], ['readlater-section', 'Reading'],
+    ['readlater-section', 'Reading'],
     ['newsletter-section', 'Newsletters'], ['recipes-section', 'Recipes'],
-    ['sparks-section', 'Sparks'], ['journal-section', 'Journal']
+    ['journal-section', 'Journal']
   ];
   function renderSectionNav() {
     const nav = document.getElementById('section-nav');
@@ -2457,7 +2332,6 @@
     await fetchProjects();   // refresh the project cache once per render cycle
     render();
     renderTabs();
-    renderSaved();
     fetchInsights();         // sweep-insight proposal cards (own async, never blocks)
     fetchReadLater();        // Read Later store (own async, never blocks)
     fetchNewsletterDigest(); // newsletter digest full tier (own async, never blocks)
@@ -2476,7 +2350,6 @@
     fetchItems();
     fetchJournal();
     fetchHealth();
-    fetchSparks();
     fetchRecipes();
     fetchDeadlines();
     fetchMeetings();
@@ -2488,7 +2361,7 @@
   // a wholesale re-render would drop unsaved keystrokes / interrupt triage.
   function _canAutoRefresh() {
     if (typeof activeTriageMode !== 'undefined' && activeTriageMode) return false;
-    if (editingSparkId || editingRecipeId || editingProjectStateId) return false;
+    if (editingRecipeId || editingProjectStateId) return false;
     const ae = document.activeElement;
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return false;
     return true;
@@ -2989,11 +2862,10 @@
   }
   function weeklyEvidenceHtml() {
     const w = weeklyEvidence;
-    if (!w || (!w.done && !w.recipes_cooked && !w.sparks)) return '';
+    if (!w || (!w.done && !w.recipes_cooked)) return '';
     const parts = [];
     if (w.done) parts.push(`${w.done} done`);
     if (w.recipes_cooked) parts.push(`${w.recipes_cooked} recipe${w.recipes_cooked===1?'':'s'} cooked`);
-    if (w.sparks) parts.push(`${w.sparks} spark${w.sparks===1?'':'s'}`);
     return `<div class="triage-item-age" style="text-align:center;margin-bottom:4px">Last 7 days: ${parts.join(' · ')}</div>`;
   }
 
@@ -3528,9 +3400,9 @@
               RL
               <span class="tooltip">Read later</span>
             </button>
-            <button class="move-btn" onclick="moveItem('${item.id}','saved')" style="color:var(--thisweek)">
-              SV
-              <span class="tooltip">Save</span>
+            <button class="move-btn" onclick="saveTabToGardenRow('${item.id}')" style="color:var(--thisweek)" title="Save to Garden">
+              🌱
+              <span class="tooltip">Save to Garden</span>
             </button>
             <button class="move-btn promote-btn" onclick="promoteTab('${item.id}')">
               IN
@@ -3780,7 +3652,7 @@
       <div class="triage-item-age">Saved ${formatDate(item.created)}</div>
       <div class="triage-actions" id="sweep-actions">
         <button class="triage-btn triage-btn-keep" onclick="sweepSkip()">Keep <kbd>1</kbd></button>
-        <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save <kbd>2</kbd></button>
+        <button class="triage-btn triage-btn-save" onclick="sweepSave('${item.id}')">Save → Garden <kbd>2</kbd></button>
         <button class="triage-btn triage-btn-promote" onclick="sweepPromote('${item.id}')">Make Task <kbd>3</kbd></button>
         <button class="triage-btn triage-btn-done" onclick="sweepDone('${item.id}')">Done Reading <kbd>4</kbd></button>
         <button class="triage-btn triage-btn-readlater" onclick="sweepReadLater('${item.id}')">Read Later <kbd>5</kbd></button>
@@ -3819,10 +3691,38 @@
       () => { sweepQueue.splice(idx, 0, item); renderSweepCard(); });
   }
 
+  // Phase E: "Save" files a tab into the GARDEN (the Saved section retired).
+  // Mirrors the gardenInsight ok-guard — NEVER delete the tab without a confirmed
+  // add (the documented hosted data-loss lesson). text→title, memo→note (angle).
+  // Returns true once the tab is planted + removed. LOCAL-only, like every Garden
+  // write from the dashboard (dbx.js now implements /api/garden/add for hosted).
+  async function saveTabToGarden(id) {
+    const t = (typeof sweepQueue !== 'undefined' && sweepQueue.find(i => i.id === id))
+              || items.find(i => i.id === id) || {};
+    let added;
+    try {
+      added = await apiFetch(`${API}/api/garden/add`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: t.text || '', url: t.url || '', note: t.memo || '' })
+      });
+    } catch (e) { added = null; }
+    if (!added || !added.ok) { showToast('Could not reach the Garden — tab left in place'); return false; }
+    await apiFetch(`${API}/api/delete`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    return true;
+  }
+
+  async function saveTabToGardenRow(id) {
+    if (await saveTabToGarden(id)) { showToast('🌱 Saved to Garden'); await fetchItems(); }
+  }
+
   async function sweepSave(id) {
-    await moveItem(id, 'saved');
+    if (!(await saveTabToGarden(id))) return;   // ok-guard: keep the card on failure
     sweepQueue = sweepQueue.filter(i => i.id !== id);
     renderSweepCard();
+    showToast('🌱 Saved to Garden');
   }
 
   async function sweepReadLater(id) {
@@ -4325,77 +4225,8 @@
 
   document.getElementById('review-someday-btn').addEventListener('click', startSomedayReview);
 
-  // ── Saved References ──
-
-  let savedSearchQuery = '';
-
-  function renderSaved() {
-    const saved = items.filter(i => i.list === 'saved');
-    document.getElementById('saved-count').textContent = saved.length;
-
-    const section = document.getElementById('saved-section');
-    section.style.display = saved.length > 0 ? '' : 'none';
-
-    // Filter by search
-    let filtered = saved;
-    if (savedSearchQuery) {
-      const q = savedSearchQuery.toLowerCase();
-      filtered = saved.filter(i =>
-        (i.text || '').toLowerCase().includes(q) ||
-        (i.url || '').toLowerCase().includes(q) ||
-        (i.memo || '').toLowerCase().includes(q)
-      );
-    }
-
-    filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
-
-    const listEl = document.getElementById('saved-list');
-    if (filtered.length === 0 && savedSearchQuery) {
-      listEl.innerHTML = '<div class="saved-no-results">No matches</div>';
-      return;
-    }
-
-    listEl.innerHTML = filtered.map(item => {
-      const title = item.text || truncateUrl(item.url || '');
-      const memoValue = item.memo ? escapeHtml(item.memo) : '';
-      // Reuse the Tab-Sweep memo-edit affordance (same id pattern + saveMemo →
-      // /api/update-memo; an item is in only one list, so ids never collide).
-      const memoHtml = item.memo
-        ? `<div class="saved-item-memo">${memoValue} <button class="nextstep-edit-btn" onclick="toggleMemoEdit('${item.id}')">edit</button></div>`
-        : `<div class="tab-item-memo-placeholder" onclick="toggleMemoEdit('${item.id}')">+ add note</div>`;
-      const editHtml = `
-        <div class="tab-memo-edit" id="memo-edit-${item.id}">
-          <input type="text" value="${memoValue}" placeholder="Add a note" id="memo-input-${item.id}"
-                 onkeydown="if(event.key==='Enter')saveMemo('${item.id}')">
-          <button onclick="saveMemo('${item.id}')">Save</button>
-          <button onclick="toggleMemoEdit('${item.id}')">Cancel</button>
-        </div>`;
-      return `
-        <div class="saved-item">
-          <div class="saved-item-content">
-            <a class="saved-item-title" href="${escapeHtml(safeUrl(item.url || '#'))}" target="_blank" rel="noopener">${escapeHtml(title)}</a>
-            ${memoHtml}
-            ${editHtml}
-          </div>
-          <div class="saved-item-actions">
-            <button class="move-btn promote-btn" onclick="promoteTab('${item.id}')" title="Make task">
-              IN
-              <span class="tooltip">Make task</span>
-            </button>
-            <button class="move-btn delete-btn" onclick="deleteItem('${item.id}', event)">
-              ✕
-              <span class="tooltip">Delete</span>
-            </button>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  document.getElementById('saved-search').addEventListener('input', (e) => {
-    savedSearchQuery = e.target.value;
-    renderSaved();
-  });
+  // (Saved References section retired in Phase E — Tab Sweep "Save" now files
+  // into the Garden; existing `list:"saved"` items are migrated by hand.)
 
   document.getElementById('rl-search').addEventListener('input', (e) => {
     rlSearchQuery = e.target.value;
@@ -4823,81 +4654,9 @@
     await fetchHealth();
   }
 
-  // ══ Sparks ═══════════════════════════════════════════════════════
-
-  let sparks = [];
-  let sparkSearch = '';
-
-  async function fetchSparks() {
-    try {
-      const res = await apiFetch(`${API}/api/sparks`);
-      const data = await res.json();
-      sparks = Array.isArray(data) ? data : [];   // guard against a non-array (unmatched dbx route)
-      renderSparks();
-    } catch (e) { /* ignore */ }
-  }
-
-  function renderSparks() {
-    const section = document.getElementById('sparks-section');
-    document.getElementById('sparks-count').textContent = sparks.length;
-    section.style.display = sparks.length ? '' : 'none';
-
-    let list = sparks.slice();
-    if (sparkSearch) {
-      const q = sparkSearch.toLowerCase();
-      list = list.filter(s => (s.reaction||'').toLowerCase().includes(q) || (s.url||'').toLowerCase().includes(q));
-    }
-    list.sort((a,b) => new Date(b.created) - new Date(a.created));
-
-    const el = document.getElementById('sparks-list');
-    if (!list.length) { el.innerHTML = '<div class="saved-no-results">No matches</div>'; return; }
-    el.innerHTML = list.map(s => {
-      if (s.id === editingSparkId) {
-        return `
-          <div class="spark-item" id="spark-${s.id}">
-            <div class="spark-main">
-              <textarea class="spark-edit-input" id="spark-edit-${s.id}" rows="2">${escapeHtml(s.reaction || '')}</textarea>
-              <div class="spark-edit-actions">
-                <button class="btn btn-primary btn-small" onclick="saveSpark('${s.id}')">Save</button>
-                <button class="btn btn-ghost btn-small" onclick="cancelSparkEdit()">Cancel</button>
-              </div>
-            </div>
-          </div>`;
-      }
-      return `
-      <div class="spark-item" id="spark-${s.id}">
-        <div class="spark-main">
-          ${s.reaction ? `<div class="spark-reaction">${escapeHtml(s.reaction)}</div>` : ''}
-          ${s.url ? `<a class="spark-link" href="${escapeHtml(safeUrl(s.url))}" target="_blank" rel="noopener">${escapeHtml(truncateUrl(s.url))}</a>` : ''}
-          <div class="spark-date">${formatDate(s.created)}</div>
-        </div>
-        <div class="spark-actions">
-          <button class="spark-act" onclick="editSpark('${s.id}')" title="Edit reaction">edit</button>
-          <button class="spark-act spark-act-del" onclick="deleteSpark('${s.id}', event)" title="Delete spark">✕</button>
-        </div>
-      </div>`; }).join('');
-  }
-
-  let editingSparkId = null;
-  function editSpark(id) { editingSparkId = id; renderSparks(); const t = document.getElementById(`spark-edit-${id}`); if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }
-  function cancelSparkEdit() { editingSparkId = null; renderSparks(); }
-  async function saveSpark(id) {
-    const t = document.getElementById(`spark-edit-${id}`);
-    if (!t) return;
-    const res = await apiFetch(`${API}/api/sparks/update`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, fields: { reaction: t.value.trim() } }) });
-    editingSparkId = null;
-    if (res && res.ok) { await fetchSparks(); showToast('Spark updated'); }
-    else { renderSparks(); showToast('Couldn’t save — try on the desktop'); }
-  }
-  function deleteSpark(id, ev) {
-    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.spark-item') : null;
-    if (row) row.style.display = 'none';
-    undoable('Spark deleted',
-      async () => { await apiFetch(`${API}/api/sparks/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }); await fetchSparks(); },
-      () => { if (row) row.style.display = ''; });
-  }
+  // (Sparks section retired in Phase E — `spark` captures now fold into the
+  // Garden. sparks.json stays readable at /api/sparks; search + browse live on
+  // the Garden page. No dashboard render/fetch/edit path remains here.)
 
   // ══ Recipes ══════════════════════════════════════════════════════
 
@@ -5172,7 +4931,6 @@
     await apiFetch(`${API}/api/recipes/purge-excluded`, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
     await fetchRecipes();
   });
-  document.getElementById('sparks-search').addEventListener('input', e => { sparkSearch = e.target.value; renderSparks(); });
 
   // ══ Plan This Week ═══════════════════════════════════════════════
 
@@ -5641,7 +5399,6 @@
   fetchItems();
   fetchJournal();
   fetchHealth();
-  fetchSparks();
   fetchRecipes();
   fetchDeadlines();
   fetchMeetings();
