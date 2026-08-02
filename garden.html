@@ -236,6 +236,23 @@
   .back-link { position: fixed; top: 24px; left: 24px; color: var(--ink-muted); text-decoration: none; font-size: 0.82rem; }
   .back-link:hover { color: var(--ink); }
 
+  /* Connect gate (hosted mode only) — mirrors the dashboard's bar. The OAuth
+     redirect_uri is registered for the DASHBOARD path, so the button sends the
+     user there to connect; the token lives in same-origin localStorage, so the
+     Garden picks it up on return. */
+  .connect-gate {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    width: 100%; padding: 10px 14px; margin-bottom: 18px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--accent); border-radius: var(--radius);
+    font-size: 0.88rem; color: var(--ink);
+  }
+  .connect-gate .cg-btn {
+    margin-left: auto; padding: 7px 14px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff; font-family: inherit;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer; text-decoration: none;
+  }
+
   @media (max-width: 640px) {
     body { padding: 60px 16px 40px; }
     /* Hover-reveal is a no-op on touch — always show the edit/delete controls. */
@@ -267,6 +284,11 @@
 <p class="subtitle">Things worth keeping &mdash; digested, not buried.</p>
 
 <div class="wrap">
+  <div class="connect-gate" id="connect-gate" style="display:none">
+    <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
+    <a class="cg-btn" id="cg-btn" href="index.html">Connect on the dashboard</a>
+  </div>
+
   <section class="harvest" id="harvest" hidden></section>
 
   <div class="search-box">
@@ -279,14 +301,52 @@
   <div class="results" id="results"></div>
 </div>
 
+<script src="dbx.js"></script>
 <script>
   const API = window.location.origin;
   let garden = [];
   let activeTheme = null;   // null = all themes
 
+  // At home (localhost) → the local Python server, unchanged. Hosted (GitHub
+  // Pages) → read Dropbox directly through dbx.js, exactly as the dashboard
+  // does. Hosted is READ-ONLY v1: every write path below is LOCAL-gated.
+  const LOCAL = ['localhost', '127.0.0.1'].includes(location.hostname);
+  async function apiFetch(url, opts) {
+    if (LOCAL) return fetch(url, opts);
+    const path = url.replace(location.origin, '');   // '/api/…'
+    if (typeof DBX === 'undefined') { renderConnectGate(); return { ok: false, status: 503, json: async () => ({}) }; }
+    return DBX.handle(path, opts);                    // Response-compatible
+  }
+
+  // Hosted mode: a visible bar when Dropbox isn't connected yet, so an empty
+  // Garden never reads as "nothing kept".
+  async function renderConnectGate() {
+    const bar = document.getElementById('connect-gate');
+    if (!bar) return;
+    const msg = bar.querySelector('.cg-msg'), btn = bar.querySelector('.cg-btn');
+    if (LOCAL) { bar.style.display = 'none'; return; }
+    if (typeof DBX === 'undefined') {
+      msg.textContent = 'dbx.js failed to load — hard-refresh the page';
+      btn.style.display = 'none';
+      bar.style.display = 'flex';
+      return;
+    }
+    try { if (DBX.ready) await DBX.ready; } catch (e) { /* ignore */ }
+    if (DBX.connected()) { bar.style.display = 'none'; return; }
+    msg.textContent = 'Not connected to Dropbox — your data lives in your Dropbox.';
+    btn.style.display = '';
+    bar.style.display = 'flex';
+  }
+
   async function fetchGarden() {
-    const res = await fetch(`${API}/api/garden`);
-    garden = await res.json();
+    try {
+      const res = await apiFetch(`${API}/api/garden`);
+      const data = await res.json();
+      garden = Array.isArray(data) ? data : [];   // an unmatched dbx route returns an error object — never poison the list
+    } catch (e) {
+      garden = [];
+      renderConnectGate();
+    }
     render();
   }
 
@@ -476,9 +536,18 @@
       if (item.url) metaBits.push(`<span class="garden-item-url"><a href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${highlight(truncateUrl(item.url), query)}</a></span>`);
       if (item.images && item.images.length) metaBits.unshift('<span title="Saved from a screenshot">📷</span>');
       const meta = metaBits.length ? `<div class="garden-item-meta">${metaBits.join('')}</div>` : '';
-      const imgs = (item.images && item.images.length)
+      // Screenshots are local files served by the Mac server — hosted has no
+      // path to them (the 📷 meta marker still says the item came from one).
+      const imgs = (LOCAL && item.images && item.images.length)
         ? `<div class="garden-item-imgs">${item.images.map(p => `<a href="${API}/${encodeURI(p)}" target="_blank" rel="noopener"><img src="${API}/${encodeURI(p)}" loading="lazy" alt="screenshot"></a>`).join('')}</div>`
         : '';
+      // Hosted is read-only v1: edit / delete / promote all need the server.
+      const tools = LOCAL ? `
+          <div class="garden-item-tools">
+            <button class="garden-item-edit" onclick="promoteGardenTask('${item.id}')" title="Make a task from this (the item stays)">→ task</button>
+            <button class="garden-item-edit" onclick="editGardenItem('${item.id}')" title="Edit">✎</button>
+            <button class="garden-item-delete" onclick="deleteItem('${item.id}', event)" title="Delete">✕</button>
+          </div>` : '';
       return `
         <div class="garden-item">
           <div class="garden-item-content">
@@ -489,12 +558,7 @@
             ${tags}
             ${imgs}
             ${meta}
-          </div>
-          <div class="garden-item-tools">
-            <button class="garden-item-edit" onclick="promoteGardenTask('${item.id}')" title="Make a task from this (the item stays)">→ task</button>
-            <button class="garden-item-edit" onclick="editGardenItem('${item.id}')" title="Edit">✎</button>
-            <button class="garden-item-delete" onclick="deleteItem('${item.id}', event)" title="Delete">✕</button>
-          </div>
+          </div>${tools}
         </div>
       `;
     }).join('');
@@ -553,13 +617,23 @@
   async function loadHarvest() {
     const el = document.getElementById('harvest');
     try {
-      const files = await (await fetch(`${API}/api/garden/digests`)).json();
-      if (!Array.isArray(files) || files.length === 0) return;   // stay hidden
-      const txt = await (await fetch(`${API}/digests/${encodeURIComponent(files[0])}`)).text();
-      if (!txt.trim()) return;
-      renderHarvest(el, txt, files.slice(1));
+      if (LOCAL) {
+        const files = await (await fetch(`${API}/api/garden/digests`)).json();
+        if (!Array.isArray(files) || files.length === 0) return;   // stay hidden
+        const txt = await (await fetch(`${API}/digests/${encodeURIComponent(files[0])}`)).text();
+        if (!txt.trim()) return;
+        renderHarvest(el, txt, files.slice(1));
+        el.hidden = false;
+        return;
+      }
+      // Hosted: the LIVE harvest only (digest.md). The dated `digests/` archive
+      // needs a Dropbox folder listing per load — too chatty on a phone, the same
+      // carve-out the newsletter archive takes — so past harvests stay LOCAL-only.
+      const md = ((await (await apiFetch(`${API}/api/garden/digest`)).json()) || {}).markdown;
+      if (!md || !md.trim()) return;
+      renderHarvest(el, md, []);
       el.hidden = false;
-    } catch (e) { /* home-only; stay hidden on any failure */ }
+    } catch (e) { /* stay hidden on any failure */ }
   }
 
   function renderHarvest(el, md, older) {
@@ -572,7 +646,8 @@
     const merges = [];
     (parts[1] || '').replace(/-\s*Merge\s+"([^"]+)"\s+into\s+"([^"]+)"/g,
       (m, a, b) => { merges.push([a, b]); return m; });
-    if (merges.length) {
+    // Theme-merge Apply is a WRITE (records.merge_theme) — LOCAL only.
+    if (merges.length && LOCAL) {
       html += '<div class="merge-row"><span>Tidy up themes:</span>';
       for (const [a, b] of merges) {
         html += `<button data-from="${escapeHtml(a)}" data-to="${escapeHtml(b)}">`
@@ -604,6 +679,15 @@
 
   document.getElementById('search').addEventListener('input', render);
 
+  // The dashboard is at '/' on the Mac server but at 'index.html' on a project
+  // Pages site — keep the back link relative-safe (the same fix as the header
+  // Garden link on the dashboard side).
+  if (!LOCAL) {
+    const bl = document.querySelector('.back-link');
+    if (bl) bl.setAttribute('href', 'index.html');
+  }
+
+  renderConnectGate();   // hosted mode: show/hide the Dropbox connect bar
   fetchGarden();
   loadHarvest();
 </script>

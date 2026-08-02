@@ -291,6 +291,11 @@
     if (path === '/api/recipes') return resp(await readJson('recipes/recipes.json', []));
     if (path === '/api/logs') return resp(await readJson('journal.json', []));
     if (path === '/api/garden' || path === '/api/vault') return resp(await readJson('vault.json', []));
+    // Hosted-only mirror: the LIVE weekly harvest text. The Mac server has no such
+    // route — garden.html reads `/api/garden/digests` + the static `/digests/<f>.md`
+    // there, which needs a folder listing (too chatty on a phone, same carve-out as
+    // the newsletter archive), so hosted gets the current `digest.md` and no archive.
+    if (path === '/api/garden/digest') { const md = await download('digest.md'); return resp({ markdown: md }); }
     if (path === '/api/travel') { const t = await readJson('travel.flag', null); return resp(t ? { on: true, since: t.since, note: t.note } : { on: false }); }
     if (path === '/api/brief') { const md = await download('brief.md'); const fresh = md != null; return resp({ markdown: md, generated: null, fresh }); }
     if (path === '/api/newsletter-digest') {

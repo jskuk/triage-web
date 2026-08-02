@@ -5363,10 +5363,16 @@
   if (LOCAL) {
     const eb = document.getElementById('ea-btn');
     if (eb) eb.style.display = '';
-    // The Garden page fetches the local server directly (home-only, like the
-    // old Vault) — show its header link only at home.
+  }
+  // The Garden page is dual-mode now (read-only hosted, via dbx.js), so its link
+  // shows in BOTH modes. '/garden' is a server route that would 404 on a project
+  // Pages site — hosted points at the file itself.
+  {
     const gl = document.getElementById('garden-link');
-    if (gl) gl.style.display = '';
+    if (gl) {
+      if (!LOCAL) gl.setAttribute('href', 'garden.html');
+      gl.style.display = '';
+    }
   }
   function toggleEA() {
     const pop = document.getElementById('ea-popover');
