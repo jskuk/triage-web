@@ -4374,6 +4374,23 @@
         <span class="na-label">Due ≤2d</span></button>`);
     }
 
+    // 2b. Due-soon deadline whose linked task drifted to SOMEDAY (2026-08-03
+    // comps incident): the runway engine only checks the task EXISTS, and Someday
+    // is invisible to every daily sweep — this chip is the dashboard's half of
+    // the guard (the brief's SYSTEM line is the other). Includes overdue.
+    const shelved = (deadlines || []).filter(d => {
+      if (['done', 'dismissed'].includes(d.status) || !inDomain(d)) return false;
+      if (d.days_left == null || d.days_left > 2) return false;
+      const t = (items || []).find(i => i.id === d.linked_task_id);
+      return t && t.list === 'someday';
+    }).length;
+    if (shelved) {
+      chips.push(`<button class="na-chip na-urgent" onclick="jumpToSection('deadlines-section')"
+        aria-label="${shelved} due-soon deadline${shelved === 1 ? '' : 's'} with task shelved in Someday">
+        <span class="na-count">${shelved}</span>
+        <span class="na-label">Due-soon · task shelved</span></button>`);
+    }
+
     // 3. Unconfirmed meeting(s) (proposed, not past) → jump to meetings.
     const unconfirmed = (meetings || []).filter(m =>
       m.proposed && !m.past && !['done', 'cancelled'].includes(m.status) && inDomain(m)).length;
