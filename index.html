@@ -676,6 +676,37 @@
   .research-trail { margin-top: 8px; font-size: 0.8rem; color: var(--ink-muted); }
   .research-trail summary { cursor: pointer; }
   .research-trail ul { margin: 6px 0 0 0; padding-left: 18px; }
+  .research-trail li .trail-del {
+    opacity: 0; background: none; border: none; color: var(--ink-muted);
+    cursor: pointer; font-size: 0.7rem; padding: 0 2px; margin-left: 4px;
+  }
+  .research-trail li:hover .trail-del { opacity: 1; }
+  .trail-add { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; }
+  .trail-add input {
+    font-size: 0.75rem; padding: 3px 6px; border: 1px solid var(--border);
+    border-radius: 4px; background: var(--surface); color: var(--ink);
+  }
+  .trail-add button { font-size: 0.72rem; padding: 3px 8px; }
+  @media (max-width: 640px) { .research-trail li .trail-del { opacity: 1; } }
+
+  /* Card-level ✎ edit panel — calm container, no new accent (the → arrow is the
+     one accent per card). Inputs are border-neutral (not accent-bordered). */
+  .task-edit-panel {
+    margin-top: 8px; padding: 10px 12px; border: 1px solid var(--border);
+    border-radius: 8px; background: #FAF8F4;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .task-edit-panel .tep-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .task-edit-panel .tep-label { font-size: 0.78rem; color: var(--ink-muted); }
+  .task-edit-panel input {
+    flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid var(--border);
+    border-radius: 6px; font-family: inherit; font-size: 0.82rem; background: var(--surface); color: var(--ink);
+  }
+  .task-edit-panel input:focus { outline: none; border-color: var(--ink-muted); }
+  .task-edit-panel button {
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: none; font-family: inherit; font-size: 0.78rem; cursor: pointer;
+  }
 
   /* ── Tab Sweep ── */
   .tabs-section {
@@ -2086,6 +2117,7 @@
   // ── Projects section (v-audit): the strategic ledger, on the dashboard ──
   let projectsCollapsed = localStorage.getItem('triage-projects-collapsed') === '1';
   let editingProjectStateId = null;
+  let editingTaskId = null;  // the task whose card-level ✎ edit panel is open (one at a time)
 
   // Enable click-to-expand on any .clamp-2 element that actually overflows its
   // 2-line clamp (checked post-render so it reflects real wrapped height). Clicks
@@ -2361,7 +2393,7 @@
   // a wholesale re-render would drop unsaved keystrokes / interrupt triage.
   function _canAutoRefresh() {
     if (typeof activeTriageMode !== 'undefined' && activeTriageMode) return false;
-    if (editingRecipeId || editingProjectStateId) return false;
+    if (editingRecipeId || editingProjectStateId || editingTaskId) return false;
     const ae = document.activeElement;
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return false;
     return true;
@@ -2570,22 +2602,128 @@
       '<strong>$1:</strong> ');
   }
 
-  // A task accepted from a sweep insight carries research_trail = the tabs it
-  // was built from. Show them collapsed so the task keeps its context.
+  // A task's research_trail = the embedded link list (born from a sweep insight).
+  // Shown collapsed so the task keeps its context. Adding a link now lives in the
+  // card-level ✎ edit panel (retired the always-rendered "+ add link" row); an
+  // empty trail renders NOTHING in both modes. The per-entry ✕ (undo-guarded) is
+  // LOCAL-only (dbx.js has no route — an un-gated hosted write is the
+  // meetings-cache-poisoning class of bug); hosted stays read-only.
   function researchTrailHtml(item) {
-    const trail = item.research_trail;
-    if (!Array.isArray(trail) || !trail.length) return '';
-    const rows = trail.map(t => {
+    const trail = Array.isArray(item.research_trail) ? item.research_trail : [];
+    const n = trail.length;
+    if (!n) return '';
+    const rows = trail.map((t, idx) => {
       const label = escapeHtml(t.text || truncateUrl(t.url || '') || '(tab)');
       const memo = t.memo ? ` <em>— ${escapeHtml(t.memo)}</em>` : '';
-      return t.url
-        ? `<li><a href="${escapeHtml(t.url)}" target="_blank" rel="noopener">${label}</a>${memo}</li>`
-        : `<li>${label}${memo}</li>`;
+      const body = t.url
+        ? `<a href="${escapeHtml(safeUrl(t.url))}" target="_blank" rel="noopener">${label}</a>${memo}`
+        : `${label}${memo}`;
+      // Remove is keyed by INDEX (looked up from `items` in removeTrailLink) so a
+      // captured url never has to be embedded in an onclick attribute.
+      const del = (LOCAL && t.url)
+        ? `<button class="trail-del" aria-label="Remove link" onclick="removeTrailLink('${item.id}', ${idx}, event)">✕</button>`
+        : '';
+      return `<li>${body}${del}</li>`;
     }).join('');
     return `<details class="research-trail">
-        <summary>🔗 ${trail.length} tab${trail.length === 1 ? '' : 's'} — research trail</summary>
+        <summary>🔗 Research (${n})</summary>
         <ul>${rows}</ul>
       </details>`;
+  }
+
+  // Card-level edit panel — task text, a Pick-day date button (reuses the existing
+  // day-picker overlay + /api/schedule delete-prior path, no new date code), and the
+  // relocated add-link row (same ids/endpoint, unchanged). LOCAL-only (all three are
+  // writes). Rendered ONLY for the open card so there is no hidden DOM in every card.
+  function taskEditPanelHtml(item) {
+    if (!LOCAL || editingTaskId !== item.id) return '';
+    const sched = item.scheduled
+      ? `Scheduled ${escapeHtml(item.scheduled)}` : 'Not scheduled';
+    return `<div class="task-edit-panel" id="task-edit-${item.id}">
+        <div class="tep-row">
+          <input id="task-text-input-${item.id}" value="${escapeHtml(item.text)}"
+                 placeholder="Task text"
+                 onkeydown="if(event.key==='Enter')saveTaskText('${item.id}');if(event.key==='Escape')toggleTaskEdit('${item.id}')">
+          <button onclick="saveTaskText('${item.id}')">Save</button>
+        </div>
+        <div class="tep-row">
+          <span class="tep-label">${sched}</span>
+          <button onclick="showInlineDayPicker('${item.id}')">Pick day</button>
+        </div>
+        <div class="trail-add">
+          <input type="url" placeholder="https://… (add link)" id="trail-url-${item.id}"
+                 onkeydown="if(event.key==='Enter')addTrailLink('${item.id}');if(event.key==='Escape')toggleTaskEdit('${item.id}')">
+          <input type="text" placeholder="title (optional)" id="trail-title-${item.id}"
+                 onkeydown="if(event.key==='Enter')addTrailLink('${item.id}');if(event.key==='Escape')toggleTaskEdit('${item.id}')">
+          <button onclick="addTrailLink('${item.id}')">+ add link</button>
+        </div>
+        <div class="tep-row">
+          <button onclick="toggleTaskEdit('${item.id}')">Done</button>
+        </div>
+      </div>`;
+  }
+
+  // Toggle the card-level edit panel (one open at a time falls out of the single var).
+  function toggleTaskEdit(id) {
+    editingTaskId = (editingTaskId === id ? null : id);
+    render();
+    if (editingTaskId === id) {
+      const el = document.getElementById(`task-text-input-${id}`);
+      if (el) { el.focus(); el.select(); }
+    }
+  }
+
+  // Save edited task text via the text-only whitelist endpoint. Empty → no call,
+  // focus back (mirror addTrailLink's guard). Panel stays open across the re-render.
+  async function saveTaskText(id) {
+    const el = document.getElementById(`task-text-input-${id}`);
+    const text = ((el && el.value) || '').trim();
+    if (!text) { if (el) el.focus(); return; }
+    try {
+      await apiFetch(`${API}/api/task/update`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, text })
+      });
+    } finally {
+      await fetchItems();
+    }
+  }
+
+  // Append a link to a task's research_trail (LOCAL only). Re-renders after.
+  async function addTrailLink(id) {
+    const urlEl = document.getElementById(`trail-url-${id}`);
+    const titleEl = document.getElementById(`trail-title-${id}`);
+    const url = ((urlEl && urlEl.value) || '').trim();
+    if (!url) { if (urlEl) urlEl.focus(); return; }
+    const title = ((titleEl && titleEl.value) || '').trim();
+    try {
+      await apiFetch(`${API}/api/task/add-link`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, url, title })
+      });
+    } finally {
+      await fetchItems();
+    }
+  }
+
+  // Remove a research_trail entry (undo-guarded — the entry splices back on undo).
+  // Keyed by index into the live `items` copy so no url rides in the DOM attribute.
+  function removeTrailLink(id, idx, ev) {
+    const item = items.find(i => i.id === id);
+    const entry = item && Array.isArray(item.research_trail) ? item.research_trail[idx] : null;
+    if (!entry || !entry.url) return;
+    const url = entry.url;
+    const li = ev && ev.currentTarget ? ev.currentTarget.closest('li') : null;
+    if (li) li.style.display = 'none';
+    undoable('Link removed',
+      async () => {
+        await apiFetch(`${API}/api/task/remove-link`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, url })
+        });
+        await fetchItems();
+      },
+      () => { if (li) li.style.display = ''; });
   }
 
   function truncateUrl(url) {
@@ -2673,6 +2811,7 @@
         waiting: "Nothing waiting on others. Lucky you."
       };
       listEl.innerHTML = `<div class="empty-state"><div class="icon">○</div><p>${msgs[currentList]}</p></div>`;
+      if (editingTaskId) editingTaskId = null;  // its card left the list; don't suppress auto-refresh forever
       return;
     }
 
@@ -2718,6 +2857,7 @@
             <div class="item-text">${titleHtml(item.text)}</div>
             ${nextStepHtml}
             ${editHtml}
+            ${taskEditPanelHtml(item)}
             ${researchTrailHtml(item)}
             <div class="item-meta">
               ${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
@@ -2733,6 +2873,10 @@
               <span class="tooltip">Done</span>
             </button>
             ${moveButtons}
+            ${LOCAL ? `<button class="move-btn edit-btn" aria-label="Edit task" onclick="toggleTaskEdit('${item.id}')">
+              ✎
+              <span class="tooltip">Edit</span>
+            </button>` : ''}
             <button class="move-btn delete-btn" aria-label="Delete" onclick="deleteItem('${item.id}', event)">
               ✕
               <span class="tooltip">Delete</span>
@@ -2741,6 +2885,9 @@
         </div>
       `;
     }).join('');
+    // If the edited card left the rendered list (e.g. scheduling moved it out of the
+    // current tab), clear the suppression flag so auto-refresh isn't blocked forever.
+    if (editingTaskId && !document.getElementById('task-edit-' + editingTaskId)) editingTaskId = null;
   }
 
   // ── Triage Mode ──
