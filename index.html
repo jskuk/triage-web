@@ -2959,9 +2959,10 @@
       const icons = { inbox: 'IN', thisweek: 'TW', someday: 'SD', waiting: 'WT' };
       const labels = { inbox: 'Inbox', thisweek: 'This Week', someday: 'Someday', waiting: 'Waiting' };
 
-      // Hosted-only since 2026-08-18: on LOCAL the IN/SD/WT moves live in the
-      // ✎ edit panel instead (the panel is LOCAL-gated, so the phone — which
-      // still writes moves through dbx.js — keeps these in-row buttons).
+      // 2026-08-18 (user instruction): in-row on the INBOX tab (triage IS the
+      // move — TW/SD/WT one tap away) and on hosted (the ✎ edit panel is
+      // LOCAL-gated and dbx.js owns those writes); every other LOCAL tab keeps
+      // the trimmed ✓/✎/✕ row, with moves inside the ✎ edit panel.
       const moveButtons = otherLists.map(l => {
         const action = l === 'thisweek'
           ? `showInlineDayPicker('${item.id}')`
@@ -3025,7 +3026,7 @@
               ✓
               <span class="tooltip">Done</span>
             </button>
-            ${LOCAL ? '' : moveButtons}
+            ${(LOCAL && currentList !== 'inbox') ? '' : moveButtons}
             ${LOCAL ? `<button class="move-btn edit-btn" aria-label="Edit task" onclick="toggleTaskEdit('${item.id}')">
               ✎
               <span class="tooltip">Edit</span>
