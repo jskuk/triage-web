@@ -2895,7 +2895,20 @@
     const dItems = items.filter(i => inDomain(i) && !isProposedTask(i));
     const active = dItems.filter(i => i.list !== 'done' && i.list !== 'tabs');
     const filtered = dItems.filter(i => i.list === currentList);
-    filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+    // This Week reads top-to-bottom as the week runs (2026-08-18, user request —
+    // the left-edge day pills made the store order look random): by scheduled
+    // day, undated (the amber "?") FIRST — the Deadlines convention, and an
+    // exception needing a day pick shouldn't hide at the bottom — then by start
+    // time within a day ('' = the 9 AM default /api/schedule writes), then
+    // newest capture first. Every other list keeps newest-first.
+    if (currentList === 'thisweek') {
+      filtered.sort((a, b) =>
+        (a.scheduled || '').localeCompare(b.scheduled || '') ||
+        (a.scheduled_start || '09:00').localeCompare(b.scheduled_start || '09:00') ||
+        (new Date(b.created) - new Date(a.created)));
+    } else {
+      filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
+    }
 
     LISTS.forEach(l => {
       document.getElementById(`count-${l}`).textContent = dItems.filter(i => i.list === l).length;
