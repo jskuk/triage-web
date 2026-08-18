@@ -252,6 +252,10 @@
 
   .item-content { flex: 1; min-width: 0; }
 
+  /* Task-card date pill rides the card's LEFT edge — the same grammar as
+     deadline/meeting cards. Fixed column, aligned with the title's first line. */
+  .item > .dl-badge { flex-shrink: 0; margin-top: 2px; }
+
   .item-text {
     font-size: 0.98rem;
     font-weight: 500;
@@ -2683,6 +2687,15 @@
     if (!LOCAL || editingTaskId !== item.id) return '';
     const sched = item.scheduled
       ? `Scheduled ${escapeHtml(item.scheduled)}` : 'Not scheduled';
+    // Move-to row (2026-08-18): the IN/SD/WT buttons left the card's hover row
+    // (six buttons squeezed the content) and live here now. This Week is
+    // deliberately absent — the Pick day button above IS the move to This Week
+    // (/api/schedule), and duplicating that path invites drift.
+    const moveLabels = { inbox: 'Inbox', someday: 'Someday', waiting: 'Waiting' };
+    const moveRow = ['inbox', 'someday', 'waiting']
+      .filter(l => l !== item.list)
+      .map(l => `<button onclick="moveItem('${item.id}','${l}')">${moveLabels[l]}</button>`)
+      .join('');
     return `<div class="task-edit-panel" id="task-edit-${item.id}">
         <div class="tep-row">
           <input id="task-text-input-${item.id}" value="${escapeHtml(item.text)}"
@@ -2693,6 +2706,10 @@
         <div class="tep-row">
           <span class="tep-label">${sched}</span>
           <button onclick="showInlineDayPicker('${item.id}')">Pick day</button>
+        </div>
+        <div class="tep-row">
+          <span class="tep-label">Move to:</span>
+          ${moveRow}
         </div>
         <div class="trail-add">
           <input type="url" placeholder="https://… (add link)" id="trail-url-${item.id}"
@@ -2929,6 +2946,9 @@
       const icons = { inbox: 'IN', thisweek: 'TW', someday: 'SD', waiting: 'WT' };
       const labels = { inbox: 'Inbox', thisweek: 'This Week', someday: 'Someday', waiting: 'Waiting' };
 
+      // Hosted-only since 2026-08-18: on LOCAL the IN/SD/WT moves live in the
+      // ✎ edit panel instead (the panel is LOCAL-gated, so the phone — which
+      // still writes moves through dbx.js — keeps these in-row buttons).
       const moveButtons = otherLists.map(l => {
         const action = l === 'thisweek'
           ? `showInlineDayPicker('${item.id}')`
@@ -2939,10 +2959,11 @@
         </button>`;
       }).join('');
 
-      // Date pill (2026-08-18): the day this task is assigned to, at the LEAD of
-      // the meta row so the eye finds the day first. This Week → the real day
-      // (amber "?" when no day was ever picked — that's an exception); Inbox →
-      // a calm "?", undated by nature; Someday/Waiting → no pill at all.
+      // Date pill (2026-08-18): the day this task is assigned to, riding the
+      // card's LEFT edge (first flex child of .item — the same grammar as
+      // deadline/meeting cards). This Week → the real day (amber "?" when no
+      // day was ever picked — that's an exception); Inbox → a calm "?",
+      // undated by nature; Someday/Waiting → no pill (card keeps its old shape).
       let datePill = '';
       if (currentList === 'thisweek') {
         datePill = datePillHtml(item.scheduled, {
@@ -2971,6 +2992,7 @@
 
       return `
         <div class="item">
+          ${datePill}
           <div class="item-content">
             <div class="item-text">${titleHtml(item.text)}</div>
             ${nextStepHtml}
@@ -2978,7 +3000,7 @@
             ${taskEditPanelHtml(item)}
             ${researchTrailHtml(item)}
             <div class="item-meta">
-              ${datePill}${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
+              ${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
               <span class="item-date">${formatDate(item.created)}</span>
               ${currentList !== 'thisweek' && item.scheduled ? `<span class="item-date" style="color:var(--state-info)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
               ${stale ? '<span class="stale-badge">Stale — triage me</span>' : ''}
@@ -2990,7 +3012,7 @@
               ✓
               <span class="tooltip">Done</span>
             </button>
-            ${moveButtons}
+            ${LOCAL ? '' : moveButtons}
             ${LOCAL ? `<button class="move-btn edit-btn" aria-label="Edit task" onclick="toggleTaskEdit('${item.id}')">
               ✎
               <span class="tooltip">Edit</span>
