@@ -1336,6 +1336,16 @@
     padding: 12px 16px; margin-bottom: 8px;
   }
   .deadline-item.proposed { border-style: dashed; border-color: var(--accent); background: rgba(212,100,42,0.04); }
+  /* Email proposals cluster (2026-08-17): email-origin tasks are proposals now,
+     so they wait HERE instead of appearing inside the four lists. Same dashed
+     "unconfirmed" card grammar as a proposed meeting — one visual language for
+     "the system suggests, you decide". Suppressed at zero. */
+  .email-proposals { margin-bottom: 18px; }
+  .email-proposals-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-muted); margin-bottom: 8px;
+  }
   .deadline-main { flex: 1; min-width: 0; }
   .deadline-title { font-weight: 600; }
   .deadline-meta { font-size: 0.8rem; color: var(--ink-muted); margin-top: 3px; }
@@ -1759,6 +1769,16 @@
     <h2>Tasks</h2>
     <span class="tab-count" id="tasks-count"></span>
   </div>
+  <!-- Email proposals: reply/action tasks the email agent PROPOSES. They are not
+       in any list and not in any count until confirmed (2026-08-17). -->
+  <div class="email-proposals" id="email-proposals" style="display:none">
+    <div class="email-proposals-head">
+      From email — confirm?
+      <span class="tab-count" id="email-proposals-count">0</span>
+    </div>
+    <div id="email-proposals-list"></div>
+  </div>
+
   <div class="tab-bar" id="tab-bar">
     <button class="tab active" data-list="inbox">Inbox <span class="tab-count" id="count-inbox">0</span></button>
     <button class="tab" data-list="thisweek">This Week <span class="tab-count" id="count-thisweek">0</span></button>
@@ -2070,6 +2090,25 @@
   let currentList = 'inbox';
   let items = [];
 
+  // Default tab (2026-08-18): Inbox is the landing tab only while there IS an
+  // inbox in the current lens; an empty one lands on This Week instead. Unsorted
+  // items are ordinary inbox records so they count; email PROPOSALS never do
+  // (they are excluded from every inbox count by design). Evaluated on load and
+  // on a domain-lens switch — a tab the user picked by hand is never yanked away.
+  let listPickedByUser = false;
+  let listDefaultPending = true;
+
+  function applyDefaultList() {
+    if (listPickedByUser || !listDefaultPending) return;
+    listDefaultPending = false;
+    const want = items.some(i => i.list === 'inbox' && inDomain(i) && !isProposedTask(i))
+      ? 'inbox' : 'thisweek';
+    if (want === currentList) return;
+    currentList = want;
+    document.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.list === want));
+  }
+
   // ── Domain lens (work / life / all) ──
   // Default is single-domain, never the mixed pile: weekday→work, weekend→life.
   let currentDomain = localStorage.getItem('triage-domain')
@@ -2334,6 +2373,10 @@
     localStorage.setItem('triage-domain', d);
     document.querySelectorAll('#domain-toggle button').forEach(b =>
       b.classList.toggle('active', b.dataset.domain === d));
+    // The lens changes what "the inbox is empty" means, so re-evaluate the
+    // default tab — but only while the user hasn't chosen one himself.
+    listDefaultPending = true;
+    applyDefaultList();
     render(); renderTabs && renderTabs();
     if (typeof renderDeadlines === 'function') renderDeadlines();
     if (typeof renderMeetings === 'function') renderMeetings();
@@ -2362,6 +2405,7 @@
       if (LOCAL) { setServerDown(true); return; }
     }
     await fetchProjects();   // refresh the project cache once per render cycle
+    applyDefaultList();      // first successful load only — never mid-session
     render();
     renderTabs();
     fetchInsights();         // sweep-insight proposal cards (own async, never blocks)
@@ -2726,6 +2770,63 @@
       () => { if (li) li.style.display = ''; });
   }
 
+  // ══ Date pills (2026-08-18) ══════════════════════════════════════════
+  // ONE renderer for every day/date chip on the page — task cards, deadline
+  // cards, meeting cards. The TEXT carries the information (a weekday name or
+  // M/D, never an "Nd" counter he has to do arithmetic on) and the TINT carries
+  // urgency, through the existing .dl-badge state classes. ALL date math from
+  // LOCAL parts (the getWeekDays() / _localDaysPast() precedent) — new Date(str)
+  // and toISOString() are UTC and would roll an evening render onto another day.
+
+  // 'YYYY-MM-DD' (a trailing 'THH:MM' is fine) → { days, text, full } or null.
+  // days is signed: negative = past, 0 = today.
+  function _datePillParts(dateStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+    if (!m) return null;
+    const then = new Date(+m[1], +m[2] - 1, +m[3]);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const days = Math.round((then - today) / 86400000);
+    // Today reads "Today" (instant scanning); the next 6 days read as a weekday
+    // name; day 7 and beyond would repeat today's own name, so they read "M/D",
+    // as does anything in the past.
+    let text;
+    if (days === 0) text = 'Today';
+    else if (days >= 1 && days <= 6) text = then.toLocaleDateString('en-US', { weekday: 'short' });
+    else text = `${then.getMonth() + 1}/${then.getDate()}`;
+    const full = then.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    return { days, text, full };
+  }
+
+  // Days-out → state class. Same buckets the deadline/meeting badges have always
+  // used: past/today/tomorrow urgent, 2-7d soon, further out calm. A rolled-over
+  // TASK therefore goes red, which is the point — it finally looks stale.
+  function datePillClass(days) {
+    if (days == null) return 'far';
+    if (days <= 1) return 'urgent';
+    if (days <= 7) return 'soon';
+    return 'far';
+  }
+
+  // The "?" variant — an item with no date. cls picks the tint: 'far' (calm) for
+  // the Inbox, which is undated by nature (a nudge, not an alarm), 'soon' for a
+  // This-Week item missing its day (a real exception state).
+  function datePillUnknownHtml(cls, tip) {
+    return `<span class="dl-badge ${cls}" title="${escapeHtml(tip || 'no date')}">?</span>`;
+  }
+
+  // opts: { cls } forces the tint (deadlines/meetings pass the server-computed
+  // day count through datePillClass so the badge keeps its existing bucket),
+  // { tip } prefixes the hover title, { unknownCls, unknownTip } style the
+  // unparseable/absent-date fallback.
+  function datePillHtml(dateStr, opts) {
+    opts = opts || {};
+    const p = _datePillParts(dateStr);
+    if (!p) return datePillUnknownHtml(opts.unknownCls || 'far', opts.unknownTip);
+    const cls = opts.cls || datePillClass(p.days);
+    return `<span class="dl-badge ${cls}" title="${escapeHtml((opts.tip || '') + p.full)}">${escapeHtml(p.text)}</span>`;
+  }
+
   function truncateUrl(url) {
     try {
       const u = new URL(url);
@@ -2769,8 +2870,12 @@
     // Contain the strip: any throw here must NEVER take the whole task paint down (hosted regression, 2026-07-24).
     try { renderNeedsAttention(); } catch (e) { console.error('needs-attention strip failed', e); reportUiError(e, 'needs-attention'); }
     const listEl = document.getElementById('item-list');
+    // Email PROPOSALS (2026-08-17) live in their own cluster above the tab bar and
+    // are invisible to every list, count and triage queue until confirmed — an
+    // unconfirmed suggestion must not inflate the numbers he plans his day by.
+    try { renderEmailProposals(); } catch (e) { console.error('email proposals failed', e); reportUiError(e, 'email-proposals'); }
     // Domain lens applies to the task lists everywhere.
-    const dItems = items.filter(inDomain);
+    const dItems = items.filter(i => inDomain(i) && !isProposedTask(i));
     const active = dItems.filter(i => i.list !== 'done' && i.list !== 'tabs');
     const filtered = dItems.filter(i => i.list === currentList);
     filtered.sort((a, b) => new Date(b.created) - new Date(a.created));
@@ -2834,6 +2939,19 @@
         </button>`;
       }).join('');
 
+      // Date pill (2026-08-18): the day this task is assigned to, at the LEAD of
+      // the meta row so the eye finds the day first. This Week → the real day
+      // (amber "?" when no day was ever picked — that's an exception); Inbox →
+      // a calm "?", undated by nature; Someday/Waiting → no pill at all.
+      let datePill = '';
+      if (currentList === 'thisweek') {
+        datePill = datePillHtml(item.scheduled, {
+          tip: 'scheduled ', unknownCls: 'soon', unknownTip: 'no day picked yet'
+        });
+      } else if (currentList === 'inbox') {
+        datePill = datePillUnknownHtml('far', 'no day yet — move to This Week to pick one');
+      }
+
       const nsValue = item.nextStep ? escapeHtml(item.nextStep) : '';
       const nextStepHtml = item.nextStep
         ? `<div class="item-next-step">
@@ -2860,9 +2978,9 @@
             ${taskEditPanelHtml(item)}
             ${researchTrailHtml(item)}
             <div class="item-meta">
-              ${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
+              ${datePill}${item.url ? `<a class="item-url" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>` : ''}${domainChip(item)}${projectChip(item)}
               <span class="item-date">${formatDate(item.created)}</span>
-              ${item.scheduled ? `<span class="item-date" style="color:var(--state-info)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
+              ${currentList !== 'thisweek' && item.scheduled ? `<span class="item-date" style="color:var(--state-info)">Scheduled ${formatDate(item.scheduled + 'T00:00:00Z')}</span>` : ''}
               ${stale ? '<span class="stale-badge">Stale — triage me</span>' : ''}
               ${somedayStale ? `<span class="stale-badge" style="background:#F0EDF8;color:#6B6099">${days} days old — consider deleting</span>` : ''}
             </div>
@@ -2890,6 +3008,74 @@
     if (editingTaskId && !document.getElementById('task-edit-' + editingTaskId)) editingTaskId = null;
   }
 
+  // ── Email proposals (2026-08-17) ──
+  // The email agent no longer auto-creates reply/action tasks; it PROPOSES them.
+  // A proposal is a normal task record carrying `proposed: true`, so every reader
+  // uses this one predicate (legacy records simply lack the key). Done proposals
+  // never show — replying in Mail closes one through the ordinary cascade.
+  function isProposedTask(i) {
+    return !!(i && i.proposed) && i.list !== 'done';
+  }
+
+  function renderEmailProposals() {
+    const box = document.getElementById('email-proposals');
+    if (!box) return;
+    const props = (items || []).filter(i => isProposedTask(i) && inDomain(i));
+    document.getElementById('email-proposals-count').textContent = props.length;
+    // Suppress at zero — there is no hand-add entry point, so an empty box is noise.
+    if (!props.length) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    props.sort((a, b) => new Date(a.created) - new Date(b.created));   // oldest first
+    document.getElementById('email-proposals-list').innerHTML = props.map(item => {
+      const age = daysSince(item.created);
+      const url = item.url
+        ? `<a href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener">${escapeHtml(urlLabel(item))}</a>`
+        : '';
+      // Writes are LOCAL-gated: dbx.js has no route for confirm/dismiss, and an
+      // un-gated hosted write is the meetings-cache-poisoning class of bug. The
+      // phone still SEES the cluster (read-only) from the items it already fetched.
+      const actions = LOCAL
+        ? `<button class="btn btn-primary btn-small" onclick="confirmTaskProposal('${item.id}')">Confirm</button>
+           <button class="btn btn-ghost btn-small" onclick="dismissTaskProposal('${item.id}', event)">Dismiss</button>`
+        : '';
+      return `
+        <div class="deadline-item proposed">
+          <div class="deadline-main">
+            <div class="deadline-title">${titleHtml(item.text)} <span class="unsorted-flag">unconfirmed</span>${domainChip(item)}</div>
+            <div class="deadline-meta clamp-2">${isNaN(age) ? '' : age + 'd old'}${url ? ' · ' + url : ''}${item.memo ? ' · ' + escapeHtml(item.memo) : ''}</div>
+          </div>
+          ${actions}
+        </div>`;
+    }).join('');
+    wireClamps(document.getElementById('email-proposals-list'));
+  }
+
+  async function confirmTaskProposal(id) {
+    await apiFetch(`${API}/api/task/confirm`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    showToast('Confirmed · now in your Inbox');
+    await fetchItems();
+  }
+
+  // Dismiss is a DECISION (the server remembers the subject so the agent stops
+  // re-proposing it), so it gets the 5s undo window BEFORE the server call — the
+  // meetings Dismiss pattern, since nothing can restore the record afterwards.
+  function dismissTaskProposal(id, ev) {
+    const row = ev && ev.currentTarget ? ev.currentTarget.closest('.deadline-item') : null;
+    if (row) row.style.display = 'none';
+    undoable('Dismissed · won\'t be proposed again',
+      async () => {
+        await apiFetch(`${API}/api/task/dismiss-proposal`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+        await fetchItems();
+      },
+      () => { if (row) row.style.display = ''; });
+  }
+
   // ── Triage Mode ──
 
   let triageQueue = [];
@@ -2898,7 +3084,7 @@
 
   function startTriage() {
     triageQueue = items
-      .filter(i => i.list === 'inbox' && inDomain(i))
+      .filter(i => i.list === 'inbox' && inDomain(i) && !isProposedTask(i))
       .sort((a, b) => new Date(a.created) - new Date(b.created)); // oldest first
     triageIndex = 0;
     triageTotal = triageQueue.length;
@@ -3359,6 +3545,8 @@
 
   function selectList(list) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.list === list));
+    listPickedByUser = true;   // an explicit choice — the default rule stands down
+    listDefaultPending = false;
     currentList = list;
     render();
     const bar = document.getElementById('tab-bar');
@@ -4488,7 +4676,7 @@
         out.push({ kind: 'deadline', rec: d, overdueDays: -d.days_left });
     });
     (items || []).forEach(it => {
-      if (it.list !== 'thisweek' || !inDomain(it)) return;
+      if (it.list !== 'thisweek' || !inDomain(it) || isProposedTask(it)) return;
       const past = _localDaysPast(it.scheduled);
       if (past != null && past > 3)
         out.push({ kind: 'task', rec: it, overdueDays: past });
@@ -5272,12 +5460,12 @@
       return;
     }
     el.innerHTML = active.map(d => {
-      const dl = d.days_left;
-      const badgeTxt = dl == null ? '—' : `${dl}d`;
-      // State by days-out: overdue/≤1d urgent, 2-7d soon, else calm neutral.
-      let badgeCls = 'far';
-      if (dl != null && dl <= 1) badgeCls = 'urgent';
-      else if (dl != null && dl <= 7) badgeCls = 'soon';
+      // The pill shows the DAY ("Today" / "Tue" / "8/27"), not an Nd counter;
+      // the tint still encodes urgency, from the same server-computed days_left
+      // buckets as before (overdue/≤1d urgent, 2-7d soon, else calm neutral).
+      const badge = datePillHtml(d.due_date, {
+        cls: datePillClass(d.days_left), tip: 'due ', unknownTip: 'no due date'
+      });
       const actions = d.proposed
         ? `<button class="btn btn-primary btn-small" onclick="confirmDeadline('${d.id}')">Confirm</button>
            <button class="btn btn-ghost btn-small" onclick="deleteDeadline('${d.id}')">Dismiss</button>`
@@ -5285,7 +5473,7 @@
            <button class="btn btn-ghost btn-small" onclick="deleteDeadline('${d.id}')">✕</button>`;
       return `
         <div class="deadline-item ${d.proposed ? 'proposed' : ''}">
-          <span class="dl-badge ${badgeCls}">${badgeTxt}</span>
+          ${badge}
           <div class="deadline-main">
             <div class="deadline-title">${escapeHtml(d.title)}${d.proposed ? ' <span class="unsorted-flag">proposed</span>' : ''}${domainChip(d)}</div>
             <div class="deadline-meta clamp-2">due ${d.due_date} · ${d.type} · runway ${d.lead_time_days}d${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
@@ -5338,14 +5526,15 @@
         ? `<button class="btn btn-primary btn-small" onclick="confirmMeeting('${m.id}')">Confirm</button>
            <button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">Dismiss</button>`
         : `<button class="btn btn-ghost btn-small" onclick="deleteMeeting('${m.id}')">✕</button>`;
-      // Same state-by-days mapping as deadlines: ≤1d urgent, 2-7d soon, else neutral.
-      const du = m.days_until;
-      let mCls = 'far';
-      if (du != null && du <= 1) mCls = 'urgent';
-      else if (du != null && du <= 7) mCls = 'soon';
+      // Same state-by-days mapping as deadlines (≤1d urgent, 2-7d soon, else
+      // neutral), but the pill TEXT is the day itself — the start is naive-local
+      // 'YYYY-MM-DDTHH:MM', which the helper's date regex reads directly.
+      const badge = datePillHtml(m.start, {
+        cls: datePillClass(m.days_until), unknownTip: 'no date'
+      });
       return `
         <div class="deadline-item ${m.proposed ? 'proposed' : ''}">
-          <span class="dl-badge ${mCls}">${du == null ? '—' : du + 'd'}</span>
+          ${badge}
           <div class="deadline-main">
             <div class="deadline-title">${escapeHtml(m.title)}${m.proposed ? ' <span class="unsorted-flag">unconfirmed</span>' : ''}${domainChip(m)}</div>
             <div class="deadline-meta clamp-2">${fmtMeetingWhen(m.start)}${meta ? ' · ' + meta : ''}</div>
