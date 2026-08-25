@@ -4653,6 +4653,15 @@
     if (h.calendar && h.calendar.degraded) {
       parts.push(`<span class="health-item health-overdue" title="Triage can only read your primary Google calendar (calendar-list access blocked). Re-authorize Google with the calendar.readonly scope.">calendar partial</span>`);
     }
+    // Dropbox sync watchdog (2026-08-25): a red badge when the end-to-end round-trip
+    // probe found sync stalled. 'reboot needed' = the bounded client-restart heal
+    // did not clear it and only a reboot will (the styled badge IS the warning — no
+    // glyph, #12b). h.sync is undefined on the hosted shell → guarded, never throws.
+    if (h.sync && (h.sync.reboot_needed || h.sync.stalled)) {
+      const label = h.sync.reboot_needed ? 'reboot needed' : 'Dropbox stalled';
+      const tip = h.sync.reason ? String(h.sync.reason) : 'Dropbox sync stalled';
+      parts.push(`<span class="health-item health-overdue" title="${escapeHtml(tip)}">${label}</span>`);
+    }
     if (h.travel) parts.push(`<span class="health-item" style="color:var(--thisweek);font-weight:600">✈ Travel</span>`);
     // Inbox (and its stale count) is NOT repeated here — it already leads the stat
     // row 80px above and the brief; the strip carries only what's unique to it.
