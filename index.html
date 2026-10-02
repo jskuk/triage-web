@@ -1719,11 +1719,12 @@
       <button data-domain="all">All</button>
     </div>
     <button class="travel-btn" id="travel-btn" onclick="toggleTravel()" title="Travel mode: shrink the brief to essentials, pause stale-guilt">✈ Travel mode: off</button>
-    <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in the Triage repo, then /checkin">🤖 EA</button>
+    <button class="travel-btn ea-btn" id="ea-btn" style="display:none" onclick="toggleEA()" title="Talk to your EA: open Claude Code in ~/Dropbox/EA (alias: ea)">🤖 EA</button>
+    <a class="travel-btn garden-link" id="research-link" href="/research.html" title="Research portfolio and strategic priorities">Research portfolio</a>
     <a class="travel-btn garden-link" id="garden-link" href="/garden" style="display:none" title="Your Garden — kept, digested knowledge">🌱 Garden</a>
   </div>
   <div id="ea-popover" class="ea-popover" style="display:none">
-    <code id="ea-cmd">cd ~/Dropbox/Apps/Triage_Kuk &amp;&amp; claude</code>
+    <code id="ea-cmd">cd ~/Dropbox/EA &amp;&amp; claude</code>
     <button class="ea-copy" onclick="copyEACmd(event)">Copy</button>
     <span>then <code>/checkin</code></span>
   </div>
@@ -5778,7 +5779,7 @@
   }
   function copyEACmd(ev) {
     const btn = (ev && ev.currentTarget) || document.querySelector('.ea-copy');
-    const cmd = 'cd ~/Dropbox/Apps/Triage_Kuk && claude';
+    const cmd = 'cd ~/Dropbox/EA && claude';
     const flash = () => { const t = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => btn.textContent = t, 1200); };
     const fallback = () => {
       const el = document.getElementById('ea-cmd');

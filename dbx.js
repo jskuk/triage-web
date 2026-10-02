@@ -170,6 +170,33 @@
     return work.test(t) && !life.test(t) ? 'work' : (life.test(t) ? 'life' : 'life');
   }
 
+  // records.heuristic_lane port (Phase 1) — John's 4-rung ladder from text(+url).
+  // Pure, case-insensitive, word-boundary. Precedence never_late > wiggle >
+  // admin > dont_drop. Keep in lock-step with records.py (a hosted capture must
+  // land in the same lane the Mac would have stamped). LANES mirror records.LANES.
+  const LANES = ['never_late', 'dont_drop', 'wiggle', 'admin'];
+  const _LANE_NEVER = /\b(?:rec(?:ommendation)?\s+letters?|letters?\s+of\s+(?:rec(?:ommendation)?|support|reference)|reference\s+letters?|letter\s+for)\b/i;
+  const _LANE_LETTER = /\bletters?\b/i;
+  const _LANE_RECCUE = /\b(?:recommendation|interfolio|reference|tenure|promotion|nomination|fellowship|grad(?:uate)?\s+school)\b/i;
+  const _LANE_COVER = /\bcover\s+letters?\b/i;
+  const _LANE_REFEREE = /\breferee\b/i;
+  const _LANE_REVIEW = /\breview(?:s|er|ers|ing|ed)?\b/i;
+  const _LANE_MSID = /\b[A-Z]{2,}-\d{4}-\d+\b/;                 // case-sensitive, like records.py
+  const _LANE_WIGCTX = /\b(?:peer|referee|manuscript|journal|reviewer|invitation|editor)\b/i;
+  const _LANE_ACCDEC = /\b(?:accept|decline)\b/i;
+  const _LANE_ADMIN = /\b(?:survey|forms?|EBS|time\s+entr(?:y|ies)|tuition|pay(?:ments?)?|invoices?|concur|reimburs\w*|registration|register|RSVP|EASE|trainings?|compliance|data\s+usage\s+report|parking|password)\b/i;
+  function heuristicLane(text, url) {
+    const s = (text || '') + ' ' + (url || '');
+    if (!_LANE_COVER.test(s)) {
+      if (_LANE_NEVER.test(s)) return 'never_late';
+      if (_LANE_LETTER.test(s) && _LANE_RECCUE.test(s)) return 'never_late';
+    }
+    if (_LANE_REFEREE.test(s)) return 'wiggle';
+    if (_LANE_REVIEW.test(s) && (_LANE_MSID.test(s) || _LANE_WIGCTX.test(s) || _LANE_ACCDEC.test(s))) return 'wiggle';
+    if (_LANE_ADMIN.test(s)) return 'admin';
+    return 'dont_drop';
+  }
+
   // ── deadline heuristics: minimal JS mirror of aihelper (browser can't run the
   //    Python heuristic parser). config.DEADLINE_LEAD_DEFAULTS + _deadline_type.
   const DEADLINE_LEAD_DEFAULTS = { referee: 14, recletter: 7, rnr: 42, grant: 30, conference: 21, teaching: 7, other: 14 };
@@ -238,6 +265,7 @@
     let daysSince = null;
     if (ref) { const dt = new Date(ref); if (!isNaN(dt)) daysSince = Math.floor((Date.now() - dt) / 86400000); }
     if (p.status !== 'active') return { daysSince, stalled: false };
+    if (p.kind === 'area') return { daysSince, stalled: false };  // areas never stall (Q6)
     const limit = Number.isInteger(p.stall_days) ? p.stall_days : STALL_DEFAULT;
     return { daysSince, stalled: daysSince != null && daysSince > limit };
   }
@@ -255,6 +283,18 @@
 
     // — reads —
     if (path === '/api/items') return resp(await readJson('data.json', []));
+    // memo.json (Phase 2) — the single contract home.html reads. Mirror the
+    // server's _read_memo shell exactly: absent/corrupt → 200 all-null shell
+    // (dont_drop/coming_up are []), NEVER a 404 (home.html treats 404 as "memo
+    // not merged" and renders nothing; a hosted shell renders nothing too since
+    // main/dont_drop/coming_up are empty). brief-generator is the sole writer.
+    if (path === '/api/memo') {
+      const shell = { date: null, generated: null, source: null, day_line: null,
+        main: null, dont_drop: [], coming_up: [], heads_up: null };
+      const m = await readJson('memo.json', null);
+      if (!m || typeof m !== 'object') return resp(shell);
+      return resp({ ...shell, ...m });
+    }
     if (path === '/api/deadlines') {
       const ds = await readJson('deadlines.json', []);
       const day = 86400000, today = new Date(new Date().toDateString());
@@ -349,11 +389,17 @@
     // — task writes (data.json) —
     if (path === '/api/capture') return resp(await updateJson('data.json', a => {
       if (body.capture_src && a.some(i => i.capture_src === body.capture_src)) return a;
-      a.push({ id: genId(), text: (body.text || '').trim(), url: (body.url || '').trim() || null,
+      const list = body.list || 'inbox';
+      const rec = { id: genId(), text: (body.text || '').trim(), url: (body.url || '').trim() || null,
         nextStep: (body.nextStep || '').trim() || null, memo: (body.memo || '').trim() || null,
-        list: body.list || 'inbox', created: nowIso(),
+        list, created: nowIso(),
         domain: ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(body.text),
-        ...(body.unsorted ? { unsorted: true } : {}) }); return a; }, []), 201);
+        ...(body.unsorted ? { unsorted: true } : {}) };
+      // Lane stamp (Phase 1) — a task gets the 4-rung ladder; a tab-sweep item
+      // never does (mirror records.make_task). Trust a valid explicit lane, else
+      // the instant heuristic.
+      if (list !== 'tabs') rec.lane = LANES.includes(body.lane) ? body.lane : heuristicLane(body.text, body.url);
+      a.push(rec); return a; }, []), 201);
     const setField = (fn) => updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) fn(it); return a; }, []);
     if (path === '/api/move') { await setField(i => i.list = body.list); return resp({ ok: true }); }
     if (path === '/api/done') {
@@ -380,6 +426,69 @@
     if (path === '/api/promote') { await setField(i => { i.list = 'inbox'; if (!i.nextStep && i.memo) i.nextStep = i.memo; }); return resp({ ok: true }); }
     if (path === '/api/set-domain') { await setField(i => i.domain = body.domain); return resp({ ok: true }); }
     if (path === '/api/log') return resp(await updateJson('journal.json', a => { a.push({ id: genId(), text: body.text, timestamp: nowIso() }); return a; }, []), 201);
+
+    // — task lane / proposal lifecycle (Phase 1 + Phase 6; pure data.json edits) —
+    // One-tap lane correction. Mirror server._handle_set_lane: lane must be in
+    // LANES (else 400); find the id among tasks first, then deadlines. 404 unknown.
+    if (path === '/api/set-lane') {
+      if (!body.id) return resp({ error: 'id required' }, 400);
+      const lane = (body.lane || '').trim().toLowerCase();
+      if (!LANES.includes(lane)) return resp({ error: 'lane must be one of ' + LANES.join(', ') }, 400);
+      let found = false;
+      await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) { it.lane = lane; found = true; } return a; }, []);
+      if (found) return resp({ ok: true, id: body.id, lane, kind: 'task' });
+      await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) { d.lane = lane; found = true; } return a; }, []);
+      if (found) return resp({ ok: true, id: body.id, lane, kind: 'deadline' });
+      return resp({ error: 'not found' }, 404);
+    }
+    // Confirm an email proposal: clear `proposed` (idempotent — a double-tap on a
+    // non-proposed task is a no-op, never an error). 400 missing / 404 unknown.
+    if (path === '/api/task/confirm') {
+      if (!body.id) return resp({ error: 'id required' }, 400);
+      let found = null;
+      await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) { found = it; delete it.proposed; } return a; }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp(found);
+    }
+    // Old-replies sweep: John still owes it → stamp `swept` = today (local
+    // YYYY-MM-DD). Mirror server._handle_task_swept. 400 missing / 404 unknown.
+    if (path === '/api/task/swept') {
+      if (!body.id) return resp({ error: 'id required' }, 400);
+      let swept = null;
+      await updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) { swept = new Date().toLocaleDateString('en-CA'); it.swept = swept; } return a; }, []);
+      if (!swept) return resp({ error: 'not found' }, 404);
+      return resp({ ok: true, id: body.id, swept });
+    }
+    // Dismiss an email proposal: remove the task, remember its emailSubjectNorm in
+    // the dismissed ring (so the next agent cycle's upsert is suppressed, not
+    // rebuilt), and NULL linked_task_id on any deadline pointing at it. Mirror
+    // server._handle_task_dismiss_proposal: ONLY a proposed task travels here (a
+    // real task → /api/delete), 400 otherwise. email-dismissed.json is a flat list
+    // (CAS-safe, additive; a lost write only re-proposes a dismissal, never loses
+    // a task) — EMAIL_DISMISSED_MAX = 200, newest kept.
+    if (path === '/api/task/dismiss-proposal') {
+      if (!body.id) return resp({ error: 'id required' }, 400);
+      const items0 = await readJson('data.json', []);
+      const gone = items0.find(i => i.id === body.id);
+      if (!gone) return resp({ error: 'not found' }, 404);
+      if (!gone.proposed) return resp({ error: 'not a proposal — use /api/delete' }, 400);
+      await updateJson('data.json', a => a.filter(i => i.id !== body.id), []);
+      const subjectNorm = (gone.emailSubjectNorm || '').trim().toLowerCase() || null;
+      if (subjectNorm) {
+        try {
+          await updateJson('email-dismissed.json', ring => {
+            if (!Array.isArray(ring)) ring = [];
+            const i = ring.indexOf(subjectNorm); if (i >= 0) ring.splice(i, 1);  // re-stamp newest
+            ring.push(subjectNorm);
+            if (ring.length > 200) ring = ring.slice(ring.length - 200);
+            return ring;
+          }, []);
+        } catch {}
+      }
+      let unlinked = false;
+      try { await updateJson('deadlines.json', a => { a.forEach(d => { if (d.linked_task_id === body.id) { d.linked_task_id = null; unlinked = true; } }); return a; }, []); } catch {}
+      return resp({ ok: true, dismissed: body.id, remembered: subjectNorm, unlinked });
+    }
 
     // — deadlines —
     // Mirror server._handle_deadline_add: structured (title+due) → record;
@@ -432,7 +541,53 @@
       }, []);
       return resp(outRec, 201);
     }
-    if (path === '/api/deadlines/update') { await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) Object.assign(d, body.fields || {}); return a; }, []); return resp({ ok: true }); }
+    // Mirror server._handle_deadline_update: whitelist fields; status→done travels
+    // the shared chain (server._mark_deadline_done) — the ⏰ marker clears (no-op
+    // hosted: the browser can't touch the Google event, gcal_event_id is left
+    // intact for the Mac to clean up) AND the linked open task is completed in ANY
+    // list (the 2026-09-17 reverse chain). Empty/None field values are skipped,
+    // exactly like the server.
+    if (path === '/api/deadlines/update') {
+      const fields = (body.fields && typeof body.fields === 'object') ? body.fields : null;
+      if (!body.id || !fields) return resp({ error: 'id and fields required' }, 400);
+      const allowed = ['title', 'due_date', 'lead_time_days', 'domain', 'status', 'notes', 'type', 'linked_task_id'];
+      let found = null, finishing = false, linked = null;
+      await updateJson('deadlines.json', a => {
+        const d = a.find(x => x.id === body.id);
+        if (!d) return a;
+        found = d;
+        finishing = fields.status === 'done' && d.status !== 'done';
+        for (const k of Object.keys(fields)) {
+          if (!allowed.includes(k)) continue;
+          if (fields[k] === null || fields[k] === '') continue;
+          if (finishing && k === 'status') continue;   // set below via the chain
+          d[k] = fields[k];
+        }
+        if (finishing) { d.status = 'done'; linked = d.linked_task_id || null; }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      let closed = null;
+      if (finishing && linked) {
+        try {
+          await updateJson('data.json', a => {
+            const t = a.find(i => i.id === linked && i.list !== 'done');
+            if (t) { t.list = 'done'; t.completed = nowIso(); closed = t.id; }
+            return a;
+          }, []);
+          // finishing a task is project movement (benign if it fails — A4).
+          const closedTask = closed ? (await readJson('data.json', [])).find(i => i.id === closed) : null;
+          const pid = closedTask && closedTask.project_id;
+          if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) p.last_movement = nowIso(); return a; }, []); } catch {} }
+        } catch {}
+      }
+      return resp({ ok: true, closed_task_id: closed });
+    }
+    // Confirm clears `proposed` only. The server ALSO writes the ⏰ all-day marker
+    // on confirm (2026-09-23) — a Google Calendar event the browser cannot create;
+    // a hosted confirm therefore leaves the marker to the Mac (the deadline still
+    // shows in the ledger/runway, just without its calendar ⏰ until the Mac next
+    // touches it). Documented degradation, not a lost write.
     if (path === '/api/deadlines/confirm') { await updateJson('deadlines.json', a => { const d = a.find(x => x.id === body.id); if (d) d.proposed = false; return a; }, []); return resp({ ok: true }); }
     if (path === '/api/deadlines/delete') { await updateJson('deadlines.json', a => a.filter(x => x.id !== body.id), []); return resp({ ok: true }); }
     if (path === '/api/deadlines/check') return resp({ opened: [] });   // cloud brain runs the real engine
@@ -456,12 +611,47 @@
       return resp(out, 201);
     }
     if (path === '/api/projects/update') {
-      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note'];
+      // Mirror server._handle_project_update (Phase 5): kind validated to
+      // project|area (anything else ignored), focus coerced to bool.
+      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note', 'kind', 'focus'];
       await updateJson('projects.json', a => { const p = a.find(x => x.id === body.id); if (p && body.fields) {
-        for (const k of Object.keys(body.fields)) { if (!allowed.includes(k)) continue; p[k] = body.fields[k];
-          if (k === 'state_note' && (body.fields[k] || '').toString().trim()) { p.state_updated = nowIso(); p.last_movement = nowIso(); } } }
+        for (const k of Object.keys(body.fields)) {
+          if (!allowed.includes(k)) continue;
+          let v = body.fields[k];
+          if (k === 'kind' && v !== 'project' && v !== 'area') continue;
+          if (k === 'focus') v = !!v;
+          p[k] = v;
+          const hasNote = (typeof v === 'string') ? v.trim() : !!v;
+          if (k === 'state_note' && hasNote) { p.state_updated = nowIso(); p.last_movement = nowIso(); } } }
         return a; }, []);
       return resp({ ok: true });
+    }
+    // Set this week's focus (Q5). Mirror server._handle_project_focus: ids a list
+    // of strings (else 400), ≤3 (else 400), each existing (404) and a kind-project
+    // (an area → 400); set focus:true + focus_set:today on the chosen, clear focus
+    // elsewhere. An empty list clears focus everywhere.
+    if (path === '/api/projects/focus') {
+      const ids = body.ids;
+      if (!Array.isArray(ids) || !ids.every(x => typeof x === 'string')) return resp({ error: 'ids (list of strings) required' }, 400);
+      const clean = ids.filter(Boolean);
+      if (clean.length > 3) return resp({ error: 'at most 3 focus projects' }, 400);
+      const projects = await readJson('projects.json', []);
+      const byId = {}; projects.forEach(p => { byId[p.id] = p; });
+      for (const pid of clean) {
+        if (!byId[pid]) return resp({ error: 'not found: ' + pid }, 404);
+        if (byId[pid].kind === 'area') return resp({ error: 'an area cannot be a focus project' }, 400);
+      }
+      const today = new Date().toLocaleDateString('en-CA');
+      const chosen = new Set(clean);
+      let focus = [];
+      await updateJson('projects.json', a => {
+        a.forEach(p => {
+          if (chosen.has(p.id)) { p.focus = true; p.focus_set = today; focus.push(p.id); }
+          else if (p.focus) p.focus = false;
+        });
+        return a;
+      }, []);
+      return resp({ ok: true, focus });
     }
     if (path === '/api/projects/delete') { await updateJson('projects.json', a => a.filter(x => x.id !== body.id), []); return resp({ ok: true }); }
     if (path === '/api/projects/state') {
@@ -608,6 +798,24 @@
     }
     if (path === '/api/readlater/archive') {
       await updateJson('readlater.json', recs => { const r = recs.find(x => x.id === body.id); if (r) r.status = 'archived'; return recs; }, []);
+      return resp({ ok: true });
+    }
+    // Whitelist-merge a title/take/tier fix. Mirror server's readlater/update
+    // allowed set {title, my_take, summary, key_point, est_minutes, tier}; an
+    // invalid tier is ignored (home.html's Library soon/someday toggle rides this).
+    if (path === '/api/readlater/update') {
+      const fields = (body.fields && typeof body.fields === 'object') ? body.fields : {};
+      const allowed = ['title', 'my_take', 'summary', 'key_point', 'est_minutes', 'tier'];
+      let found = false;
+      await updateJson('readlater.json', recs => {
+        const r = recs.find(x => x.id === body.id);
+        if (r) { found = true; for (const k of Object.keys(fields)) {
+          if (!allowed.includes(k)) continue;
+          if (k === 'tier' && fields[k] !== 'soon' && fields[k] !== 'someday') continue;
+          r[k] = fields[k]; } }
+        return recs;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
       return resp({ ok: true });
     }
     if (path === '/api/readlater/promote-spark') {
