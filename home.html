@@ -901,6 +901,7 @@ function fetchAll() {
     showServerDown(false);
     if (!LOCAL) renderConnectGate();   // connected + data flowing → hide the gate
     state.items = Array.isArray(items.data) ? items.data : [];
+    state.loaded = true;
     state.deadlines = Array.isArray(res[1].data) ? res[1].data : [];
     state.meetings = Array.isArray(res[2].data) ? res[2].data : [];
     state.projects = (res[3].data && Array.isArray(res[3].data.projects)) ? res[3].data.projects : [];
@@ -939,6 +940,13 @@ function render() {
   try { renderSidebar(); } catch (e) { reportUiError('sidebar: ' + e.stack); }
   try { renderStatus(); } catch (e) { reportUiError('status: ' + e.stack); }
   var host = document.getElementById('page-content');
+  // Until the first successful fetch, say so: an empty lane list reads as
+  // "you owe nothing" (seen hosted, where Dropbox downloads take seconds).
+  if (!state.loaded) {
+    host.innerHTML = '<div class="empty" style="padding:48px 0">Loading your Triage…</div>';
+    try { markNav(); } catch (e) {}
+    return;
+  }
   try {
     host.innerHTML = state.view === 'tasks' ? tasksHtml()
       : state.view === 'sweeps' ? sweepsViewHtml()
