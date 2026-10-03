@@ -1142,7 +1142,7 @@ var SWEEP_DEFS = {
   pastDeadlines: { label: 'Past-due deadlines',   note: 'the date has passed',               color: LANE_COLOR.never_late,
                    question: "This deadline's date has passed." },
   pastMeetings:  { label: 'Past meetings',        note: 'already happened',                  color: LANE_COLOR.admin,
-                   question: 'This meeting was proposed and is now in the past.' }
+                   question: 'This meeting suggestion is in the past. Clear it whether or not it happened.' }
 };
 var TALLY_LABEL = {
   done: 'done', confirmed: 'confirmed', kept: 'kept', owed: 'kept',
@@ -1290,7 +1290,7 @@ function sweepActionsHtml(key, r) {
     return h;
   }
   if (key === 'pastMeetings') {
-    h += sbtn('1', 'It happened, keep', 'keep', 'primary') + sbtn('x', 'Clear', 'clear', 'danger');
+    h += sbtn('1', 'Clear', 'clear', 'primary') + sbtn('2', 'Add to calendar as a record', 'keep');
     return h + '</div>';
   }
   if (key === 'projectsCheckIn') {
@@ -1306,7 +1306,7 @@ function sweepHintText(key) {
   if (key === 'oldReplies') return 'Keys: 1 Still owe it · 2 Already done · 3 Someday · x Drop · Space skip · Esc back';
   if (key === 'suggestions') return 'Keys: 1 Confirm · 2 Confirm + lane · 3 Already done · x Dismiss · Space skip · Esc back';
   if (key === 'pastDeadlines') return "Keys: 1 It's done · 2 New date · x Drop · Space skip · Esc back";
-  if (key === 'pastMeetings') return 'Keys: 1 Keep · x Clear · Space skip · Esc back';
+  if (key === 'pastMeetings') return 'Keys: 1 Clear · 2 Add to calendar · Space skip · Esc back';
   if (key === 'projectsCheckIn') return 'Keys: 1 Keep active · 2 Park · 3 Done · Space skip · Esc back';
   return 'Space skip · Esc back';
 }
@@ -1317,7 +1317,7 @@ function sweepKeyMap(key) {
   if (key === 'oldReplies') return { '1': 'owe', '2': 'done', '3': 'someday', 'x': 'drop', ' ': 'skip' };
   if (key === 'suggestions') return { '1': 'confirm', '2': 'lane', '3': 'done', 'x': 'dismiss', ' ': 'skip' };
   if (key === 'pastDeadlines') return { '1': 'done', '2': 'newdate', 'x': 'drop', ' ': 'skip' };
-  if (key === 'pastMeetings') return { '1': 'keep', 'x': 'clear', ' ': 'skip' };
+  if (key === 'pastMeetings') return { '1': 'clear', 'x': 'clear', '2': 'keep', ' ': 'skip' };
   if (key === 'projectsCheckIn') return { '1': 'keepactive', '2': 'park', '3': 'projdone', ' ': 'skip' };
   return base;
 }
@@ -1448,7 +1448,7 @@ function handleSweepAction(act, payload) {
     }
     if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return api('/api/deadlines/delete', { method: 'POST', body: { id: id } }); });
   } else if (key === 'pastMeetings') {
-    if (act === 'keep') return sweepStep('Kept: ' + name, 'kept', id, function () { return api('/api/meetings/confirm', { method: 'POST', body: { id: id } }); });
+    if (act === 'keep') return sweepStep('Added to calendar: ' + name, 'kept', id, function () { return api('/api/meetings/confirm', { method: 'POST', body: { id: id } }); });
     if (act === 'clear') return sweepStep('Cleared: ' + name, 'cleared', id, function () { return api('/api/meetings/delete', { method: 'POST', body: { id: id } }); });
   } else if (key === 'projectsCheckIn') {
     // Keep active = re-save the current state note, which bumps movement (no "stalled").
