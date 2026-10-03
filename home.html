@@ -596,6 +596,7 @@ function tasksLaneItems(items, deadlines, today) {
 // SAME functions, so the numbers can never disagree.
 var SWEPT_QUIET_DAYS = 14;   // a kept "still owe it" leaves Old replies this long
 var OLD_REPLY_DAYS = 14;     // an email task older than this is up for review
+var WAITING_CHECK_DAYS = 14; // a waiting item older than this is up for review
 
 // 1. This-Week tasks whose scheduled date is in the past (open, not proposed).
 function sweepStuckTasks(items, today) {
@@ -681,11 +682,30 @@ function projectsToCheckIn(projects, today) {
   return out;
 }
 
+// 7. Still waiting? open waiting-list tasks (not proposed) whose wait age
+// (waitingSince || created) is more than two weeks, EXCEPT ones swept within the
+// last 14 days (John said "still waiting", so leave them be — the Old-replies
+// rule). Oldest wait first. Each row is a normWaitingRow (who/memo/url carried).
+function sweepWaitingCheck(items, today) {
+  items = items || [];
+  var out = [];
+  for (var i = 0; i < items.length; i++) {
+    var t = items[i];
+    if (!t || t.list !== 'waiting' || isProposedTask(t)) continue;
+    if (daysPast(t.waitingSince || t.created || '', today) <= WAITING_CHECK_DAYS) continue;
+    if (t.swept && daysPast(t.swept, today) < SWEPT_QUIET_DAYS) continue;
+    out.push(normWaitingRow(t, today));
+  }
+  out.sort(function (a, b) { return b.askDays - a.askDays; });
+  return out;
+}
+
 function sweepCounts(items, deadlines, meetings, projects, today) {
   return {
     suggestions: sweepSuggestions(items, today).length,
     stuck: sweepStuckTasks(items, today).length,
     oldReplies: sweepOldReplies(items, today).length,
+    waitingCheck: sweepWaitingCheck(items, today).length,
     pastDeadlines: sweepPastDeadlines(deadlines, today).length,
     pastMeetings: sweepPastMeetings(meetings).length,
     projectsCheckIn: projectsToCheckIn(projects, today).length
@@ -1028,7 +1048,7 @@ function openActiveCount() {
 }
 function sweepTotal() {
   var c = visibleSweepCounts();
-  return c.suggestions + c.stuck + c.oldReplies + c.pastDeadlines + c.pastMeetings + c.projectsCheckIn;
+  return c.suggestions + c.stuck + c.oldReplies + c.waitingCheck + c.pastDeadlines + c.pastMeetings + c.projectsCheckIn;
 }
 // Counts for DISPLAY (strip, nav badge, sweeps list). Hosted hides the Past-
 // meetings queue: meetings.json is read-only on the phone (single-writer table)
@@ -1082,6 +1102,7 @@ function sweepsStripHtml() {
   if (c.suggestions) doors.push(sweepDoor(c.suggestions, 'email suggestions'));
   if (c.stuck) doors.push(sweepDoor(c.stuck, 'tasks stuck on past dates'));
   if (c.oldReplies) doors.push(sweepDoor(c.oldReplies, 'old replies to review'));
+  if (c.waitingCheck) doors.push(sweepDoor(c.waitingCheck, 'waiting on others'));
   if (c.pastDeadlines) doors.push(sweepDoor(c.pastDeadlines, 'past-due deadlines'));
   if (c.pastMeetings) doors.push(sweepDoor(c.pastMeetings, 'past meetings to clear'));
   if (c.projectsCheckIn) doors.push(sweepDoor(c.projectsCheckIn, 'projects to check in on'));
@@ -1129,7 +1150,7 @@ function tasksHtml() {
 }
 
 /* ---- Sweeps ---- */
-var SWEEP_ORDER = ['suggestions', 'stuck', 'oldReplies', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn'];
+var SWEEP_ORDER = ['suggestions', 'stuck', 'oldReplies', 'waitingCheck', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn'];
 var SWEEP_DEFS = {
   projectsCheckIn: { label: 'Projects to check in on', note: 'not touched in a while', color: 'var(--green)',
                    question: 'Not touched in a while. Keep active or park?' },
@@ -1139,6 +1160,8 @@ var SWEEP_DEFS = {
                    question: 'This was scheduled for a day that has passed. What now?' },
   oldReplies:    { label: 'Old replies',          note: 'do you still owe this?',            color: 'var(--green)',
                    question: 'Do you still owe this?' },
+  waitingCheck:  { label: 'Still waiting?',       note: 'waiting more than two weeks',       color: LANE_COLOR.admin,
+                   question: "You're waiting on someone. Still worth it?" },
   pastDeadlines: { label: 'Past-due deadlines',   note: 'the date has passed',               color: LANE_COLOR.never_late,
                    question: "This deadline's date has passed." },
   pastMeetings:  { label: 'Past meetings',        note: 'already happened',                  color: LANE_COLOR.admin,
@@ -1146,10 +1169,10 @@ var SWEEP_DEFS = {
 };
 var TALLY_LABEL = {
   done: 'done', confirmed: 'confirmed', kept: 'kept', owed: 'kept',
-  someday: 'to Someday', rescheduled: 'rescheduled', dismissed: 'dismissed',
+  someday: 'to Someday', rescheduled: 'rescheduled', nudged: 'nudged', dismissed: 'dismissed',
   dropped: 'dropped', cleared: 'cleared', parked: 'parked'
 };
-var TALLY_ORDER = ['done', 'confirmed', 'kept', 'owed', 'someday', 'rescheduled', 'dismissed', 'dropped', 'cleared', 'parked'];
+var TALLY_ORDER = ['done', 'confirmed', 'kept', 'owed', 'someday', 'rescheduled', 'nudged', 'dismissed', 'dropped', 'cleared', 'parked'];
 
 function sweepsViewHtml() {
   if (state.sweepQueue) return sweepCardViewHtml();
@@ -1268,6 +1291,11 @@ function sweepActionsHtml(key, r) {
       sbtn('3', 'Someday', 'someday') + sbtn('x', 'Drop', 'drop', 'danger');
     return h + '</div>';
   }
+  if (key === 'waitingCheck') {
+    h += sbtn('1', 'Got it', 'gotit', 'primary') + sbtn('2', 'Nudge', 'nudge') +
+      sbtn('3', 'Still waiting', 'stillwait') + sbtn('x', 'Drop', 'drop', 'danger');
+    return h + '</div>';
+  }
   if (key === 'suggestions') {
     h += sbtn('1', 'Confirm', 'confirm', 'primary') + sbtn('2', 'Confirm + lane', 'lane') +
       sbtn('3', 'Already done', 'done') + sbtn('x', 'Dismiss', 'dismiss', 'danger');
@@ -1304,6 +1332,7 @@ function sweepActionsHtml(key, r) {
 function sweepHintText(key) {
   if (key === 'stuck') return 'Keys: 1 Today · 2 Pick a day · 3 Someday · 4 Done · x Drop · Space skip · Esc back';
   if (key === 'oldReplies') return 'Keys: 1 Still owe it · 2 Already done · 3 Someday · x Drop · Space skip · Esc back';
+  if (key === 'waitingCheck') return 'Keys: 1 Got it · 2 Nudge · 3 Still waiting · x Drop · Space skip · Esc back';
   if (key === 'suggestions') return 'Keys: 1 Confirm · 2 Confirm + lane · 3 Already done · x Dismiss · Space skip · Esc back';
   if (key === 'pastDeadlines') return "Keys: 1 It's done · 2 New date · x Drop · Space skip · Esc back";
   if (key === 'pastMeetings') return 'Keys: 1 Clear · 2 Add to calendar · Space skip · Esc back';
@@ -1315,6 +1344,7 @@ function sweepKeyMap(key) {
   var base = { ' ': 'skip', x: null };
   if (key === 'stuck') return { '1': 'today', '2': 'pickday', '3': 'someday', '4': 'done', 'x': 'drop', ' ': 'skip' };
   if (key === 'oldReplies') return { '1': 'owe', '2': 'done', '3': 'someday', 'x': 'drop', ' ': 'skip' };
+  if (key === 'waitingCheck') return { '1': 'gotit', '2': 'nudge', '3': 'stillwait', 'x': 'drop', ' ': 'skip' };
   if (key === 'suggestions') return { '1': 'confirm', '2': 'lane', '3': 'done', 'x': 'dismiss', ' ': 'skip' };
   if (key === 'pastDeadlines') return { '1': 'done', '2': 'newdate', 'x': 'drop', ' ': 'skip' };
   if (key === 'pastMeetings') return { '1': 'clear', 'x': 'clear', '2': 'keep', ' ': 'skip' };
@@ -1338,6 +1368,7 @@ function sweepCardsFor(key) {
   var c = currentSweepCountsSource();
   if (key === 'stuck') return sweepStuckTasks(c.items, c.today);
   if (key === 'oldReplies') return sweepOldReplies(c.items, c.today);
+  if (key === 'waitingCheck') return sweepWaitingCheck(c.items, c.today);
   if (key === 'suggestions') return sweepSuggestions(c.items, c.today);
   if (key === 'pastDeadlines') return sweepPastDeadlines(c.deadlines, c.today);
   if (key === 'pastMeetings') return sweepPastMeetings(c.meetings);
@@ -1412,6 +1443,29 @@ function sweepSkip() {
 }
 function sweepToggle(which) { state.sweepPick = (state.sweepPick === which) ? null : which; render(); }
 
+// Nudge helpers (browser side): derive a follow-up's person + topic from a
+// waiting row. `who` wins; else parse a name out of the title; else "them".
+function waitingWho(row) {
+  if (row.who && String(row.who).trim()) return String(row.who).trim();
+  var t = String(row.text || '');
+  var m = t.match(/reply from\s+(.+?)\s+re:/i);
+  if (m) return m[1].trim();
+  m = t.match(/^\s*waiting\s+(?:on|for|to hear (?:back )?from)\s+([A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*){0,2})/i);
+  if (m) return m[1].trim();
+  return 'them';
+}
+// The topic = the title minus the "Waiting:" / "Waiting on/for" / "reply from X
+// re:" machine prefixes; kept short.
+function waitingTopic(text) {
+  var s = String(text || '').trim();
+  s = s.replace(/^waiting\b\s*:?\s*/i, '');
+  s = s.replace(/^(?:on|for|to hear (?:back )?from)\s+/i, '');
+  s = s.replace(/^reply from\s+.+?\s+re:\s*/i, '');
+  s = s.trim();
+  if (s.length > 80) s = s.slice(0, 80).trim();
+  return s;
+}
+
 function handleSweepAction(act, payload) {
   var key = state.sweepQueue, row = (state.sweepCards || [])[state.sweepIndex];
   if (!row || !key) return;
@@ -1431,6 +1485,20 @@ function handleSweepAction(act, payload) {
     if (act === 'owe') return sweepStep('Kept: ' + name, 'owed', id, function () { return api('/api/task/swept', { method: 'POST', body: { id: id } }); });
     if (act === 'done') return sweepStep('Done: ' + name, 'done', id, function () { return api('/api/done', { method: 'POST', body: { id: id } }); });
     if (act === 'someday') return sweepStep('To Someday: ' + name, 'someday', id, function () { return api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }); });
+    if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return api('/api/delete', { method: 'POST', body: { id: id } }); });
+  } else if (key === 'waitingCheck') {
+    if (act === 'gotit') return sweepStep('Got it: ' + name, 'done', id, function () { return api('/api/done', { method: 'POST', body: { id: id } }); });
+    if (act === 'nudge') {
+      // Keep the waiting item (swept → leaves this queue for 14 days) AND drop a
+      // follow-up into the Inbox so the nudge becomes a real task to act on.
+      var who = waitingWho(row), topic = waitingTopic(row.text);
+      var fuText = 'Follow up with ' + who + (topic ? ': ' + topic : '');
+      return sweepStep('Nudged: ' + name, 'nudged', id, function () {
+        return api('/api/capture', { method: 'POST', body: { text: fuText, list: 'inbox', lane: 'dont_drop' } })
+          .then(function () { return api('/api/task/swept', { method: 'POST', body: { id: id } }); });
+      });
+    }
+    if (act === 'stillwait') return sweepStep('Still waiting: ' + name, 'kept', id, function () { return api('/api/task/swept', { method: 'POST', body: { id: id } }); });
     if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return api('/api/delete', { method: 'POST', body: { id: id } }); });
   } else if (key === 'suggestions') {
     if (act === 'confirm') return sweepStep('Confirmed: ' + name, 'confirmed', id, function () { return api('/api/task/confirm', { method: 'POST', body: { id: id } }); });
