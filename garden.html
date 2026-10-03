@@ -286,7 +286,7 @@
 <div class="wrap">
   <div class="connect-gate" id="connect-gate" style="display:none">
     <span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span>
-    <a class="cg-btn" id="cg-btn" href="index.html">Connect on the dashboard</a>
+    <a class="cg-btn" id="cg-btn" href="./">Connect on the dashboard</a>
   </div>
 
   <section class="harvest" id="harvest" hidden></section>
@@ -684,7 +684,7 @@
   // Garden link on the dashboard side).
   if (!LOCAL) {
     const bl = document.querySelector('.back-link');
-    if (bl) bl.setAttribute('href', 'index.html');
+    if (bl) bl.setAttribute('href', './');
   }
 
   renderConnectGate();   // hosted mode: show/hide the Dropbox connect bar

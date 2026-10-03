@@ -371,7 +371,7 @@
     </div>
 
     <div class="page">
-      <div id="connect-gate"><span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span><a class="cg-btn" href="index.html">Connect on the dashboard</a></div>
+      <div id="connect-gate"><span class="cg-msg">Not connected to Dropbox — your data lives in your Dropbox.</span><a class="cg-btn" href="./">Connect on the dashboard</a></div>
       <div id="server-down"><span>Can't reach the Triage server — is it running?</span><button id="server-retry">Retry</button></div>
       <div id="page-content"></div>
     </div>
@@ -982,7 +982,7 @@ function markNav() {
 // the same carve-out garden.html uses for its back-link. Hash links (#tasks) and
 // external http(s) links are left alone.
 function fixHostedLinks() {
-  var MAP = { '/': 'index.html', '/garden': 'garden.html', '/garden/': 'garden.html' };
+  var MAP = { '/': './', '/garden': 'garden.html', '/garden/': 'garden.html' };
   document.querySelectorAll('#page-content a[href]').forEach(function (a) {
     var href = a.getAttribute('href') || '';
     if (href.charAt(0) !== '/') return;          // relative/hash/external: leave it

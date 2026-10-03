@@ -13,6 +13,9 @@
   const ROOT = '';            // App-folder app: the app folder IS the root
   const LS = { rt: 'dbx-refresh', at: 'dbx-access', exp: 'dbx-exp', ver: 'dbx-verifier' };
   const revs = {};            // rel -> latest rev (for compare-and-swap)
+  // The Dropbox app registers the FOLDER url (…/triage-web/), so a page reached as
+  // …/index.html must still send exactly that, or OAuth rejects the redirect_uri.
+  const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, '');
 
   // ── PKCE connect ────────────────────────────────────────────────
   function b64url(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
@@ -27,7 +30,7 @@
     const u = new URL('https://www.dropbox.com/oauth2/authorize');
     u.search = new URLSearchParams({ client_id: key, response_type: 'code',
       code_challenge: challenge, code_challenge_method: 'S256',
-      token_access_type: 'offline', redirect_uri: location.origin + location.pathname }).toString();
+      token_access_type: 'offline', redirect_uri: REDIRECT }).toString();
     location.href = u.toString();
   }
   async function handleRedirect() {
@@ -36,7 +39,7 @@
     const key = localStorage.getItem('dbx-app-key');
     const body = new URLSearchParams({ code, grant_type: 'authorization_code',
       client_id: key, code_verifier: localStorage.getItem(LS.ver),
-      redirect_uri: location.origin + location.pathname });
+      redirect_uri: REDIRECT });
     const r = await fetch('https://api.dropboxapi.com/oauth2/token', { method: 'POST', body });
     const j = await r.json();
     if (j.refresh_token) {
