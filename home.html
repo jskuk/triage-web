@@ -235,11 +235,13 @@
   .pc-menu button.danger:hover { background: var(--red-bg); color: var(--red); }
 
   .tabbar { display: none; }
+  .lens-seg-m { display: none; }
 
   /* ---------- phone ---------- */
   @media (max-width: 720px) {
     .shell { display: block; }
     .side { display: none; }
+    .lens-seg-m { display: inline-flex; margin-left: auto; }
     .topbar { padding: 4px 16px; }
     .page { padding: 24px 16px 96px; }
     h1 { font-size: 28px; }
@@ -357,13 +359,14 @@
     </div>
 
     <div class="side-foot">
-      <div class="seg" id="lens-seg"><button data-lens="work">Work</button><button data-lens="life">Life</button><button data-lens="all">All</button></div>
+      <div class="seg lens-seg" id="lens-seg"><button data-lens="work">Work</button><button data-lens="life">Life</button><button data-lens="all">All</button></div>
     </div>
   </aside>
 
   <div class="main">
     <div class="topbar">
       <span class="crumb"><b id="crumb">Home</b></span>
+      <div class="seg lens-seg lens-seg-m" aria-label="Work or life"><button data-lens="work">Work</button><button data-lens="life">Life</button><button data-lens="all">All</button></div>
       <span class="status" id="status" style="display:none">
         <button id="status-btn" aria-expanded="false"><span class="status-dot"></span><span id="status-label"></span></button>
         <span class="status-detail" id="status-detail"></span>
@@ -1013,7 +1016,7 @@ function fixHostedLinks() {
 
 function renderSidebar() {
   // lens segment
-  document.querySelectorAll('#lens-seg button').forEach(function (b) {
+  document.querySelectorAll('.lens-seg button').forEach(function (b) {
     b.classList.toggle('on', b.getAttribute('data-lens') === state.lens);
   });
   // nav counts
@@ -2171,7 +2174,7 @@ document.addEventListener('click', function (e) {
   var kb = el.closest && el.closest('#cap-kinds button');
   if (kb) { e.preventDefault(); captureKind = kb.getAttribute('data-kind'); doCapture(captureKind, document.getElementById('cap-input').value); return; }
   // lens
-  var lb = el.closest && el.closest('#lens-seg button');
+  var lb = el.closest && el.closest('.lens-seg button');
   if (lb) { setLens(lb.getAttribute('data-lens')); return; }
   // sweeps: open a queue from the list
   var si = el.closest && el.closest('.sweep-item');
