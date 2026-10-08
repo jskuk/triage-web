@@ -821,6 +821,19 @@
       if (!found) return resp({ error: 'not found' }, 404);
       return resp({ ok: true });
     }
+    // Hard-delete ONE read-later record by id (mirror server's readlater/delete;
+    // archive is the soft path — this is the explicit remove, UI-guarded by undo).
+    if (path === '/api/readlater/delete') {
+      if (!body.id) return resp({ error: 'id required' }, 400);
+      let found = false;
+      await updateJson('readlater.json', recs => {
+        const next = recs.filter(r => r.id !== body.id);
+        found = next.length !== recs.length;
+        return next;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp({ ok: true });
+    }
     if (path === '/api/readlater/promote-spark') {
       const recs = await readJson('readlater.json', []);
       const rec = recs.find(r => r.id === body.id);

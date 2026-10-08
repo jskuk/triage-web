@@ -292,6 +292,24 @@
   .add-proj input { flex: 1; border: 1px solid var(--line); border-radius: 7px; padding: 7px 11px; font: inherit; }
   .add-proj button { border: 1px solid var(--line); border-radius: 7px; padding: 7px 14px; background: #fff; }
   .add-proj button:hover { background: var(--hover); }
+  .pcard.done { opacity: .82; }
+  .pc-goal { margin-top: 6px; font-size: 14px; color: var(--text); }
+  .pc-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .pc-tags .tag.journal { background: var(--green-bg); color: var(--green); }
+  .pc-tags .tag.housing { background: var(--blue-bg); color: var(--blue); }
+
+  /* research priorities (two standing cards) + research sub-labels */
+  .priorities { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 4px 0 20px; }
+  .priority { padding: 15px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--callout); }
+  .priority.p1 { border-left: 4px solid var(--green); }
+  .priority.p2 { border-left: 4px solid var(--blue); }
+  .pri-k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+  .priority h3 { margin: 4px 0 5px; font-size: 15px; }
+  .priority p { margin: 0; color: var(--text-2); font-size: 13.5px; }
+  .h3r { display: flex; align-items: baseline; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text-2); margin: 18px 0 8px; }
+  .h3r-n { color: var(--text-3); font-weight: 400; }
+  .research-portfolio-link { display: inline-block; margin: 10px 0 4px; font-size: 13px; color: var(--blue); text-decoration: none; }
+  .research-portfolio-link:hover { text-decoration: underline; }
 
   /* library rows */
   .lib-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 2px; border-bottom: 1px solid var(--line); }
@@ -303,6 +321,17 @@
   .lr-acts { display: flex; flex-wrap: wrap; gap: 6px; flex: none; }
   .lr-acts button { font-size: 12px; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--line); background: #fff; color: var(--text-2); }
   .lr-acts button:hover { background: var(--hover); color: var(--text); }
+  .lr-acts button.danger:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-bg); }
+  .lr-take { font-style: italic; color: var(--text-2); font-size: 13px; margin-top: 3px; }
+  .rl-edit { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .rl-edit input, .rl-edit textarea { border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: inherit; width: 100%; }
+  .rl-edit textarea { min-height: 52px; resize: vertical; }
+  .rl-edit-row { display: flex; align-items: center; gap: 6px; }
+  .rl-edit-row .rl-edit-mins { width: 88px; flex: none; }
+  .rl-edit-row button { font-size: 12px; padding: 4px 11px; border-radius: 5px; border: 1px solid var(--line); background: #fff; color: var(--text-2); }
+  .rl-edit-row button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .rl-edit-row button:hover { background: var(--hover); color: var(--text); }
+  .rl-edit-row button.primary:hover { opacity: .9; color: #fff; background: var(--text); }
   .lib-search { width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 11px; font: inherit; margin-bottom: 10px; }
   .news-md { font-size: 14px; color: var(--text-2); line-height: 1.55; }
   .news-md h2, .news-md h3, .news-md h4 { font-size: 14px; font-weight: 600; color: var(--text); margin: 14px 0 4px; }
@@ -325,6 +354,7 @@
   @media (max-width: 720px) {
     .lib-row { flex-direction: column; gap: 6px; }
     .pc-mv { margin-left: 0; }
+    .priorities { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -349,7 +379,7 @@
     <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
     <a class="nav" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks<span class="n" id="nav-tasks-n"></span></a>
     <a class="nav" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps<span class="n" id="nav-sweeps-n"></span></a>
-    <a class="nav" data-view="areas" href="#areas"><svg><use href="#i-areas"/></svg>Areas</a>
+    <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
     <a class="nav" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
     <a class="nav" data-view="kitchen" href="#kitchen"><svg><use href="#i-kitchen"/></svg>Kitchen</a>
 
@@ -385,7 +415,7 @@
   <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
   <a class="nav-tab" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks</a>
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
-  <a class="nav-tab" data-view="areas" href="#areas"><svg><use href="#i-areas"/></svg>Areas</a>
+  <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
   <a class="nav-tab" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
 </nav>
 
@@ -737,6 +767,47 @@ function focusPickerOpen(projects, today) {
   return !newest || newest < monday;
 }
 
+// ── Projects view: research membership + grouping (ported from research.html) ──
+// A project is "research" when its keywords carry the tag `research`
+// (case-insensitive) AND NOT `portfolio-strategy` (a strategy card, kept off the
+// portfolio). Areas are never research. research.html's exact membership.
+function projectHasKeyword(p, kw) {
+  return !!(p && (p.keywords || []).some(function (k) { return String(k).toLowerCase() === kw; }));
+}
+function isResearchProject(p) {
+  return !!(p && p.kind !== 'area' && projectHasKeyword(p, 'research') && !projectHasKeyword(p, 'portfolio-strategy'));
+}
+function _byTitle(a, b) { return String((a && a.title) || '').localeCompare(String((b && b.title) || '')); }
+// Partition the (lens-filtered) project list into the Projects-view groups.
+// Research → active / incubating (paused) / completed (done), each sorted by
+// title (research.html's sort). Non-research kind-projects → other (active) +
+// paused (non-research). Areas (kind:"area", not done) kept separate and calm.
+function projectGroups(projects) {
+  projects = (projects || []).filter(Boolean);
+  var research = projects.filter(isResearchProject);
+  function rStatus(s) {
+    return research.filter(function (p) { return (p.status || 'active') === s; }).slice().sort(_byTitle);
+  }
+  var nonAreaOther = projects.filter(function (p) { return p.kind !== 'area' && !isResearchProject(p); });
+  return {
+    researchActive: rStatus('active'),
+    researchIncubating: rStatus('paused'),
+    researchCompleted: rStatus('done'),
+    other: nonAreaOther.filter(function (p) { return (p.status || 'active') === 'active'; }),
+    paused: nonAreaOther.filter(function (p) { return p.status === 'paused'; }),
+    areas: projects.filter(function (p) { return p.kind === 'area' && p.status !== 'done'; })
+  };
+}
+// Housing/renter (≤2) + top-journal (≤1) chips from keywords (research.html's usefulTags).
+function projectTags(p) {
+  var words = ((p && p.keywords) || []).map(function (k) { return String(k); });
+  var housing = words.filter(function (k) { return /housing|renter/i.test(k); }).slice(0, 2);
+  var journal = words.filter(function (k) { return /top journal/i.test(k); }).slice(0, 1);
+  var out = [], seen = {};
+  housing.concat(journal).forEach(function (t) { if (!seen[t]) { seen[t] = 1; out.push(t); } });
+  return out;
+}
+
 // tier of a Read Later record: "soon" or "someday" (absent/invalid → someday, Q7).
 function rlTier(r) { return (r && r.tier === 'soon') ? 'soon' : 'someday'; }
 function readSoonItems(recs) {
@@ -833,7 +904,7 @@ var state = {
   // Phase 5: Areas / Library / Kitchen.
   readlater: [], newsletter: null, recipes: [], recipesLoaded: false,
   openProject: null, editProject: null, focusPickOpen: null, openProjectMenu: null,
-  libSomedayOpen: false, libNewsOpen: false, libSearch: '',
+  libSomedayOpen: false, libNewsOpen: false, libSearch: '', editRl: null,
   openRecipe: null, kitchenSearch: ''
 };
 
@@ -973,12 +1044,12 @@ function render() {
   try {
     host.innerHTML = state.view === 'tasks' ? tasksHtml()
       : state.view === 'sweeps' ? sweepsViewHtml()
-      : state.view === 'areas' ? areasHtml()
+      : state.view === 'projects' ? projectsHtml()
       : state.view === 'library' ? libraryHtml()
       : state.view === 'kitchen' ? kitchenHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', areas: 'Areas', library: 'Library', kitchen: 'Kitchen' }[state.view] || 'Home';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen' }[state.view] || 'Home';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -1005,7 +1076,7 @@ function markNav() {
 // the same carve-out garden.html uses for its back-link. Hash links (#tasks) and
 // external http(s) links are left alone.
 function fixHostedLinks() {
-  var MAP = { '/': './', '/garden': 'garden.html', '/garden/': 'garden.html' };
+  var MAP = { '/': './', '/garden': 'garden.html', '/garden/': 'garden.html', '/research.html': 'research.html' };
   document.querySelectorAll('#page-content a[href]').forEach(function (a) {
     var href = a.getAttribute('href') || '';
     if (href.charAt(0) !== '/') return;          // relative/hash/external: leave it
@@ -1549,7 +1620,7 @@ function sweepClearAllMeetings() {
   });
 }
 
-/* ---- Areas (Phase 5, Q6) ---- */
+/* ---- Projects (Phase 5, Q6; renamed from Areas + research layout 2026-10) ---- */
 function lensProjects() { return (state.projects || []).filter(function (p) { return inDomain(p, state.lens) && !optimistic[p.id]; }); }
 function projectById(pid) { return (state.projects || []).find(function (p) { return p.id === pid; }) || {}; }
 
@@ -1565,33 +1636,67 @@ function projectOpenTaskRows(pid) {
   });
 }
 
-function areasHtml() {
+function _mostQuietFirst(a, b) { return (b.days_since_movement || 0) - (a.days_since_movement || 0); }
+
+function projectsHtml() {
   var today = todayISO();
   var all = lensProjects();
-  var activeProjects = all.filter(function (p) { return p.kind !== 'area' && p.status === 'active'; });
-  var paused = all.filter(function (p) { return p.kind !== 'area' && p.status === 'paused'; });
-  var areas = all.filter(function (p) { return p.kind === 'area' && p.status !== 'done'; });
-  var focus = activeProjects.filter(function (p) { return p.focus; });
-  // most-quiet first (brings "check in on" projects to the top), without the word "stalled".
-  activeProjects = activeProjects.slice().sort(function (a, b) { return (b.days_since_movement || 0) - (a.days_since_movement || 0); });
+  var groups = projectGroups(all);
+  var activeForPicker = all.filter(function (p) { return p.kind !== 'area' && p.status === 'active'; })
+    .slice().sort(_mostQuietFirst);
+  var focus = activeForPicker.filter(function (p) { return p.focus; });
 
-  var h = '<h1>Areas</h1>';
-  h += '<p class="sub">Projects have an outcome. Areas (teaching, service, home) are ongoing and never warn.</p>';
-  h += focusPanelHtml(activeProjects, focus, today);
-  h += '<p class="h2">Projects</p>';
-  h += activeProjects.length ? activeProjects.map(function (p) { return projectCardHtml(p, {}); }).join('')
-    : '<div class="empty">No active projects.</div>';
+  var h = '<h1>Projects</h1>';
+  h += '<p class="sub">Research is #1. Projects have an outcome; areas (teaching, service, home) are ongoing and never warn.</p>';
+  // (a) This week's focus
+  h += focusPanelHtml(activeForPicker, focus, today);
+  // (b) Research — two standing priorities + Active / Incubating / Completed
+  h += researchSectionHtml(groups);
+  // (c) Other projects (non-research, active), most-quiet first
+  var other = groups.other.slice().sort(_mostQuietFirst);
+  h += '<p class="h2">Other projects</p>';
+  h += other.length ? other.map(function (p) { return projectCardHtml(p, {}); }).join('')
+    : '<div class="empty">No other active projects.</div>';
   h += addProjectFormHtml();
-  if (paused.length) {
+  // (d) Areas (kind:"area") — calm, no warnings
+  h += '<p class="h2">Areas</p>';
+  h += groups.areas.length ? groups.areas.map(function (p) { return projectCardHtml(p, { area: true }); }).join('')
+    : '<div class="empty">No areas yet. Use a card’s menu to switch a project into an area.</div>';
+  // (e) Paused non-research projects
+  if (groups.paused.length) {
     var pClosed = ('ap-paused' in state.closedGroups) ? state.closedGroups['ap-paused'] : true;
     h += '<div class="group' + (pClosed ? ' closed' : '') + '" data-group="ap-paused">' +
-      '<button class="g-head"><svg class="tri"><use href="#i-tri"/></svg><span class="dot" style="background:var(--gray)"></span>Paused <span class="g-count">' + paused.length + '</span></button>' +
-      '<div class="g-body">' + paused.map(function (p) { return projectCardHtml(p, { paused: true }); }).join('') + '</div></div>';
+      '<button class="g-head"><svg class="tri"><use href="#i-tri"/></svg><span class="dot" style="background:var(--gray)"></span>Paused <span class="g-count">' + groups.paused.length + '</span></button>' +
+      '<div class="g-body">' + groups.paused.map(function (p) { return projectCardHtml(p, { paused: true }); }).join('') + '</div></div>';
   }
-  h += '<p class="h2">Areas</p>';
-  h += areas.length ? areas.map(function (p) { return projectCardHtml(p, { area: true }); }).join('')
-    : '<div class="empty">No areas yet. Use a card’s menu to switch a project into an area.</div>';
-  h += '<div class="foot">Areas · pick one or two focus projects each Monday. The old dashboard stays at <a href="/">/</a>.</div>';
+  h += '<div class="foot">Projects · pick one or two focus projects each Monday. The old dashboard stays at <a href="/">/</a>.</div>';
+  return h;
+}
+
+// The Research section: the two standing priorities (research.html's verbatim
+// text), then Active / Incubating / Completed-or-dormant groups of research cards.
+function researchSectionHtml(groups) {
+  var active = groups.researchActive, inc = groups.researchIncubating, done = groups.researchCompleted;
+  var h = '<p class="h2">Research</p>';
+  h += '<div class="priorities" aria-label="Research priorities">' +
+    '<article class="priority p1"><div class="pri-k">Priority 1</div><h3>More housing politics</h3>' +
+    '<p>Build papers where housing is explicitly political: behavior, representation, policy feedback, precarity, and participation.</p></article>' +
+    '<article class="priority p2"><div class="pri-k">Priority 2</div><h3>More top-journal attempts</h3>' +
+    '<p>Develop the strongest version of promising projects, then make an intentional top-journal submission decision.</p></article></div>';
+  h += '<p class="h3r">Active <span class="h3r-n">' + active.length + '</span></p>';
+  h += active.length ? active.map(function (p) { return projectCardHtml(p, { research: true }); }).join('')
+    : '<div class="empty">No active research projects.</div>';
+  if (inc.length) {
+    h += '<p class="h3r">Incubating <span class="h3r-n">' + inc.length + '</span></p>';
+    h += inc.map(function (p) { return projectCardHtml(p, { research: true, paused: true }); }).join('');
+  }
+  if (done.length) {
+    var closed = ('research-done' in state.closedGroups) ? state.closedGroups['research-done'] : true;
+    h += '<div class="group' + (closed ? ' closed' : '') + '" data-group="research-done">' +
+      '<button class="g-head"><svg class="tri"><use href="#i-tri"/></svg><span class="dot" style="background:var(--gray)"></span>Completed or dormant <span class="g-count">' + done.length + '</span></button>' +
+      '<div class="g-body">' + done.map(function (p) { return projectCardHtml(p, { research: true, done: true }); }).join('') + '</div></div>';
+  }
+  h += '<a class="research-portfolio-link" href="/research.html">Open the full research portfolio page →</a>';
   return h;
 }
 
@@ -1633,13 +1738,15 @@ function projectCardHtml(p, opt) {
   var openP = state.openProject === p.id;
   var editing = state.editProject === p.id;
   var dotColor = p.focus ? 'var(--green)' : (opt.area ? 'var(--gray)' : 'var(--blue)');
-  var h = '<div class="pcard' + (opt.area ? ' area' : '') + (p.focus ? ' isfocus' : '') + '" data-proj="' + escapeHtml(p.id) + '">';
+  var h = '<div class="pcard' + (opt.area ? ' area' : '') + (opt.done ? ' done' : '') + (p.focus ? ' isfocus' : '') + '" data-proj="' + escapeHtml(p.id) + '">';
   h += '<div class="pc-head"><span class="dot" style="background:' + dotColor + '"></span>' +
     '<span class="pc-title">' + escapeHtml(p.title || 'Project') + '</span>';
   if (p.focus) h += '<span class="pc-focus">focus</span>';
   if (p.domain) h += '<span class="tag">' + escapeHtml(p.domain === 'life' ? 'Life' : 'Work') + '</span>';
-  if (!opt.area && dsm != null) h += '<span class="pc-mv">moved ' + dsm + 'd ago</span>';
+  if (!opt.area && !opt.done && dsm != null) h += '<span class="pc-mv">moved ' + dsm + 'd ago</span>';
   h += '</div>';
+  // Goal (research.html's goal line) — the outcome, below the title.
+  if (p.goal) h += '<div class="pc-goal">' + escapeHtml(p.goal) + '</div>';
   if (editing) {
     h += '<div class="ns-edit"><input class="pc-note-in" placeholder="Your angle / next move…" value="' + escapeHtml(p.state_note || '') + '"><button data-pact="savenote">Save</button></div>';
   } else if (p.state_note) {
@@ -1650,6 +1757,14 @@ function projectCardHtml(p, opt) {
   h += '<button class="pc-tasks" data-pact="tasks">' + tasks.length + (tasks.length === 1 ? ' open task' : ' open tasks') + '</button>';
   if (openP) {
     h += '<div class="pc-rows">' + (tasks.length ? tasks.map(function (r) { return rowHtml(r, {}); }).join('') : '<div class="empty">No open tasks linked.</div>') + '</div>';
+  }
+  // Housing/renter + top-journal tags (research.html's usefulTags) — empty for
+  // a life project, so this renders nothing there.
+  var tags = projectTags(p);
+  if (tags.length) {
+    h += '<div class="pc-tags">' + tags.map(function (t) {
+      return '<span class="tag' + (/housing|renter/i.test(t) ? ' housing' : ' journal') + '">' + escapeHtml(t) + '</span>';
+    }).join('') + '</div>';
   }
   // Only the ONE contextual action shows inline (Keep active/Park at ≥21d quiet);
   // the rest live behind a quiet ⋯ menu so a calm card isn't a wall of buttons.
@@ -1751,7 +1866,7 @@ function libraryHtml() {
   h += soon.length ? soon.map(function (r) { return rlRowHtml(r, true); }).join('') : '<div class="empty">Nothing queued to read soon.</div>';
   h += somedayShelfHtml(somedayShown, someday.length);
   h += newsletterPanelHtml();
-  h += '<div class="doors" style="margin-top:28px"><a class="door" href="/garden"><span>Garden →</span></a><a class="door" href="/research.html"><span>Research portfolio →</span></a></div>';
+  h += '<div class="doors" style="margin-top:28px"><a class="door" href="/garden"><span>Garden →</span></a></div>';
   h += '<div class="foot">Library · reading tiers, newsletter, Garden.</div>';
   return h;
 }
@@ -1769,6 +1884,7 @@ function somedayShelfHtml(rows, total) {
   return h + '</div></div>';
 }
 function rlRowHtml(r, soon) {
+  var editing = state.editRl === r.id;
   var h = '<div class="lib-row" data-rl="' + escapeHtml(r.id) + '"><div class="lr-main">';
   h += '<a class="lr-title" href="' + escapeHtml(safeUrl(r.url || '#')) + '" target="_blank" rel="noopener">' + escapeHtml(r.title || r.url || 'Untitled') + '</a>';
   var meta = [];
@@ -1776,18 +1892,50 @@ function rlRowHtml(r, soon) {
   if (r.est_minutes) meta.push(r.est_minutes + ' min');
   if (meta.length) h += '<div class="lr-meta">' + meta.join(' · ') + '</div>';
   if (r.summary) h += '<div class="lr-sum">' + escapeHtml(r.summary) + '</div>';
+  if (r.my_take) h += '<div class="lr-take">' + escapeHtml(r.my_take) + '</div>';
+  if (editing) h += rlEditFormHtml(r);
   h += '</div><div class="lr-acts">';
   if (soon) {
     h += '<button data-pact="rl-read">Done reading</button><button data-pact="rl-someday">Move to someday</button><button data-pact="rl-garden">→ Garden</button>';
   } else {
     h += '<button data-pact="rl-soon">Read soon</button><button data-pact="rl-archive">Archive</button>';
   }
+  h += '<button data-pact="rl-edit" aria-label="Edit">✎ Edit</button>';
+  h += '<button class="danger" data-pact="rl-del" aria-label="Delete">✕</button>';
   return h + '</div></div>';
 }
+// Inline editor for a reading-list row: title, your take, est. minutes.
+function rlEditFormHtml(r) {
+  return '<div class="rl-edit">' +
+    '<input class="rl-edit-title" placeholder="Title" value="' + escapeHtml(r.title || '') + '">' +
+    '<textarea class="rl-edit-take" placeholder="Your take…">' + escapeHtml(r.my_take || '') + '</textarea>' +
+    '<div class="rl-edit-row">' +
+      '<input class="rl-edit-mins" type="number" min="0" placeholder="min" value="' + escapeHtml(r.est_minutes != null ? String(r.est_minutes) : '') + '">' +
+      '<button class="primary" data-pact="rl-save">Save</button>' +
+      '<button data-pact="rl-edit">Cancel</button>' +
+    '</div></div>';
+}
+function saveRlEdit(rid) {
+  var root = document.querySelector('.lib-row[data-rl="' + cssEsc(rid) + '"]');
+  if (!root) { state.editRl = null; return; }
+  var tEl = root.querySelector('.rl-edit-title'), kEl = root.querySelector('.rl-edit-take'), mEl = root.querySelector('.rl-edit-mins');
+  var fields = {};
+  var title = tEl ? tEl.value.trim() : '';
+  if (title) fields.title = title;                      // never blank an existing title
+  if (kEl) fields.my_take = kEl.value.trim();           // a take may be cleared
+  if (mEl && String(mEl.value).trim() !== '') { var n = parseInt(mEl.value, 10); if (!isNaN(n) && n >= 0) fields.est_minutes = n; }
+  state.editRl = null;
+  api('/api/readlater/update', { method: 'POST', body: { id: rid, fields: fields } }).then(fetchAll);
+}
 function handleLibraryAction(act, rid) {
+  if (act === 'rl-edit') { state.editRl = (state.editRl === rid) ? null : rid; render(); return; }
+  if (act === 'rl-save') { saveRlEdit(rid); return; }
   if (act === 'rl-someday') { api('/api/readlater/update', { method: 'POST', body: { id: rid, fields: { tier: 'someday' } } }).then(fetchAll); return; }
   if (act === 'rl-soon') { api('/api/readlater/update', { method: 'POST', body: { id: rid, fields: { tier: 'soon' } } }).then(fetchAll); return; }
-  var def = { 'rl-read': ['Done reading', '/api/readlater/mark-read'], 'rl-archive': ['Archived', '/api/readlater/archive'], 'rl-garden': ['Moved to Garden', '/api/readlater/promote-garden'] }[act];
+  var def = {
+    'rl-read': ['Done reading', '/api/readlater/mark-read'], 'rl-archive': ['Archived', '/api/readlater/archive'],
+    'rl-garden': ['Moved to Garden', '/api/readlater/promote-garden'], 'rl-del': ['Deleted', '/api/readlater/delete']
+  }[act];
   if (!def) return;
   optimistic[rid] = true; render();
   undoable(def[0],
@@ -2296,7 +2444,8 @@ function defaultLens() {
 }
 function applyHash() {
   var h = (location.hash || '').replace('#', '');
-  var views = ['tasks', 'sweeps', 'areas', 'library', 'kitchen'];
+  if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
+  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen'];
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
   if (state.view === 'kitchen') ensureRecipes();

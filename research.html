@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research Portfolio</title>
+  <style>
+    :root {
+      --bg: #f7f4ee;
+      --surface: #fffdf8;
+      --ink: #292823;
+      --muted: #6f6b61;
+      --hair: #ded8cc;
+      --accent: #315f50;
+      --accent-soft: #e7f0eb;
+      --housing: #6f4e37;
+      --housing-soft: #f1e8de;
+      --paused: #8a8174;
+      --done: #60766d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1050px; margin: 0 auto; padding: 34px 24px 72px; }
+    header { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 24px; }
+    header > div:first-child { flex: 1; }
+    h1 { margin: 0 0 4px; font-size: clamp(1.8rem, 4vw, 2.6rem); letter-spacing: -0.035em; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .back, button {
+      color: var(--accent); background: var(--surface); border: 1px solid var(--hair);
+      border-radius: 999px; padding: 8px 13px; text-decoration: none; font: inherit;
+      white-space: nowrap; cursor: pointer;
+    }
+    .back:hover, button:hover { border-color: var(--accent); }
+    .priorities {
+      display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;
+      margin: 24px 0 28px;
+    }
+    .priority {
+      padding: 20px; border: 1px solid var(--hair); border-radius: 14px;
+      background: var(--surface);
+    }
+    .priority:first-child { border-left: 5px solid var(--housing); }
+    .priority:last-child { border-left: 5px solid var(--accent); }
+    .priority-kicker { color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .priority h2 { margin: 5px 0 5px; font-size: 1.18rem; }
+    .priority p { margin: 0; color: var(--muted); }
+    .summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 24px; }
+    .count { padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+    .updated { margin-left: auto; color: var(--muted); font-size: .83rem; }
+    section { margin-top: 30px; }
+    .section-head { display: flex; align-items: baseline; gap: 9px; padding-bottom: 8px; border-bottom: 1px solid var(--hair); }
+    .section-head h2 { margin: 0; font-size: 1.15rem; }
+    .section-head span { color: var(--muted); font-size: .8rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 13px; }
+    .card {
+      min-width: 0; padding: 17px 18px; border: 1px solid var(--hair);
+      border-left: 4px solid var(--accent); border-radius: 12px; background: var(--surface);
+    }
+    .card.paused { border-left-color: var(--paused); border-left-style: dashed; }
+    .card.done { border-left-color: var(--done); opacity: .82; }
+    .title-row { display: flex; gap: 8px; align-items: flex-start; }
+    .title { flex: 1; font-weight: 720; line-height: 1.28; }
+    .badge { flex: 0 0 auto; padding: 2px 7px; border-radius: 999px; background: #eeeae2; color: var(--muted); font-size: .67rem; font-weight: 700; text-transform: uppercase; }
+    .goal { margin-top: 8px; }
+    .state { margin-top: 8px; color: var(--muted); font-size: .88rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+    .tag { padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .69rem; }
+    .tag.housing { background: var(--housing-soft); color: var(--housing); }
+    .empty, .error { padding: 18px; color: var(--muted); background: var(--surface); border: 1px solid var(--hair); border-radius: 12px; }
+    @media (max-width: 720px) {
+      main { padding: 24px 15px 56px; }
+      header { flex-wrap: wrap; }
+      .priorities, .grid { grid-template-columns: 1fr; }
+      .updated { width: 100%; margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Research Portfolio</h1>
+        <p class="subtitle">One place to see the whole field without turning every project into this week's obligation.</p>
+      </div>
+      <a class="back" href="/">Back to Triage</a>
+    </header>
+
+    <div class="priorities" aria-label="Research portfolio priorities">
+      <article class="priority">
+        <div class="priority-kicker">Priority 1</div>
+        <h2>More housing politics</h2>
+        <p>Build papers where housing is explicitly political: behavior, representation, policy feedback, precarity, and participation.</p>
+      </article>
+      <article class="priority">
+        <div class="priority-kicker">Priority 2</div>
+        <h2>More top-journal attempts</h2>
+        <p>Develop the strongest version of promising projects, then make an intentional top-journal submission decision.</p>
+      </article>
+    </div>
+
+    <div class="summary" id="summary">
+      <span class="count" id="total-count">Loading…</span>
+      <button type="button" onclick="loadProjects()">Refresh</button>
+      <span class="updated" id="updated"></span>
+    </div>
+    <div id="portfolio"></div>
+  </main>
+  <script>
+    const API = `${location.protocol}//${location.host}`;
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+    function isResearch(project) {
+      return (project.keywords || []).some(k => String(k).toLowerCase() === 'research');
+    }
+
+    function isStrategy(project) {
+      return (project.keywords || []).some(k => String(k).toLowerCase() === 'portfolio-strategy');
+    }
+
+    function usefulTags(project) {
+      const words = (project.keywords || []).map(k => String(k));
+      const housing = words.filter(k => /housing|renter/i.test(k)).slice(0, 2);
+      const journal = words.filter(k => /top journal/i.test(k)).slice(0, 1);
+      return [...new Set([...housing, ...journal])];
+    }
+
+    function card(project) {
+      const status = project.status || 'active';
+      const state = project.state_note || project.notes || '';
+      const tags = usefulTags(project).map(tag => `<span class="tag ${/housing|renter/i.test(tag) ? 'housing' : ''}">${esc(tag)}</span>`).join('');
+      return `<article class="card ${esc(status)}">
+        <div class="title-row"><div class="title">${esc(project.title)}</div><span class="badge">${esc(status)}</span></div>
+        ${project.goal ? `<div class="goal">${esc(project.goal)}</div>` : ''}
+        ${state ? `<div class="state">${esc(state)}</div>` : ''}
+        ${tags ? `<div class="tags">${tags}</div>` : ''}
+      </article>`;
+    }
+
+    function group(title, subtitle, projects, status) {
+      if (!projects.length) return '';
+      return `<section><div class="section-head"><h2>${title}</h2><span>${subtitle}</span></div><div class="grid">${projects.map(card).join('')}</div></section>`;
+    }
+
+    async function loadProjects() {
+      const root = document.getElementById('portfolio');
+      try {
+        const response = await fetch(`${API}/api/projects`, {cache: 'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await response.json();
+        const all = (payload.projects || payload || []).filter(isResearch).filter(p => !isStrategy(p));
+        const active = all.filter(p => (p.status || 'active') === 'active');
+        const paused = all.filter(p => p.status === 'paused');
+        const done = all.filter(p => p.status === 'done');
+        const byTitle = (a, b) => String(a.title).localeCompare(String(b.title));
+        active.sort(byTitle); paused.sort(byTitle); done.sort(byTitle);
+        document.getElementById('total-count').textContent = `${all.length} research projects`;
+        document.getElementById('updated').textContent = `Live from Triage · ${new Date().toLocaleString()}`;
+        root.innerHTML = group('Active', 'moving, submitted, or carrying a current obligation', active) +
+          group('Incubating', 'preserved without claiming this week', paused) +
+          group('Completed or dormant', 'kept for portfolio memory', done);
+        if (!root.innerHTML) root.innerHTML = '<div class="empty">No research projects are tagged yet.</div>';
+      } catch (error) {
+        root.innerHTML = `<div class="error">Could not reach the Triage project ledger. ${esc(error.message)}</div>`;
+        document.getElementById('total-count').textContent = 'Portfolio unavailable';
+      }
+    }
+    loadProjects();
+  </script>
+</body>
+</html>
