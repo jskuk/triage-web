@@ -273,6 +273,57 @@
     return { daysSince, stalled: daysSince != null && daysSince > limit };
   }
 
+  // ── Opportunities + "Drop" (2026-10-16) ────────────────────────
+  // Local YYYY-MM-DD (never toISOString — the UTC-rollover gotcha).
+  function todayLocal() { return new Date().toLocaleDateString('en-CA'); }
+  // (a - b) in whole days from LOCAL YYYY-MM-DD parts; mirror home.html's dayDelta.
+  function ymdDelta(a, b) {
+    const pa = /^(\d{4})-(\d{2})-(\d{2})/.exec(a || ''), pb = /^(\d{4})-(\d{2})-(\d{2})/.exec(b || '');
+    if (!pa || !pb) return null;
+    return Math.round((Date.UTC(+pa[1], +pa[2] - 1, +pa[3]) - Date.UTC(+pb[1], +pb[2] - 1, +pb[3])) / 86400000);
+  }
+  function addDaysLocal(n) {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + n);
+    const p = x => String(x).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  const OPP_KINDS = ['cfp', 'conference', 'grant', 'workshop', 'talk', 'job', 'other'];
+  // make_opportunity mirror — keep the shape in lock-step with records.py.
+  function makeOpportunity(body) {
+    const url = (body.url || '').trim() || null;
+    const filedBy = (body.filed_by || '').trim() || null;
+    return {
+      id: genId(),
+      title: (body.title || '').trim(),
+      opp_kind: OPP_KINDS.includes(body.opp_kind) ? body.opp_kind : 'other',
+      url, url_norm: normalizeUrl(url),
+      decide_by: (body.decide_by || '').trim() || null,
+      event_date: (body.event_date || '').trim() || null,
+      event_end: (body.event_end || '').trim() || null,
+      location: (body.location || '').trim() || null,
+      project_id: (body.project_id || '').trim() || null,
+      fit: (body.fit || '').trim() || null,
+      note: (body.note || '').trim() || null,
+      domain: ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain((body.title || '') + ' ' + (body.note || '')),
+      source: (body.source || 'dashboard').trim() || 'dashboard',
+      capture_src: (body.capture_src || '').trim() || null,
+      created: nowIso(),
+      status: 'open',
+      later_until: null, decided_at: null, pass_reason: null, deadline_id: null,
+      filed_by: filedBy, filed_at: filedBy ? (body.filed_at || nowIso()) : (body.filed_at || null),
+    };
+  }
+  // Compute days_to_decide + decide_now the way the server does (mirror the contract).
+  function withOppComputed(o, today) {
+    const dtd = o.decide_by ? ymdDelta(o.decide_by, today) : null;
+    const st = o.status || 'open';
+    let decideNow = false;
+    if (st === 'open') decideNow = !o.decide_by || (dtd != null && dtd <= 21);
+    else if (st === 'later') decideNow = o.later_until ? (ymdDelta(o.later_until, today) != null && ymdDelta(o.later_until, today) <= 0) : true;
+    return { ...o, days_to_decide: dtd, decide_now: decideNow };
+  }
+
   // ── route table ─────────────────────────────────────────────────
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
     '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
@@ -331,6 +382,14 @@
       }));
     }
     if (path === '/api/sparks') return resp(await readJson('sparks.json', []));
+    // Opportunities (2026-10-16): the dated-maybes ledger. Compute days_to_decide +
+    // decide_now from the LOCAL date, exactly as the server does, so the Decide
+    // queue reads the same answer on the phone.
+    if (path === '/api/opportunities') {
+      const os = await readJson('opportunities.json', []);
+      const today = todayLocal();
+      return resp(os.map(o => withOppComputed(o, today)));
+    }
     if (path === '/api/recipes') return resp(await readJson('recipes/recipes.json', []));
     if (path === '/api/logs') return resp(await readJson('journal.json', []));
     if (path === '/api/garden' || path === '/api/vault') return resp(await readJson('vault.json', []));
@@ -864,6 +923,110 @@
       const item = makeVaultItem({ url, note: reaction });
       await updateJson('vault.json', a => { a.push(item); return a; }, []);
       return resp(item, 201);
+    }
+    // Garden hard-delete (needed for the Auto-filed refile/drop of a garden item;
+    // vault.json is already a dbx.js-written store — see the single-writer table).
+    if (path === '/api/garden/delete' || path === '/api/vault/delete') {
+      await updateJson('vault.json', a => a.filter(x => x.id !== body.id), []);
+      return resp({ ok: true });
+    }
+
+    // — Opportunities (2026-10-16) — add / update / delete / decide —
+    // Add: dedupe by url_norm or (case-insensitive) title, exactly like the server.
+    if (path === '/api/opportunities/add') {
+      const title = (body.title || '').trim();
+      const url = (body.url || '').trim();
+      if (!title && !url) return resp({ error: 'title or url required' }, 400);
+      const unorm = normalizeUrl(url);
+      let outRec = null, dup = false;
+      await updateJson('opportunities.json', a => {
+        const ex = a.find(o => (unorm && o.url_norm === unorm) ||
+          (title && (o.title || '').trim().toLowerCase() === title.toLowerCase()));
+        if (ex) { outRec = ex; dup = true; return a; }
+        outRec = makeOpportunity(body);
+        a.push(outRec); return a;
+      }, []);
+      return dup ? resp({ ...outRec, duplicate: true }, 200) : resp(outRec, 201);
+    }
+    if (path === '/api/opportunities/update') {
+      const fields = (body.fields && typeof body.fields === 'object') ? body.fields : null;
+      if (!body.id || !fields) return resp({ error: 'id and fields required' }, 400);
+      const allowed = ['title', 'url', 'opp_kind', 'decide_by', 'event_date', 'event_end', 'location', 'project_id', 'fit', 'note', 'domain'];
+      let found = false;
+      await updateJson('opportunities.json', a => {
+        const o = a.find(x => x.id === body.id);
+        if (o) {
+          found = true;
+          for (const k of Object.keys(fields)) {
+            if (!allowed.includes(k)) continue;
+            if (k === 'opp_kind' && !OPP_KINDS.includes(fields[k])) continue;
+            o[k] = fields[k];
+            if (k === 'url') o.url_norm = normalizeUrl(fields[k]);
+          }
+        }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp({ ok: true });
+    }
+    if (path === '/api/opportunities/delete') {
+      await updateJson('opportunities.json', a => a.filter(x => x.id !== body.id), []);
+      return resp({ ok: true });
+    }
+    // Decide: submit → a real deadline (lane dont_drop, project linked, source
+    // "opportunity"); pass → store reason; later → +7 days. HOSTED: a submit writes
+    // NO ⏰ calendar marker (the browser can't create a Google event) — and the Mac
+    // will not mint one for it either unless the deadline is re-confirmed there.
+    // Documented degradation, acceptable for v1 (the deadline still rides the ledger
+    // + brief; the calendar ⏰ is cosmetic).
+    if (path === '/api/opportunities/decide') {
+      const decision = (body.decision || '').trim();
+      if (!body.id || !['submit', 'pass', 'later'].includes(decision)) return resp({ error: 'id + decision (submit|pass|later) required' }, 400);
+      let opp = null;
+      const os = await readJson('opportunities.json', []);
+      opp = os.find(o => o.id === body.id);
+      if (!opp) return resp({ error: 'not found' }, 404);
+
+      if (decision === 'later') {
+        let rec = null;
+        await updateJson('opportunities.json', a => { const o = a.find(x => x.id === body.id); if (o) { o.status = 'later'; o.later_until = addDaysLocal(7); rec = o; } return a; }, []);
+        return resp({ ok: true, record: rec });
+      }
+      if (decision === 'pass') {
+        let rec = null;
+        await updateJson('opportunities.json', a => { const o = a.find(x => x.id === body.id); if (o) { o.status = 'passed'; o.pass_reason = (body.reason || '').trim() || null; o.decided_at = nowIso(); rec = o; } return a; }, []);
+        return resp({ ok: true, record: rec });
+      }
+      // submit → create the deadline first, then stamp the opp.
+      const due = (body.due_date || '').trim() || opp.decide_by || null;
+      const pid = (body.project_id || '').trim() || opp.project_id || null;
+      const deadline = {
+        id: genId(), title: opp.title || 'Opportunity', type: 'other', due_date: due,
+        lead_time_days: (DEADLINE_LEAD_DEFAULTS[opp.opp_kind] || DEADLINE_LEAD_DEFAULTS.other),
+        domain: opp.domain || 'work', status: 'upcoming', notes: opp.note || null,
+        linked_task_id: null, runway_opened: null, proposed: false, lane: 'dont_drop',
+        project_id: pid, source: 'opportunity', source_id: opp.id, created: nowIso(),
+      };
+      await updateJson('deadlines.json', a => { a.push(deadline); return a; }, []);
+      if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) p.last_movement = nowIso(); return a; }, []); } catch {} }
+      let rec = null;
+      await updateJson('opportunities.json', a => { const o = a.find(x => x.id === body.id); if (o) { o.status = 'submitted'; o.decided_at = nowIso(); o.deadline_id = deadline.id; if (pid) o.project_id = pid; rec = o; } return a; }, []);
+      return resp({ ok: true, record: rec, deadline });
+    }
+
+    // — "Drop" capture (2026-10-16): write ONE capture file; the router files it
+    //   within ~3 min (the server stays the single JSON writer). The body is the
+    //   JSON the router expects for a `_drop.txt` file. mode "add" never overwrites.
+    if (path === '/api/drop') {
+      const text = (body.text || '').trim();
+      const url = (body.url || '').trim();
+      const payload = JSON.stringify({
+        text, url, title: (body.title || '').trim(),
+        page_text: (body.page_text || '').trim(), source: (body.source || 'home').trim() || 'home',
+      });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');   // filesystem-safe ISO
+      await upload('capture/' + stamp + '_drop.txt', payload, 'add');
+      return resp({ ok: true, queued: true }, 202);
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —

@@ -89,6 +89,9 @@
   .kinds { display: flex; gap: 4px; }
   .kinds button { font-size: 12px; color: var(--text-2); padding: 3px 9px; border-radius: 5px; }
   .kinds button:hover, .kinds button.on { background: var(--press); color: var(--text); }
+  /* Drop is the primary capture — filled, so the eye lands on it (Enter = Drop). */
+  .kinds button.drop { background: var(--text); color: #fff; font-weight: 600; }
+  .kinds button.drop:hover, .kinds button.drop.on { background: #000; color: #fff; }
 
   /* groups + rows */
   .group { margin-bottom: 24px; }
@@ -116,6 +119,7 @@
   .t:hover { color: #000; }
   .lanedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
   .sug { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 8px; vertical-align: middle; }
+  .af { font-size: 10px; font-weight: 500; letter-spacing: .02em; color: var(--text-3); background: var(--gray-bg); border-radius: 4px; padding: 0 5px; margin-left: 8px; vertical-align: middle; }
   .n2 { color: var(--text-2); font-size: 14px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; }
   .meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); white-space: nowrap; padding-top: 2px; }
   .who { color: var(--text-2); }
@@ -311,6 +315,30 @@
   .research-portfolio-link { display: inline-block; margin: 10px 0 4px; font-size: 13px; color: var(--blue); text-decoration: none; }
   .research-portfolio-link:hover { text-decoration: underline; }
 
+  /* Open calls (Projects view) + the Decide/Auto-filed flashcard sub-forms */
+  .opp-row { padding: 9px 2px; border-bottom: 1px solid var(--line); }
+  .oc-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+  .oc-title { font-weight: 500; }
+  .oc-kind { font-size: 12px; color: var(--text-2); background: var(--gray-bg); border-radius: 4px; padding: 1px 7px; }
+  .oc-date { font-size: 13px; color: var(--text-2); }
+  .oc-link { font-size: 12px; color: var(--blue); text-decoration: none; margin-left: auto; }
+  .oc-link:hover { text-decoration: underline; }
+  .oc-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .oc-acts button { font-size: 12px; padding: 3px 11px; border-radius: 5px; border: 1px solid var(--line); background: #fff; color: var(--text-2); }
+  .oc-acts button:hover { background: var(--hover); color: var(--text); }
+  .oc-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+  .oc-form input, .oc-form select { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .oc-form input[type="text"], .oc-form .oc-pass-reason { flex: 1; min-width: 160px; }
+  .oc-form button { font-size: 12px; padding: 5px 11px; border-radius: 5px; border: 1px solid var(--line); background: #fff; color: var(--text-2); }
+  .oc-form button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .oc-form button:hover { background: var(--hover); color: var(--text); }
+  .oc-form button.primary:hover { background: #000; color: #fff; }
+  /* Decide flashcard: the submit (date + project) sub-form stacks on a phone. */
+  .sweep-card .oppsub { flex-direction: row; }
+  .sweep-card .oppsub select, .sweep-card .oppsub input { border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: inherit; }
+  .sweep-card .refilerow button { padding: 7px 11px; }
+  @media (max-width: 720px) { .sweep-card .oppsub { flex-direction: column; align-items: stretch; } }
+
   /* library rows */
   .lib-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 2px; border-bottom: 1px solid var(--line); }
   .lib-row .lr-main { flex: 1; min-width: 0; }
@@ -476,7 +504,8 @@ function normTaskRow(t, linkedDeadline, today) {
     list: t.list, proposed: isProposedTask(t), suggested: false, target: target,
     dateStr: dateStr, days: dateStr ? dayDelta(dateStr, today) : null,
     askDays: askDays(t, today), createdMs: Date.parse(t.created || '') || 0,
-    deadline_id: linkedDeadline ? linkedDeadline.id : (t.deadline_id || null)
+    deadline_id: linkedDeadline ? linkedDeadline.id : (t.deadline_id || null),
+    filed_by: t.filed_by || null, filed_at: t.filed_at || null
   };
 }
 function normDeadlineRow(d, today) {
@@ -486,7 +515,8 @@ function normDeadlineRow(d, today) {
     list: 'deadline', proposed: !!d.proposed, suggested: false, target: !!d.target,
     dateStr: d.due_date || null, days: d.due_date ? dayDelta(d.due_date, today) : null,
     askDays: daysPast(d.created || '', today), createdMs: Date.parse(d.created || '') || 0,
-    deadline_id: d.id
+    deadline_id: d.id,
+    filed_by: d.filed_by || null, filed_at: d.filed_at || null
   };
 }
 function normWaitingRow(t, today) {
@@ -495,7 +525,8 @@ function normWaitingRow(t, today) {
     url: t.url || '', source: t.source || '', nextStep: cleanNext(t.nextStep), memo: t.memo || '',
     list: 'waiting', proposed: false, suggested: false, dateStr: null, days: null,
     askDays: daysPast(t.waitingSince || t.created || '', today),
-    createdMs: Date.parse(t.created || '') || 0, deadline_id: null
+    createdMs: Date.parse(t.created || '') || 0, deadline_id: null,
+    filed_by: t.filed_by || null, filed_at: t.filed_at || null
   };
 }
 
@@ -733,7 +764,7 @@ function sweepWaitingCheck(items, today) {
   return out;
 }
 
-function sweepCounts(items, deadlines, meetings, projects, today) {
+function sweepCounts(items, deadlines, meetings, projects, today, opps, readlater, garden) {
   return {
     suggestions: sweepSuggestions(items, today).length,
     stuck: sweepStuckTasks(items, today).length,
@@ -741,7 +772,11 @@ function sweepCounts(items, deadlines, meetings, projects, today) {
     waitingCheck: sweepWaitingCheck(items, today).length,
     pastDeadlines: sweepPastDeadlines(deadlines, today).length,
     pastMeetings: sweepPastMeetings(meetings).length,
-    projectsCheckIn: projectsToCheckIn(projects, today).length
+    projectsCheckIn: projectsToCheckIn(projects, today).length,
+    // "Drop" capture + Opportunities (2026-10-16). decide = dated maybes near their
+    // decide-by; autoFiled = records the drop router sorted this week (review set).
+    decide: oppDecideQueue(opps || [], today).length,
+    autoFiled: autoFiledQueue(items, readlater || [], garden || [], opps || [], today).length
   };
 }
 
@@ -817,6 +852,88 @@ function readSoonItems(recs) {
 function readSomedayItems(recs) {
   recs = recs || [];
   return recs.filter(function (r) { return r && r.status === 'unread' && rlTier(r) === 'someday'; });
+}
+
+// ── Opportunities + "Drop" (2026-10-16) ──────────────────────────────
+// A "dated maybe" (call for papers, grant, talk, workshop, job posting) surfaces
+// ONCE near its decide-by date and is otherwise silent. decide_now is computed
+// from LOCAL parts here (never trust a possibly-stale server field): open with no
+// decide_by OR days_to_decide <= 21, or a `later` snooze whose later_until has
+// arrived. Matches the server/dbx.js contract.
+var OPP_DECIDE_HORIZON = 21;
+function oppDecideNow(o, today) {
+  if (!o) return false;
+  var st = o.status || 'open';
+  if (st === 'open') {
+    if (!o.decide_by) return true;                      // no deadline → decide now
+    var d = dayDelta(o.decide_by, today);
+    return d != null && d <= OPP_DECIDE_HORIZON;        // incl. past decide_by (still owed a decision)
+  }
+  if (st === 'later') {
+    if (!o.later_until) return true;                    // malformed snooze → resurface, never hide
+    var l = dayDelta(o.later_until, today);
+    return l != null && l <= 0;                         // the snooze has arrived
+  }
+  return false;                                         // submitted / passed → gone
+}
+// decide_by ascending; nulls FIRST for the Decide queue (no decide_by = decide now,
+// the most urgent), nulls LAST for the Open-calls browse list (undated maybes trail).
+function _oppDateCompare(a, b, nullsFirst) {
+  var da = a.decide_by ? _parseYMD(a.decide_by) : null;
+  var db = b.decide_by ? _parseYMD(b.decide_by) : null;
+  if (da == null && db == null) return 0;
+  if (da == null) return nullsFirst ? -1 : 1;
+  if (db == null) return nullsFirst ? 1 : -1;
+  return da - db;
+}
+// The Decide queue: open/later opportunities that are decide_now, soonest first
+// (nulls first). The one place a dated maybe is allowed to interrupt.
+function oppDecideQueue(opps, today) {
+  opps = opps || [];
+  var out = opps.filter(function (o) {
+    if (!o) return false;
+    var st = o.status || 'open';
+    return (st === 'open' || st === 'later') && oppDecideNow(o, today);
+  });
+  out.sort(function (a, b) { return _oppDateCompare(a, b, true); });
+  return out;
+}
+// Open calls: every still-undecided opportunity (open or later), soonest decide-by
+// first (nulls last). The calm browse list for the Projects view; submitted/passed
+// vanish (a submitted call is a deadline now).
+function openCalls(opps) {
+  opps = opps || [];
+  var out = opps.filter(function (o) { var st = o && (o.status || 'open'); return st === 'open' || st === 'later'; });
+  out.sort(function (a, b) { return _oppDateCompare(a, b, false); });
+  return out;
+}
+
+// "Auto-filed" review (Q1 for Drop, nothing is sorted silently): any record the
+// drop router created this week. filed_by === "drop" AND filed_at within 7 days.
+function isAutoFiled(rec, today) {
+  if (!rec || rec.filed_by !== 'drop') return false;
+  var dd = dayDelta(String(rec.filed_at || '').slice(0, 10), today);
+  return dd != null && dd <= 0 && dd >= -7;              // filed today .. 7 days ago
+}
+// The Auto-filed queue draws from all four destination stores and wraps each row
+// so the flashcard knows which store it came from (and which delete/refile route to
+// use). Newest first. {store:"task"|"read"|"garden"|"opportunity", id, title, rec}.
+function autoFiledQueue(items, readlater, garden, opps, today) {
+  items = items || []; readlater = readlater || []; garden = garden || []; opps = opps || [];
+  var out = [];
+  function take(arr, store, titleOf) {
+    for (var i = 0; i < arr.length; i++) {
+      var r = arr[i];
+      if (!isAutoFiled(r, today)) continue;
+      out.push({ store: store, id: r.id, title: titleOf(r), rec: r });
+    }
+  }
+  take(items, 'task', function (r) { return r.text || ''; });
+  take(readlater, 'read', function (r) { return r.title || r.url || ''; });
+  take(garden, 'garden', function (r) { return r.title || r.text || r.note || r.url || ''; });
+  take(opps, 'opportunity', function (r) { return r.title || ''; });
+  out.sort(function (a, b) { return (Date.parse(b.rec.filed_at || '') || 0) - (Date.parse(a.rec.filed_at || '') || 0); });
+  return out;
 }
 /* <<<END PURE>>> */
 
@@ -905,7 +1022,11 @@ var state = {
   readlater: [], newsletter: null, recipes: [], recipesLoaded: false,
   openProject: null, editProject: null, focusPickOpen: null, openProjectMenu: null,
   libSomedayOpen: false, libNewsOpen: false, libSearch: '', editRl: null,
-  openRecipe: null, kitchenSearch: ''
+  openRecipe: null, kitchenSearch: '',
+  // Drop + Opportunities (2026-10-16): the opportunities ledger + the Garden list
+  // (both feed the Decide / Auto-filed sweep queues). oppInline = the Projects-view
+  // Open-calls inline Submit/Pass form currently open ({id, mode}).
+  opps: [], garden: [], oppInline: null
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -987,7 +1108,10 @@ function fetchAll() {
   var gets = [
     apiJson('/api/items'), apiJson('/api/deadlines'), apiJson('/api/meetings'),
     apiJson('/api/projects'), apiJson('/api/memo'), apiJson('/api/health'),
-    apiJson('/api/readlater?status=all'), apiJson('/api/newsletter-digest')
+    apiJson('/api/readlater?status=all'), apiJson('/api/newsletter-digest'),
+    // Drop + Opportunities (2026-10-16). Both 404 cleanly until the server merge
+    // lands → coerced to [], so the Decide/Auto-filed queues simply read empty.
+    apiJson('/api/opportunities'), apiJson('/api/garden')
   ];
   return Promise.all(gets).then(function (res) {
     var items = res[0];
@@ -1004,6 +1128,8 @@ function fetchAll() {
     state.health = (res[5].data && typeof res[5].data === 'object') ? res[5].data : null;
     state.readlater = Array.isArray(res[6].data) ? res[6].data : [];
     state.newsletter = (res[7].data && typeof res[7].data === 'object') ? res[7].data : null;
+    state.opps = Array.isArray(res[8].data) ? res[8].data : [];
+    state.garden = Array.isArray(res[9].data) ? res[9].data : [];
     if (state.view === 'kitchen') ensureRecipes();
     render();
   }).catch(function (e) {
@@ -1136,12 +1262,17 @@ function visibleSweepCounts() {
 }
 // Lens-filtered, optimistic-hidden sweep counts — the single source the Home
 // strip, the nav badge and the Sweeps view all read.
+function lensOpps() { return (state.opps || []).filter(function (o) { return inDomain(o, state.lens) && !optimistic[o.id]; }); }
 function currentSweepCounts() {
   var items = lensItems().filter(function (i) { return !optimistic[i.id]; });
   var dl = lensDeadlines().filter(function (d) { return !optimistic[d.id]; });
   var meetings = (state.meetings || []).filter(function (m) { return inDomain(m, state.lens) && !optimistic[m.id]; });
   var projects = (state.projects || []).filter(function (p) { return inDomain(p, state.lens) && !optimistic[p.id]; });
-  return sweepCounts(items, dl, meetings, projects, todayISO());
+  // readlater/garden carry no domain → never lens-filtered here; opps do.
+  var opps = lensOpps();
+  var readlater = (state.readlater || []).filter(function (r) { return !optimistic[r.id]; });
+  var garden = (state.garden || []).filter(function (g) { return !optimistic[g.id]; });
+  return sweepCounts(items, dl, meetings, projects, todayISO(), opps, readlater, garden);
 }
 
 /* ---- Home ---- */
@@ -1173,6 +1304,7 @@ function homeHtml() {
 function sweepsStripHtml() {
   var c = visibleSweepCounts();
   var doors = [];
+  if (c.decide) doors.push(sweepDoor(c.decide, 'to decide'));
   if (c.suggestions) doors.push(sweepDoor(c.suggestions, 'email suggestions'));
   if (c.stuck) doors.push(sweepDoor(c.stuck, 'tasks stuck on past dates'));
   if (c.oldReplies) doors.push(sweepDoor(c.oldReplies, 'old replies to review'));
@@ -1180,6 +1312,7 @@ function sweepsStripHtml() {
   if (c.pastDeadlines) doors.push(sweepDoor(c.pastDeadlines, 'past-due deadlines'));
   if (c.pastMeetings) doors.push(sweepDoor(c.pastMeetings, 'past meetings to clear'));
   if (c.projectsCheckIn) doors.push(sweepDoor(c.projectsCheckIn, 'projects to check in on'));
+  if (c.autoFiled) doors.push(sweepDoor(c.autoFiled, 'auto-filed'));
   if (!doors.length) return '';
   return '<p class="h2">Sweeps waiting</p><div class="doors">' + doors.join('') + '</div>';
 }
@@ -1224,8 +1357,12 @@ function tasksHtml() {
 }
 
 /* ---- Sweeps ---- */
-var SWEEP_ORDER = ['suggestions', 'stuck', 'oldReplies', 'waitingCheck', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn'];
+var SWEEP_ORDER = ['decide', 'suggestions', 'stuck', 'oldReplies', 'waitingCheck', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn', 'autoFiled'];
 var SWEEP_DEFS = {
+  decide:        { label: 'Decide',               note: 'calls, grants, talks: submit, pass, or later', color: LANE_COLOR.dont_drop,
+                   question: 'Worth going for?' },
+  autoFiled:     { label: 'Auto-filed',           note: 'sorted by the system this week', color: LANE_COLOR.admin,
+                   question: '' },
   projectsCheckIn: { label: 'Projects to check in on', note: 'not touched in a while', color: 'var(--green)',
                    question: 'Not touched in a while. Keep active or park?' },
   suggestions:   { label: 'Email suggestions',   note: 'the system suggests, you decide', color: LANE_COLOR.admin,
@@ -1244,9 +1381,10 @@ var SWEEP_DEFS = {
 var TALLY_LABEL = {
   done: 'done', confirmed: 'confirmed', kept: 'kept', owed: 'kept',
   someday: 'to Someday', rescheduled: 'rescheduled', nudged: 'nudged', dismissed: 'dismissed',
-  dropped: 'dropped', cleared: 'cleared', parked: 'parked'
+  dropped: 'dropped', cleared: 'cleared', parked: 'parked',
+  submitted: 'submitted', passed: 'passed', later: 'to later', refiled: 'refiled'
 };
-var TALLY_ORDER = ['done', 'confirmed', 'kept', 'owed', 'someday', 'rescheduled', 'nudged', 'dismissed', 'dropped', 'cleared', 'parked'];
+var TALLY_ORDER = ['done', 'confirmed', 'submitted', 'passed', 'later', 'refiled', 'kept', 'owed', 'someday', 'rescheduled', 'nudged', 'dismissed', 'dropped', 'cleared', 'parked'];
 
 function sweepsViewHtml() {
   if (state.sweepQueue) return sweepCardViewHtml();
@@ -1288,9 +1426,13 @@ function sweepCardViewHtml() {
   }
   h += '</div>';
   h += '<div class="sweep-card" id="sweep-card" tabindex="-1" role="group" aria-label="' + escapeHtml(def.label) + ' sweep card">';
-  h += '<p class="sc-q">' + escapeHtml(def.question || '') + '</p>';
+  var q = def.question || '';
+  if (key === 'autoFiled' && row) q = 'Filed as ' + storeLabel(row.store) + '. Right place?';
+  h += '<p class="sc-q">' + escapeHtml(q) + '</p>';
   h += (key === 'pastMeetings') ? sweepMeetingBody(row)
     : (key === 'projectsCheckIn') ? sweepProjectBody(row)
+    : (key === 'decide') ? sweepOppBody(row)
+    : (key === 'autoFiled') ? sweepAutoFiledBody(row)
     : sweepRowBody(key, row);
   h += sweepActionsHtml(key, row);
   h += '</div>';
@@ -1340,6 +1482,77 @@ function sweepProjectBody(p) {
   if (weeks != null) bits.push('<span>not touched in ' + weeks + (weeks === 1 ? ' week' : ' weeks') + '</span>');
   h += '<div class="sc-meta">' + bits.join('') + '</div>';
   if (p.state_note) h += '<p class="sc-memo">' + escapeHtml(p.state_note) + '</p>';
+  return h;
+}
+
+// ── Opportunity display helpers (Decide queue + Projects Open-calls list) ──
+var OPP_KIND_LABEL = { cfp: 'Call for papers', conference: 'Conference', grant: 'Grant', workshop: 'Workshop', talk: 'Talk', job: 'Job posting', other: 'Opportunity' };
+function oppKindLabel(k) { return OPP_KIND_LABEL[k] || 'Opportunity'; }
+var STORE_LABEL = { task: 'Task', read: 'Read', garden: 'Garden', opportunity: 'Opportunity' };
+function storeLabel(s) { return STORE_LABEL[s] || s; }
+function monthDay(s) {
+  var m = String(s || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? (MONTHS[+m[2] - 1] + ' ' + (+m[3])) : '';
+}
+// "by Dec 1 · 24d" (open, soon) / "passed Dec 1" (calm, no alarm) / "by Dec 1".
+function decideByLabel(o, today) {
+  if (!o.decide_by) return 'no decide-by date';
+  var d = dayDelta(o.decide_by, today), md = monthDay(o.decide_by);
+  if (d == null) return 'by ' + md;
+  if (d < 0) return 'passed ' + md;
+  return 'by ' + md + ' · ' + d + 'd';
+}
+// "May 13–14, 2027" from event_date + optional event_end.
+function eventWhen(start, end) {
+  var a = String(start || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!a) return '';
+  var y = +a[1], mo = +a[2], d = +a[3];
+  var b = end ? String(end).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/) : null;
+  if (b) {
+    var y2 = +b[1], mo2 = +b[2], d2 = +b[3];
+    if (y === y2 && mo === mo2) return MONTHS[mo - 1] + ' ' + d + '–' + d2 + ', ' + y;
+    if (y === y2) return MONTHS[mo - 1] + ' ' + d + ' – ' + MONTHS[mo2 - 1] + ' ' + d2 + ', ' + y;
+    return MONTHS[mo - 1] + ' ' + d + ', ' + y + ' – ' + MONTHS[mo2 - 1] + ' ' + d2 + ', ' + y2;
+  }
+  return MONTHS[mo - 1] + ' ' + d + ', ' + y;
+}
+function eventLine(o) {
+  var parts = [];
+  var w = eventWhen(o.event_date, o.event_end);
+  if (w) parts.push(w);
+  if (o.location) parts.push(o.location);
+  return parts.join(' · ');
+}
+// The fit chip: the linked project's title (else the free-text `fit`).
+function oppFitChip(o) {
+  if (o.project_id) { var p = projectById(o.project_id); if (p && p.title) return '<span class="tag">' + escapeHtml(p.title) + '</span>'; }
+  if (o.fit) return '<span class="tag">' + escapeHtml(o.fit) + '</span>';
+  return '';
+}
+
+function sweepOppBody(o) {
+  var today = todayISO();
+  var h = '<div class="sc-title">' + escapeHtml(o.title || 'Opportunity') + '</div>';
+  var bits = ['<span class="lanetag">' + escapeHtml(oppKindLabel(o.opp_kind)) + '</span>',
+    '<span>' + escapeHtml(decideByLabel(o, today)) + '</span>'];
+  var ev = eventLine(o); if (ev) bits.push('<span>' + escapeHtml(ev) + '</span>');
+  var fit = oppFitChip(o); if (fit) bits.push(fit);
+  h += '<div class="sc-meta">' + bits.join('') + '</div>';
+  if (o.note) h += '<p class="sc-memo">' + escapeHtml(o.note) + '</p>';
+  if (o.url) h += '<p><a class="link" href="' + escapeHtml(safeUrl(o.url)) + '" target="_blank" rel="noopener">Open</a></p>';
+  return h;
+}
+
+function sweepAutoFiledBody(w) {
+  var r = w.rec || {}, today = todayISO();
+  var h = '<div class="sc-title">' + escapeHtml(w.title || 'Item') + '</div>';
+  var bits = ['<span class="lanetag">filed as ' + escapeHtml(storeLabel(w.store)) + '</span>'];
+  var dd = dayDelta(String(r.filed_at || '').slice(0, 10), today);
+  if (dd != null) bits.push('<span>' + (dd === 0 ? 'filed today' : 'filed ' + (-dd) + 'd ago') + '</span>');
+  h += '<div class="sc-meta">' + bits.join('') + '</div>';
+  var note = r.note || r.memo || r.my_take || r.summary || r.nextStep || '';
+  if (note) h += '<p class="sc-memo">' + escapeHtml(note) + '</p>';
+  if (r.url) h += '<p><a class="link" href="' + escapeHtml(safeUrl(r.url)) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: r.url, source: r.source })) + '</a></p>';
   return h;
 }
 
@@ -1400,6 +1613,36 @@ function sweepActionsHtml(key, r) {
       sbtn('3', 'Done', 'projdone');
     return h + '</div>';
   }
+  if (key === 'decide') {
+    h += sbtn('1', 'Submit', 'submit', 'primary') + sbtn('2', 'Pass', 'pass') +
+      sbtn('3', 'Later', 'later') + sbtn('x', 'Drop', 'drop', 'danger');
+    h += '</div>';
+    if (state.sweepPick === 'submit') {
+      // Submit → a real deadline. Date defaults to decide_by (required if none);
+      // optional project picker defaults to project_id.
+      h += '<div class="daypick oppsub">' +
+        '<input type="date" class="opp-sub-date" value="' + escapeHtml((r.decide_by || '').slice(0, 10)) + '">' +
+        projectSelectHtml('opp-sub-proj', r.project_id) +
+        '<button data-sweepsubmit-go class="primary">Make it a deadline</button></div>';
+    } else if (state.sweepPick === 'pass') {
+      h += '<div class="daypick"><input class="opp-pass-reason" placeholder="Why pass? (optional)">' +
+        '<button data-sweeppass-go class="primary">Pass</button></div>';
+    }
+    return h;
+  }
+  if (key === 'autoFiled') {
+    h += sbtn('1', 'Keep', 'keep', 'primary') + sbtn('2', 'Change', 'change') +
+      sbtn('x', 'Drop', 'drop', 'danger');
+    h += '</div>';
+    if (state.sweepPick === 'refile') {
+      // Refile to any of the OTHER stores (same store = no-op, so it's hidden).
+      var targets = ['task', 'read', 'garden', 'opportunity'].filter(function (s) { return s !== r.store; });
+      h += '<div class="daypick refilerow">' + targets.map(function (s) {
+        return '<button data-sweeprefile="' + s + '">' + escapeHtml(storeLabel(s)) + '</button>';
+      }).join('') + '</div>';
+    }
+    return h;
+  }
   return h + '</div>';
 }
 
@@ -1411,6 +1654,8 @@ function sweepHintText(key) {
   if (key === 'pastDeadlines') return "Keys: 1 It's done · 2 New date · x Drop · Space skip · Esc back";
   if (key === 'pastMeetings') return 'Keys: 1 Clear · 2 Add to calendar · Space skip · Esc back';
   if (key === 'projectsCheckIn') return 'Keys: 1 Keep active · 2 Park · 3 Done · Space skip · Esc back';
+  if (key === 'decide') return 'Keys: 1 Submit · 2 Pass · 3 Later · x Drop · Space skip · Esc back';
+  if (key === 'autoFiled') return 'Keys: 1 Keep · 2 Change · x Drop · Space skip · Esc back';
   return 'Space skip · Esc back';
 }
 
@@ -1423,6 +1668,8 @@ function sweepKeyMap(key) {
   if (key === 'pastDeadlines') return { '1': 'done', '2': 'newdate', 'x': 'drop', ' ': 'skip' };
   if (key === 'pastMeetings') return { '1': 'clear', 'x': 'clear', '2': 'keep', ' ': 'skip' };
   if (key === 'projectsCheckIn') return { '1': 'keepactive', '2': 'park', '3': 'projdone', ' ': 'skip' };
+  if (key === 'decide') return { '1': 'submit', '2': 'pass', '3': 'later', 'x': 'drop', ' ': 'skip' };
+  if (key === 'autoFiled') return { '1': 'keep', '2': 'change', 'x': 'drop', ' ': 'skip' };
   return base;
 }
 
@@ -1447,6 +1694,8 @@ function sweepCardsFor(key) {
   if (key === 'pastDeadlines') return sweepPastDeadlines(c.deadlines, c.today);
   if (key === 'pastMeetings') return sweepPastMeetings(c.meetings);
   if (key === 'projectsCheckIn') return projectsToCheckIn(c.projects, c.today);
+  if (key === 'decide') return oppDecideQueue(c.opps, c.today);
+  if (key === 'autoFiled') return autoFiledQueue(c.items, c.readlater, c.garden, c.opps, c.today);
   return [];
 }
 function currentSweepCountsSource() {
@@ -1455,6 +1704,9 @@ function currentSweepCountsSource() {
     deadlines: lensDeadlines().filter(function (d) { return !optimistic[d.id]; }),
     meetings: (state.meetings || []).filter(function (m) { return inDomain(m, state.lens) && !optimistic[m.id]; }),
     projects: (state.projects || []).filter(function (p) { return inDomain(p, state.lens) && !optimistic[p.id]; }),
+    opps: lensOpps(),
+    readlater: (state.readlater || []).filter(function (r) { return !optimistic[r.id]; }),
+    garden: (state.garden || []).filter(function (g) { return !optimistic[g.id]; }),
     today: todayISO()
   };
 }
@@ -1547,7 +1799,14 @@ function handleSweepAction(act, payload) {
   if (act === 'pickday') return sweepToggle('pickday');
   if (act === 'newdate') return sweepToggle('newdate');
   if (act === 'lane') return sweepToggle('lane');
-  var id = row.id, name = (key === 'pastMeetings' || key === 'projectsCheckIn') ? (row.title || 'project') : displayText(row);
+  if (act === 'submit' && key === 'decide') return sweepToggle('submit');
+  if (act === 'pass' && key === 'decide') return sweepToggle('pass');
+  if (act === 'change' && key === 'autoFiled') return sweepToggle('refile');
+  var id = row.id,
+    name = (key === 'pastMeetings' || key === 'projectsCheckIn') ? (row.title || 'project')
+      : (key === 'decide') ? (row.title || 'opportunity')
+      : (key === 'autoFiled') ? (row.title || 'item')
+      : displayText(row);
 
   if (key === 'stuck') {
     if (act === 'today') return sweepStep('Scheduled today: ' + name, 'rescheduled', id, function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: todayISO() } }); });
@@ -1597,7 +1856,75 @@ function handleSweepAction(act, payload) {
     if (act === 'keepactive') return sweepStep('Kept active: ' + name, 'kept', id, function () { return api('/api/projects/state', { method: 'POST', body: { id: id, note: row.state_note || '' } }); });
     if (act === 'park') return sweepStep('Parked: ' + name, 'parked', id, function () { return api('/api/projects/update', { method: 'POST', body: { id: id, fields: { status: 'paused' } } }); });
     if (act === 'projdone') return sweepStep('Done: ' + name, 'done', id, function () { return api('/api/projects/update', { method: 'POST', body: { id: id, fields: { status: 'done' } } }); });
+  } else if (key === 'decide') {
+    if (act === 'later') return sweepStep('To later: ' + name, 'later', id, function () { return oppDecideLater(id); });
+    if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return oppDelete(id); });
+    if (act === 'submitgo') {
+      var due = (payload && payload.due_date || '').trim();
+      if (!due) { showToast('Pick a submission deadline', null); return; }   // a submit becomes a real deadline → needs a date
+      var pid = (payload && payload.project_id || '').trim();
+      return sweepStep('Now a real deadline — ' + name, 'submitted', id, function () { return oppDecideSubmit(id, due, pid); });
+    }
+    if (act === 'passgo') {
+      var reason = (payload || '').trim();
+      return sweepStep('Passed: ' + name, 'passed', id, function () { return oppDecidePass(id, reason); });
+    }
+  } else if (key === 'autoFiled') {
+    // Keep = right place, advance with NO write (nothing changed → not undoable).
+    if (act === 'keep') { state.sweepTally.kept = (state.sweepTally.kept || 0) + 1; return sweepSkip(); }
+    if (act === 'refileto') {
+      var target = payload;
+      if (!target || target === row.store) return;   // same store = no-op
+      return sweepStep('Refiled to ' + storeLabel(target) + ': ' + name, 'refiled', id, function () { return refileCommit(row, target); });
+    }
+    if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return api(oppStoreDeletePath(row.store), { method: 'POST', body: { id: id } }); });
   }
+}
+
+// ── Opportunity decide core (shared by the Decide flashcard + the Projects
+//    Open-calls inline actions) + the Auto-filed refile chain ─────────────
+function oppDecideSubmit(id, due_date, project_id) {
+  return api('/api/opportunities/decide', { method: 'POST', body: { id: id, decision: 'submit', due_date: due_date || '', project_id: project_id || '' } });
+}
+function oppDecidePass(id, reason) {
+  return api('/api/opportunities/decide', { method: 'POST', body: { id: id, decision: 'pass', reason: reason || '' } });
+}
+function oppDecideLater(id) {
+  return api('/api/opportunities/decide', { method: 'POST', body: { id: id, decision: 'later' } });
+}
+function oppDelete(id) { return api('/api/opportunities/delete', { method: 'POST', body: { id: id } }); }
+
+function oppStoreDeletePath(store) {
+  return store === 'read' ? '/api/readlater/delete'
+    : store === 'garden' ? '/api/garden/delete'
+      : store === 'opportunity' ? '/api/opportunities/delete'
+        : '/api/delete';
+}
+// Pull a generic {title, url, note} out of any store's record.
+function refileFields(w) {
+  var r = w.rec || {};
+  return {
+    title: r.title || r.text || r.url || '',
+    url: r.url || '',
+    note: r.note || r.memo || r.my_take || r.summary || ''
+  };
+}
+// Refile = create in the NEW store, then (ONLY on a confirmed ok) delete from the
+// old store — never delete without a confirmed add (the documented data-loss rule).
+// The whole chain is deferred 5s inside sweepStep's undoable, so Undo cancels it
+// before anything is written. The refiled record carries NO filed_by (a human
+// decision, so it never re-enters the Auto-filed queue).
+function refileCommit(w, target) {
+  var f = refileFields(w), createP;
+  if (target === 'task') createP = apiJson('/api/capture', { method: 'POST', body: { text: f.title || f.note || '(untitled)', url: f.url, memo: f.note, list: 'inbox' } });
+  else if (target === 'read') createP = apiJson('/api/readlater/add', { method: 'POST', body: { url: f.url, title: f.title, note: f.note, source: 'dashboard' } });
+  else if (target === 'garden') createP = apiJson('/api/garden/add', { method: 'POST', body: { text: f.title, url: f.url, note: f.note } });
+  else createP = apiJson('/api/opportunities/add', { method: 'POST', body: { title: f.title, url: f.url, note: f.note } });
+  return createP.then(function (res) {
+    var okAdd = res && (res.ok || res.status === 200 || res.status === 201);
+    if (!okAdd) { showToast('Could not refile — kept it', null); throw new Error('refile add failed'); }
+    return api(oppStoreDeletePath(w.store), { method: 'POST', body: { id: w.id } });
+  });
 }
 
 function sweepClearAllMeetings() {
@@ -1697,6 +2024,8 @@ function researchSectionHtml(groups) {
       '<div class="g-body">' + done.map(function (p) { return projectCardHtml(p, { research: true, done: true }); }).join('') + '</div></div>';
   }
   h += '<a class="research-portfolio-link" href="/research.html">Open the full research portfolio page →</a>';
+  // Open calls (dated maybes still undecided). Hidden at zero.
+  h += openCallsHtml();
   return h;
 }
 
@@ -1887,6 +2216,7 @@ function rlRowHtml(r, soon) {
   var editing = state.editRl === r.id;
   var h = '<div class="lib-row" data-rl="' + escapeHtml(r.id) + '"><div class="lr-main">';
   h += '<a class="lr-title" href="' + escapeHtml(safeUrl(r.url || '#')) + '" target="_blank" rel="noopener">' + escapeHtml(r.title || r.url || 'Untitled') + '</a>';
+  if (isAutoFiled(r, todayISO())) h += '<span class="af" title="sorted by the system; change in Sweeps → Auto-filed">auto-filed</span>';
   var meta = [];
   if (r.source_domain) meta.push(escapeHtml(r.source_domain));
   if (r.est_minutes) meta.push(r.est_minutes + ' min');
@@ -2040,10 +2370,84 @@ function handlePageAction(act, el) {
   if (act === 'addproj') { addProject(); return true; }
   if (act === 'somedaytoggle') { state.libSomedayOpen = !state.libSomedayOpen; render(); return true; }
   if (act === 'newstoggle') { state.libNewsOpen = !state.libNewsOpen; render(); return true; }
+  var oc = el.closest('[data-opp]'); if (oc) { handleOpenCallAction(act, oc.getAttribute('data-opp')); return true; }
   var rl = el.closest('[data-rl]'); if (rl) { handleLibraryAction(act, rl.getAttribute('data-rl')); return true; }
   var rc = el.closest('[data-rec]'); if (rc) { handleRecipeAction(act, rc.getAttribute('data-rec')); return true; }
   var pc = el.closest('[data-proj]'); if (pc) { handleProjectAction(act, pc.getAttribute('data-proj')); return true; }
   return false;
+}
+
+// Projects-view Open-calls list: inline Submit / Pass / Later, same server effects
+// as the Decide flashcard. Later is immediate; Submit opens a date+project form;
+// Pass opens an optional-reason input (the reason itself stays optional).
+function handleOpenCallAction(act, id) {
+  if (act === 'opp-submit') { state.oppInline = (state.oppInline && state.oppInline.id === id && state.oppInline.mode === 'submit') ? null : { id: id, mode: 'submit' }; render(); return; }
+  if (act === 'opp-pass') { state.oppInline = (state.oppInline && state.oppInline.id === id && state.oppInline.mode === 'pass') ? null : { id: id, mode: 'pass' }; render(); return; }
+  if (act === 'opp-cancel') { state.oppInline = null; render(); return; }
+  if (act === 'opp-later') { flushPending(); state.oppInline = null; oppDecideLater(id).then(fetchAll); return; }
+  if (act === 'opp-submit-go') {
+    var root = document.querySelector('.opp-row[data-opp="' + cssEsc(id) + '"]');
+    var di = root && root.querySelector('.oc-sub-date'), ps = root && root.querySelector('.oc-sub-proj');
+    var due = di ? di.value : '';
+    if (!due) { showToast('Pick a submission deadline', null); return; }
+    state.oppInline = null; flushPending();
+    oppDecideSubmit(id, due, ps ? ps.value : '').then(fetchAll);
+    return;
+  }
+  if (act === 'opp-pass-go') {
+    var root2 = document.querySelector('.opp-row[data-opp="' + cssEsc(id) + '"]');
+    var ri = root2 && root2.querySelector('.oc-pass-reason');
+    state.oppInline = null; flushPending();
+    oppDecidePass(id, ri ? ri.value : '').then(fetchAll);
+    return;
+  }
+}
+function projectSelectHtml(cls, selId) {
+  var opts = '<option value="">No project</option>';
+  (state.projects || []).filter(function (p) { return p && p.status !== 'done' && inDomain(p, state.lens); })
+    .forEach(function (p) { opts += '<option value="' + escapeHtml(p.id) + '"' + (p.id === selId ? ' selected' : '') + '>' + escapeHtml(p.title || 'Project') + '</option>'; });
+  return '<select class="' + cls + '">' + opts + '</select>';
+}
+function openCallDate(o, today) {
+  if (!o.decide_by) return 'no decide-by date';
+  var d = dayDelta(o.decide_by, today), md = monthDay(o.decide_by);
+  if (d == null) return 'by ' + md;
+  if (d < 0) return 'passed ' + md;
+  return 'by ' + md + ' (' + d + 'd)';
+}
+function openCallRowHtml(o, today) {
+  var inline = (state.oppInline && state.oppInline.id === o.id) ? state.oppInline.mode : null;
+  var h = '<div class="opp-row" data-opp="' + escapeHtml(o.id) + '"><div class="oc-main">';
+  h += '<span class="oc-title">' + escapeHtml(o.title || 'Opportunity') + '</span>';
+  h += '<span class="oc-kind">' + escapeHtml(oppKindLabel(o.opp_kind)) + '</span>';
+  h += '<span class="oc-date">' + escapeHtml(openCallDate(o, today)) + '</span>';
+  var fit = oppFitChip(o); if (fit) h += fit;
+  if (o.url) h += '<a class="oc-link" href="' + escapeHtml(safeUrl(o.url)) + '" target="_blank" rel="noopener">link</a>';
+  h += '</div><div class="oc-acts">' +
+    '<button data-pact="opp-submit">Submit</button>' +
+    '<button data-pact="opp-pass">Pass</button>' +
+    '<button data-pact="opp-later">Later</button></div>';
+  if (inline === 'submit') {
+    h += '<div class="oc-form"><input type="date" class="oc-sub-date" value="' + escapeHtml((o.decide_by || '').slice(0, 10)) + '">' +
+      projectSelectHtml('oc-sub-proj', o.project_id) +
+      '<button class="primary" data-pact="opp-submit-go">Make it a deadline</button>' +
+      '<button data-pact="opp-cancel">Cancel</button></div>';
+  } else if (inline === 'pass') {
+    h += '<div class="oc-form"><input class="oc-pass-reason" placeholder="Why pass? (optional)">' +
+      '<button class="primary" data-pact="opp-pass-go">Pass</button>' +
+      '<button data-pact="opp-cancel">Cancel</button></div>';
+  }
+  return h + '</div>';
+}
+// Open calls (N): every still-undecided opportunity for the current lens, below the
+// Research section. Hidden at zero; submitted ones have vanished (deadlines now).
+function openCallsHtml() {
+  var calls = openCalls(lensOpps());
+  if (!calls.length) return '';
+  var today = todayISO();
+  var h = '<p class="h3r">Open calls <span class="h3r-n">' + calls.length + '</span></p>';
+  h += calls.map(function (o) { return openCallRowHtml(o, today); }).join('');
+  return h;
 }
 
 /* ---- shared group + rows ---- */
@@ -2089,8 +2493,9 @@ function rowHtml(r, opt) {
   if (r.who) metaBits.push('<span class="who">' + escapeHtml(r.who) + '</span>');
   if (dchip) metaBits.push('<span>' + escapeHtml(dchip) + '</span>');
   else if (askChip) metaBits.push('<span>' + escapeHtml(askChip) + '</span>');
+  var afChip = isAutoFiled(r, today) ? '<span class="af" title="sorted by the system; change in Sweeps → Auto-filed">auto-filed</span>' : '';
   var title = '<span class="lanedot" style="background:' + (LANE_COLOR[r.lane] || 'var(--gray)') + '"></span>' +
-    escapeHtml(displayText(r)) + (r.suggested ? '<span class="sug">suggested</span>' : '');
+    escapeHtml(displayText(r)) + (r.suggested ? '<span class="sug">suggested</span>' : '') + afChip;
   var open = (state.openRow === r.id) ? ' open' : '';
   return '<div class="row' + open + '" data-id="' + escapeHtml(r.id) + '" data-kind="' + r.kind + '">' +
     '<button class="check" aria-label="' + escapeHtml(checkLabel) + '"></button>' +
@@ -2165,14 +2570,19 @@ function memoHtml() {
 }
 
 /* ---- capture ---- */
-var captureKind = 'task';
+// Drop is the PRIMARY capture (Enter): the system sorts it, you only correct. The
+// explicit Task/Read/Garden/Deadline buttons stay for when the kind is already known.
+var captureKind = 'drop';
 function captureHtml() {
   return '<label class="capture">' +
     '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>' +
-    '<input id="cap-input" placeholder="Capture something…" aria-label="Capture">' +
+    '<input id="cap-input" placeholder="Drop anything — it gets sorted…" aria-label="Capture">' +
     '<span class="kinds" id="cap-kinds">' +
-    ['task', 'read', 'garden', 'deadline'].map(function (k) {
-      return '<button data-kind="' + k + '"' + (k === captureKind ? ' class="on"' : '') + '>' + k.charAt(0).toUpperCase() + k.slice(1) + '</button>';
+    ['drop', 'task', 'read', 'garden', 'deadline'].map(function (k) {
+      var cls = [];
+      if (k === 'drop') cls.push('drop');
+      if (k === captureKind) cls.push('on');
+      return '<button data-kind="' + k + '"' + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' + k.charAt(0).toUpperCase() + k.slice(1) + '</button>';
     }).join('') + '</span></label>';
 }
 
@@ -2180,8 +2590,14 @@ function doCapture(kind, text) {
   text = (text || '').trim();
   if (!text) return;
   var isUrl = /^https?:\/\//i.test(text);
-  var p;
-  if (kind === 'read') {
+  var p, successMsg = 'Captured';
+  if (kind === 'drop') {
+    // The one capture that decides nothing: the drop router sorts it within ~3 min.
+    // Carry the first http(s) url found in the text (the tweet/article link).
+    var um = text.match(/https?:\/\/\S+/i);
+    successMsg = "Dropped. It'll be sorted in a few minutes.";
+    p = apiJson('/api/drop', { method: 'POST', body: { text: text, url: um ? um[0] : '', title: '', page_text: '', source: 'home' } });
+  } else if (kind === 'read') {
     if (isUrl) p = apiJson('/api/readlater/add', { method: 'POST', body: { url: text, note: '' } });
     else p = apiJson('/api/capture', { method: 'POST', body: { text: '[read] ' + text, list: 'inbox' } });
   } else if (kind === 'garden') {
@@ -2200,9 +2616,9 @@ function doCapture(kind, text) {
     p = apiJson('/api/capture', { method: 'POST', body: { text: text, list: 'inbox' } });
   }
   p.then(function (res) {
-    if (res && (res.ok || res.status === 201 || res.status === 200)) {
+    if (res && (res.ok || res.status === 202 || res.status === 201 || res.status === 200)) {
       var el = document.getElementById('cap-input'); if (el) el.value = '';
-      showToast('Captured', null);
+      showToast(successMsg, null);
       fetchAll();
     } else {
       showToast('Capture failed — kept your text', null);
@@ -2340,6 +2756,19 @@ document.addEventListener('click', function (e) {
     if (v) handleSweepAction('datepick', v);
     return;
   }
+  // Decide flashcard: Submit (date + project) / Pass (reason) go-buttons.
+  if (el.closest && el.closest('[data-sweepsubmit-go]')) {
+    var sdi = document.querySelector('.opp-sub-date'), spi = document.querySelector('.opp-sub-proj');
+    handleSweepAction('submitgo', { due_date: sdi ? sdi.value : '', project_id: spi ? spi.value : '' });
+    return;
+  }
+  if (el.closest && el.closest('[data-sweeppass-go]')) {
+    var pri = document.querySelector('.opp-pass-reason');
+    handleSweepAction('passgo', pri ? pri.value : '');
+    return;
+  }
+  var sref = el.closest && el.closest('[data-sweeprefile]');
+  if (sref) { handleSweepAction('refileto', sref.getAttribute('data-sweeprefile')); return; }
   var sa = el.closest && el.closest('[data-sweepact]');
   if (sa) { handleSweepAction(sa.getAttribute('data-sweepact')); return; }
   // Areas / Library / Kitchen actions (data-pact). Must run before row-level,
@@ -2380,15 +2809,19 @@ document.addEventListener('keydown', function (e) {
   if (state.view === 'sweeps' && state.sweepQueue) {
     if (e.key === 'Escape') { e.preventDefault(); exitSweepQueue(); return; }
     var ae = document.activeElement;
-    var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    var typing = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT');
     if (!typing) {
       var map = sweepKeyMap(state.sweepQueue);
       var k = (e.key === ' ' || e.key === 'Spacebar') ? ' ' : String(e.key).toLowerCase();
       if (Object.prototype.hasOwnProperty.call(map, k) && map[k]) { e.preventDefault(); handleSweepAction(map[k]); return; }
     }
   }
-  // Enter in capture = Task
-  if (e.target && e.target.id === 'cap-input' && e.key === 'Enter') { e.preventDefault(); doCapture('task', e.target.value); return; }
+  // Enter in capture = Drop (the primary); Shift+Enter = Task.
+  if (e.target && e.target.id === 'cap-input' && e.key === 'Enter') {
+    e.preventDefault();
+    doCapture(e.shiftKey ? 'task' : 'drop', e.target.value);
+    return;
+  }
   // Enter in the Add-project input
   if (e.target && e.target.id === 'proj-add-in' && e.key === 'Enter') { e.preventDefault(); addProject(); return; }
   // Enter in a project state-note input = save
@@ -2399,6 +2832,13 @@ document.addEventListener('keydown', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('ns-in') && e.key === 'Enter') {
     var row = e.target.closest('.row'); if (row) saveNextStep(row.getAttribute('data-id'), e.target.value.trim());
     return;
+  }
+  // Enter in a Pass-reason input = confirm Pass (Decide flashcard + Projects inline).
+  if (e.target && e.target.classList && e.target.classList.contains('opp-pass-reason') && e.key === 'Enter') {
+    e.preventDefault(); handleSweepAction('passgo', e.target.value); return;
+  }
+  if (e.target && e.target.classList && e.target.classList.contains('oc-pass-reason') && e.key === 'Enter') {
+    e.preventDefault(); var oppRow = e.target.closest('.opp-row'); if (oppRow) handleOpenCallAction('opp-pass-go', oppRow.getAttribute('data-opp')); return;
   }
   // title Enter/Space → toggle
   if (e.target && e.target.classList && e.target.classList.contains('t') && (e.key === 'Enter' || e.key === ' ')) {
