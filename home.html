@@ -155,6 +155,9 @@
   .fcard .ft { font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .fcard .fn { color: var(--text-2); font-size: 14px; margin-top: 4px; }
   .fcard .fm { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+  .fcard .fchip { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--green); background: #eef5ee; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+  /* The FSP "Research this week" line — quiet, neutral, under Focus (2026-11). */
+  .research-line { color: var(--text-2); font-size: 13px; margin: 8px 2px 2px; }
 
   /* doorways */
   .doors { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 34px; }
@@ -974,6 +977,36 @@ function systemChanges(lines, today) {
   out.sort(function (a, b) { return String(b.ts || '').localeCompare(String(a.ts || '')); });
   return out;
 }
+
+// ── Research blocks (FSP, 2026-11) ──────────────────────────────────────
+// John's NCFDD Faculty Success Program spine is a daily timed research block,
+// Mon–Fri. Nothing counted them, so neither Home nor the Friday review could
+// answer "have I kept the habit?". researchLine() is the one quiet line Home
+// shows under Focus this week; no red, no shaming.
+function fmtHM(mins) {
+  mins = Math.max(0, Math.round(mins || 0));
+  var h = Math.floor(mins / 60), m = mins % 60;
+  if (h && m) return h + 'h ' + m + 'm';
+  if (h) return h + 'h';
+  return m + 'm';
+}
+// summary = the /api/research-week object (or null); today = 'YYYY-MM-DD'.
+// Zero blocks → "Research this week: no block yet" ONLY Tue–Fri (the workdays
+// still ahead); Sat/Sun/Mon show nothing (silence beats a 0 before the week has
+// a chance). Returns '' when nothing should render.
+function researchLine(summary, today) {
+  var s = (summary && typeof summary === 'object') ? summary : null;
+  var blocks = (s && typeof s.blocks === 'number') ? s.blocks : 0;
+  if (blocks <= 0) {
+    var ms = _parseYMD(today);
+    if (ms == null) return '';
+    var dow = new Date(ms).getUTCDay();   // 0 Sun .. 6 Sat; _parseYMD builds a UTC ms
+    return (dow >= 2 && dow <= 5) ? 'Research this week: no block yet' : '';
+  }
+  var days = (typeof s.days_with_block === 'number') ? s.days_with_block : 0;
+  var target = (typeof s.target_days === 'number') ? s.target_days : 5;
+  return 'Research this week: ' + days + ' of ' + target + ' days · ' + fmtHM(s.minutes);
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1163,7 +1196,10 @@ function fetchAll() {
     apiJson('/api/opportunities'), apiJson('/api/garden'),
     // Change log (2026-11): the system-actor receipts for the "Changed by the
     // system" strip + the System-changes sweep. 404 until merged → [].
-    apiJson('/api/changes?actor=system&limit=50')
+    apiJson('/api/changes?actor=system&limit=50'),
+    // Research blocks this week (FSP, 2026-11): the "Research this week" line under
+    // Focus. 404 until merged → null, which researchLine() treats as zero blocks.
+    apiJson('/api/research-week')
   ];
   return Promise.all(gets).then(function (res) {
     var items = res[0];
@@ -1183,6 +1219,7 @@ function fetchAll() {
     state.opps = Array.isArray(res[8].data) ? res[8].data : [];
     state.garden = Array.isArray(res[9].data) ? res[9].data : [];
     state.changes = Array.isArray(res[10].data) ? res[10].data : [];
+    state.research = (res[11] && res[11].data && typeof res[11].data === 'object' && !Array.isArray(res[11].data)) ? res[11].data : null;
     if (state.view === 'kitchen') ensureRecipes();
     render();
   }).catch(function (e) {
@@ -1346,6 +1383,8 @@ function homeHtml() {
   // "Research is always number 1 priority" (John, 2026-10-02): Focus this week
   // rides directly under capture, above Never late, with lane-level weight.
   h += focusGroupHtml();
+  // The FSP research-block count sits directly under the Focus section (2026-11).
+  h += researchLineHtml();
   h += groupHtml('never_late', 'Never late', LANE_COLOR.never_late, 'letters', g.never_late, { home: true, empty: 'No letters due.' });
   h += groupHtml('dont_drop', "Don't drop", LANE_COLOR.dont_drop, 'coauthors · class · panels · people waiting', g.dont_drop, { home: true });
   h += groupHtml('wiggle', 'Can slip, say so', LANE_COLOR.wiggle, 'reviews', g.wiggle, { home: true });
@@ -1420,12 +1459,29 @@ function undoChange(ts, id) {
     }).catch(function () { showToast('Could not undo', null); });
 }
 
+// Minutes logged against one project THIS week, from /api/research-week's
+// by_project join. '' when none (the chip is suppressed at zero).
+function researchMinutesFor(pid) {
+  var bp = (state.research && Array.isArray(state.research.by_project)) ? state.research.by_project : [];
+  for (var i = 0; i < bp.length; i++) {
+    if (bp[i] && bp[i].project_id === pid) return (bp[i].minutes > 0) ? bp[i].minutes : 0;
+  }
+  return 0;
+}
+// The quiet "Research this week: 3 of 5 days · 2h 30m" line under Focus.
+function researchLineHtml() {
+  var line = researchLine(state.research || null, todayISO());
+  if (!line) return '';
+  return '<div class="research-line">' + escapeHtml(line) + '</div>';
+}
 function focusGroupHtml() {
   var focus = (state.projects || []).filter(function (p) { return p && p.focus && p.status !== 'done' && inDomain(p, state.lens); });
   if (!focus.length) return '';
   var cards = focus.map(function (p) {
     var mv = (typeof p.days_since_movement === 'number') ? ('moved ' + p.days_since_movement + 'd ago') : '';
-    return '<div class="fcard"><div class="ft"><span class="dot" style="background:var(--green)"></span>' + escapeHtml(p.title || 'Project') + '</div>' +
+    var mins = researchMinutesFor(p.id);
+    var chip = mins > 0 ? '<span class="fchip">' + escapeHtml(fmtHM(mins)) + ' this week</span>' : '';
+    return '<div class="fcard"><div class="ft"><span class="dot" style="background:var(--green)"></span>' + escapeHtml(p.title || 'Project') + chip + '</div>' +
       (p.state_note ? '<div class="fn">Next: ' + escapeHtml(p.state_note) + '</div>' : '') +
       (mv ? '<div class="fm">' + escapeHtml(mv) + '</div>' : '') + '</div>';
   }).join('');

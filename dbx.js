@@ -288,6 +288,42 @@
     const p = x => String(x).padStart(2, '0');
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
+  // ── Research blocks (FSP, 2026-11) — mirror server.py's /api/research-week ──
+  // ISO year+week for a local 'YYYY-MM-DD' (standard nearest-Thursday algorithm).
+  function isoWeekOfYMD(ymd) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd || ''); if (!m) return null;
+    const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    const day = date.getUTCDay() || 7;             // Mon=1 .. Sun=7
+    date.setUTCDate(date.getUTCDate() + 4 - day);  // nearest Thursday
+    const isoYear = date.getUTCFullYear();
+    const week = Math.ceil(((date.getTime() - Date.UTC(isoYear, 0, 1)) / 86400000 + 1) / 7);
+    return [isoYear, week];
+  }
+  // A block's `started`/`ts` → a LOCAL 'YYYY-MM-DD'. A naive ISO reads its Y-M-D
+  // directly (local); a Z/offset one is parsed and the LOCAL parts taken — mirrors
+  // server._local_date_from_iso.
+  function blockLocalYMD(ts) {
+    if (!ts || typeof ts !== 'string') return null;
+    const s = ts.trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); if (!m) return null;
+    const hasTz = /([zZ]|[+\-]\d{2}:?\d{2})$/.test(s.slice(10));
+    if (!hasTz) return m[1] + '-' + m[2] + '-' + m[3];
+    const d = new Date(s); if (isNaN(d.getTime())) return m[1] + '-' + m[2] + '-' + m[3];
+    const p = x => String(x).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  // ?week= → [isoYear, isoWeek, 'YYYY-Www']. Blank → this week, 'last' → previous
+  // week, 'YYYY-Www' → that week, anything else → this week (never a throw).
+  function researchWeekTarget(weekParam) {
+    const pack = (y, w) => [y, w, String(y).padStart(4, '0') + '-W' + String(w).padStart(2, '0')];
+    const pl = String(weekParam || '').trim().toLowerCase();
+    if (pl === 'last') { const [y, w] = isoWeekOfYMD(addDaysLocal(-7)); return pack(y, w); }
+    if (pl) {
+      const m = /^(\d{4})-w(\d{1,2})$/.exec(pl);
+      if (m && +m[2] >= 1 && +m[2] <= 53) return pack(+m[1], +m[2]);
+    }
+    const [y, w] = isoWeekOfYMD(todayLocal()); return pack(y, w);
+  }
   const OPP_KINDS = ['cfp', 'conference', 'grant', 'workshop', 'talk', 'job', 'other'];
   // make_opportunity mirror — keep the shape in lock-step with records.py.
   function makeOpportunity(body) {
@@ -348,6 +384,55 @@
       const m = await readJson('memo.json', null);
       if (!m || typeof m !== 'object') return resp(shell);
       return resp({ ...shell, ...m });
+    }
+    // Research blocks (FSP, 2026-11) — READ-ONLY mirror of /api/research-week.
+    // Parse sessions.log (JSONL), keep skill=="block" lines in the asked ISO week
+    // (local date), and aggregate exactly as server._research_week does. target_*
+    // mirror config.RESEARCH_TARGET_DAYS/RESEARCH_BLOCK_MIN (5 / 25).
+    if (path === '/api/research-week' || path.startsWith('/api/research-week?')) {
+      const q = new URLSearchParams(path.split('?')[1] || '');
+      const [iy, iw, weekStr] = researchWeekTarget(q.get('week'));
+      const projects = await readJson('projects.json', []);
+      const pmap = {};
+      for (const p of (Array.isArray(projects) ? projects : [])) if (p && p.id != null) pmap[p.id] = p;
+      const text = await download('sessions.log');
+      const rows = [];
+      if (text) for (const ln of text.split('\n')) {
+        const s = ln.trim(); if (!s) continue;
+        let e; try { e = JSON.parse(s); } catch (err) { continue; }
+        if (!e || typeof e !== 'object' || e.skill !== 'block') continue;
+        const ymd = blockLocalYMD(e.started || e.ts); if (!ymd) continue;
+        const yw = isoWeekOfYMD(ymd); if (!yw || yw[0] !== iy || yw[1] !== iw) continue;
+        rows.push([ymd, e]);
+      }
+      rows.sort((a, b) => String(b[1].started || b[1].ts || '').localeCompare(String(a[1].started || a[1].ts || '')));
+      let totalMin = 0; const days = new Set();
+      const byProject = new Map(), byDay = new Map();
+      const outcomes = { done: 0, partial: 0, switched: 0, skipped: 0 };
+      const resistance = [];
+      for (const [ymd, e] of rows) {
+        const mn = (typeof e.minutes === 'number' && !isNaN(e.minutes)) ? e.minutes : 0;
+        totalMin += mn; days.add(ymd);
+        const pid = (e.project_id != null && e.project_id !== '') ? e.project_id : null;
+        const pa = byProject.get(pid) || [0, 0]; pa[0]++; pa[1] += mn; byProject.set(pid, pa);
+        const da = byDay.get(ymd) || [0, 0]; da[0]++; da[1] += mn; byDay.set(ymd, da);
+        if (Object.prototype.hasOwnProperty.call(outcomes, e.outcome)) outcomes[e.outcome]++;
+        for (const r of (Array.isArray(e.resistance) ? e.resistance : [])) {
+          if (typeof r === 'string' && r.trim() && resistance.length < 40) resistance.push(r.trim());
+        }
+      }
+      const byProjectList = [];
+      for (const [pid, [b, mn]] of byProject.entries()) {
+        const proj = pid != null ? pmap[pid] : null;
+        byProjectList.push({ project_id: pid, title: proj ? (proj.title || null) : null, blocks: b, minutes: mn });
+      }
+      byProjectList.sort((a, b) => (b.minutes - a.minutes) || (b.blocks - a.blocks));
+      const byDayList = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, [b, mn]]) => ({ date: d, blocks: b, minutes: mn }));
+      return resp({
+        week: weekStr, blocks: rows.length, minutes: totalMin, days_with_block: days.size,
+        target_days: 5, target_minutes_min: 25,
+        by_project: byProjectList, by_day: byDayList, outcomes, resistance
+      });
     }
     if (path === '/api/deadlines') {
       const ds = await readJson('deadlines.json', []);
