@@ -164,6 +164,15 @@
   .door span { color: var(--text-2); }
   .h2 { font-size: 13px; font-weight: 600; color: var(--text-3); margin: 0 0 8px; }
 
+  /* "Changed by the system" strip (2026-11) — a quiet receipt list under the memo. */
+  .syschanges { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 10px; margin: 0 0 20px; background: #fff; }
+  .syschange-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; color: var(--text); padding: 4px 0; }
+  .syschange-row + .syschange-row { border-top: 1px solid var(--line); }
+  .syschange-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-undo { flex: none; font-size: 12px; padding: 2px 10px; border-radius: 5px; border: 1px solid var(--line); color: var(--text-2); background: #fff; cursor: pointer; }
+  .sc-undo:hover { background: var(--hover); color: var(--text); }
+  .syschange-more { display: inline-block; margin-top: 6px; font-size: 13px; color: var(--text-2); text-decoration: none; }
+
   .foot { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--text-3); }
 
   /* ---------- sweeps ---------- */
@@ -764,7 +773,7 @@ function sweepWaitingCheck(items, today) {
   return out;
 }
 
-function sweepCounts(items, deadlines, meetings, projects, today, opps, readlater, garden) {
+function sweepCounts(items, deadlines, meetings, projects, today, opps, readlater, garden, changes) {
   return {
     suggestions: sweepSuggestions(items, today).length,
     stuck: sweepStuckTasks(items, today).length,
@@ -776,7 +785,10 @@ function sweepCounts(items, deadlines, meetings, projects, today, opps, readlate
     // "Drop" capture + Opportunities (2026-10-16). decide = dated maybes near their
     // decide-by; autoFiled = records the drop router sorted this week (review set).
     decide: oppDecideQueue(opps || [], today).length,
-    autoFiled: autoFiledQueue(items, readlater || [], garden || [], opps || [], today).length
+    autoFiled: autoFiledQueue(items, readlater || [], garden || [], opps || [], today).length,
+    // Change log (2026-11): the system-actor receipts to review/undo. `changes` is a
+    // trailing-optional arg, so the old 5/8-arg calls still read 0.
+    systemChanges: systemChanges(changes || [], today).length
   };
 }
 
@@ -935,6 +947,33 @@ function autoFiledQueue(items, readlater, garden, opps, today) {
   out.sort(function (a, b) { return (Date.parse(b.rec.filed_at || '') || 0) - (Date.parse(a.rec.filed_at || '') || 0); });
   return out;
 }
+
+// ── Change log receipts (2026-11, "nothing disappears silently") ──────
+// The system-actor changes to surface on Home ("Changed by the system") + the
+// System-changes sweep. A change line is {ts, actor, action, store, id, title,
+// detail, undo}. SYSTEM = any actor OTHER than the user, excluding the bookkeeping
+// lint/undo lines; within the last 7 days; and NOT already undone (a later
+// {action:"undo", detail:{of:<ts>}} line hides its original). Newest first.
+function systemChanges(lines, today) {
+  lines = lines || [];
+  var undone = {};
+  for (var i = 0; i < lines.length; i++) {
+    var l = lines[i];
+    if (l && l.action === 'undo' && l.detail && l.detail.of) undone[l.detail.of] = true;
+  }
+  var out = [];
+  for (var j = 0; j < lines.length; j++) {
+    var c = lines[j];
+    if (!c || !c.actor || c.actor === 'user' || c.actor === 'lint') continue;
+    if (c.action === 'undo' || c.action === 'lint') continue;
+    if (undone[c.ts]) continue;
+    var dd = dayDelta(String(c.ts || '').slice(0, 10), today);
+    if (dd == null || dd > 0 || dd < -7) continue;   // last 7 days only
+    out.push(c);
+  }
+  out.sort(function (a, b) { return String(b.ts || '').localeCompare(String(a.ts || '')); });
+  return out;
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1037,7 +1076,17 @@ var state = {
 function api(path, opts) {
   opts = opts || {};
   var init = { method: opts.method || 'GET', headers: {} };
-  if (opts.body !== undefined) { init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(opts.body); }
+  if (opts.body !== undefined) {
+    var b = opts.body;
+    // Stamp the person as the actor on EVERY write (one place): the change-log
+    // (2026-11, "nothing disappears silently") infers actor from the body, so a
+    // Home write is "user", not "unknown". Object bodies only (arrays like
+    // /api/import pass through untouched); never overwrite an explicit actor.
+    if (init.method !== 'GET' && b && typeof b === 'object' && !Array.isArray(b) && b.actor === undefined) {
+      b = Object.assign({}, b, { actor: 'user' });
+    }
+    init.headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(b);
+  }
   if (LOCAL) return fetch(path, init);
   if (typeof DBX === 'undefined') {
     renderConnectGate();
@@ -1111,7 +1160,10 @@ function fetchAll() {
     apiJson('/api/readlater?status=all'), apiJson('/api/newsletter-digest'),
     // Drop + Opportunities (2026-10-16). Both 404 cleanly until the server merge
     // lands → coerced to [], so the Decide/Auto-filed queues simply read empty.
-    apiJson('/api/opportunities'), apiJson('/api/garden')
+    apiJson('/api/opportunities'), apiJson('/api/garden'),
+    // Change log (2026-11): the system-actor receipts for the "Changed by the
+    // system" strip + the System-changes sweep. 404 until merged → [].
+    apiJson('/api/changes?actor=system&limit=50')
   ];
   return Promise.all(gets).then(function (res) {
     var items = res[0];
@@ -1130,6 +1182,7 @@ function fetchAll() {
     state.newsletter = (res[7].data && typeof res[7].data === 'object') ? res[7].data : null;
     state.opps = Array.isArray(res[8].data) ? res[8].data : [];
     state.garden = Array.isArray(res[9].data) ? res[9].data : [];
+    state.changes = Array.isArray(res[10].data) ? res[10].data : [];
     if (state.view === 'kitchen') ensureRecipes();
     render();
   }).catch(function (e) {
@@ -1257,7 +1310,9 @@ function sweepTotal() {
 // doors actually shown. currentSweepCounts stays the pure, lens-filtered truth.
 function visibleSweepCounts() {
   var c = currentSweepCounts();
-  if (!LOCAL) c = Object.assign({}, c, { pastMeetings: 0 });
+  // Hosted hides Past meetings (read-only) AND System changes (its only action is
+  // Undo, a LOCAL-only write; the Home strip still SHOWS the receipts read-only).
+  if (!LOCAL) c = Object.assign({}, c, { pastMeetings: 0, systemChanges: 0 });
   return c;
 }
 // Lens-filtered, optimistic-hidden sweep counts — the single source the Home
@@ -1272,7 +1327,7 @@ function currentSweepCounts() {
   var opps = lensOpps();
   var readlater = (state.readlater || []).filter(function (r) { return !optimistic[r.id]; });
   var garden = (state.garden || []).filter(function (g) { return !optimistic[g.id]; });
-  return sweepCounts(items, dl, meetings, projects, todayISO(), opps, readlater, garden);
+  return sweepCounts(items, dl, meetings, projects, todayISO(), opps, readlater, garden, state.changes || []);
 }
 
 /* ---- Home ---- */
@@ -1286,6 +1341,7 @@ function homeHtml() {
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
   h += '<p class="sub">' + escapeHtml(sub) + '</p>';
   h += memoHtml();
+  h += systemChangesStripHtml();
   h += captureHtml();
   // "Research is always number 1 priority" (John, 2026-10-02): Focus this week
   // rides directly under capture, above Never late, with lane-level weight.
@@ -1318,6 +1374,50 @@ function sweepsStripHtml() {
 }
 function sweepDoor(n, label) {
   return '<a class="door" href="#sweeps"><b>' + n + '</b> <span>' + escapeHtml(label) + '</span></a>';
+}
+
+// ── "Changed by the system" strip (2026-11, nothing disappears silently) ──
+// A plain-language verb phrase per system change, so John can see what the agents/
+// router did WITHOUT him, and undo any of it.
+var STORE_LABEL = { task: 'Task', deadline: 'Deadline', meeting: 'Meeting',
+  opportunity: 'Opportunity', read: 'Read Later', garden: 'Garden', recipe: 'Recipe',
+  project: 'Project' };
+function changeLabel(c) {
+  var t = c.title || (STORE_LABEL[c.store] || 'item');
+  var d = c.detail || {};
+  switch (c.action) {
+    case 'auto_close': return 'Closed: ' + t + (d.reason ? ' (' + d.reason + ')' : '');
+    case 'filed': return 'Filed as ' + (STORE_LABEL[c.store] || 'item') + ': ' + t;
+    case 'delete': return 'Deleted: ' + t;
+    case 'done': return 'Done: ' + t;
+    case 'dismiss': return 'Dismissed: ' + t;
+    case 'decide': return 'Decided' + (d.decision ? ' (' + d.decision + ')' : '') + ': ' + t;
+    case 'move': return 'Moved: ' + t;
+    case 'reschedule': return 'Rescheduled: ' + t;
+    case 'confirm': return 'Confirmed: ' + t;
+    default: return (c.action || 'changed') + ': ' + t;
+  }
+}
+function changeRowHtml(c) {
+  var undoBtn = LOCAL ? '<button class="sc-undo" data-change-undo data-ts="' +
+    escapeHtml(c.ts) + '" data-cid="' + escapeHtml(c.id || '') + '">Undo</button>' : '';
+  return '<div class="syschange-row"><span>' + escapeHtml(changeLabel(c)) + '</span>' + undoBtn + '</div>';
+}
+function systemChangesStripHtml() {
+  var sc = systemChanges(state.changes || [], todayISO());
+  if (!sc.length) return '';
+  var shown = sc.slice(0, 5).map(changeRowHtml).join('');
+  var more = (sc.length > 5) ? '<a class="syschange-more" href="#sweeps">' + (sc.length - 5) + ' more →</a>' : '';
+  return '<section class="syschanges" aria-label="Changed by the system">' +
+    '<p class="h2">Changed by the system</p>' + shown + more + '</section>';
+}
+function undoChange(ts, id) {
+  return apiJson('/api/changes/undo', { method: 'POST', body: { ts: ts, id: id || '' } })
+    .then(function (res) {
+      if (res.ok) { showToast('Undone', null); }
+      else { showToast((res.data && res.data.error) ? ('Could not undo: ' + res.data.error) : 'Could not undo', null); }
+      fetchAll();
+    }).catch(function () { showToast('Could not undo', null); });
 }
 
 function focusGroupHtml() {
@@ -1357,10 +1457,12 @@ function tasksHtml() {
 }
 
 /* ---- Sweeps ---- */
-var SWEEP_ORDER = ['decide', 'suggestions', 'stuck', 'oldReplies', 'waitingCheck', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn', 'autoFiled'];
+var SWEEP_ORDER = ['decide', 'suggestions', 'stuck', 'oldReplies', 'waitingCheck', 'pastDeadlines', 'pastMeetings', 'projectsCheckIn', 'autoFiled', 'systemChanges'];
 var SWEEP_DEFS = {
   decide:        { label: 'Decide',               note: 'calls, grants, talks: submit, pass, or later', color: LANE_COLOR.dont_drop,
                    question: 'Worth going for?' },
+  systemChanges: { label: 'System changes',       note: 'what the system did on its own this week', color: LANE_COLOR.admin,
+                   question: 'The system did this. Keep it, or undo?' },
   autoFiled:     { label: 'Auto-filed',           note: 'sorted by the system this week', color: LANE_COLOR.admin,
                    question: '' },
   projectsCheckIn: { label: 'Projects to check in on', note: 'not touched in a while', color: 'var(--green)',
@@ -1382,9 +1484,10 @@ var TALLY_LABEL = {
   done: 'done', confirmed: 'confirmed', kept: 'kept', owed: 'kept',
   someday: 'to Someday', rescheduled: 'rescheduled', nudged: 'nudged', dismissed: 'dismissed',
   dropped: 'dropped', cleared: 'cleared', parked: 'parked',
-  submitted: 'submitted', passed: 'passed', later: 'to later', refiled: 'refiled'
+  submitted: 'submitted', passed: 'passed', later: 'to later', refiled: 'refiled',
+  undone: 'undone'
 };
-var TALLY_ORDER = ['done', 'confirmed', 'submitted', 'passed', 'later', 'refiled', 'kept', 'owed', 'someday', 'rescheduled', 'nudged', 'dismissed', 'dropped', 'cleared', 'parked'];
+var TALLY_ORDER = ['done', 'confirmed', 'submitted', 'passed', 'later', 'refiled', 'kept', 'owed', 'someday', 'rescheduled', 'nudged', 'dismissed', 'dropped', 'cleared', 'parked', 'undone'];
 
 function sweepsViewHtml() {
   if (state.sweepQueue) return sweepCardViewHtml();
@@ -1433,10 +1536,22 @@ function sweepCardViewHtml() {
     : (key === 'projectsCheckIn') ? sweepProjectBody(row)
     : (key === 'decide') ? sweepOppBody(row)
     : (key === 'autoFiled') ? sweepAutoFiledBody(row)
+    : (key === 'systemChanges') ? sweepChangeBody(row)
     : sweepRowBody(key, row);
   h += sweepActionsHtml(key, row);
   h += '</div>';
   h += '<p class="sweep-hint">' + sweepHintText(key) + '</p>';
+  return h;
+}
+
+function sweepChangeBody(c) {
+  var today = todayISO();
+  var dd = dayDelta(String(c.ts || '').slice(0, 10), today);
+  var when = (dd === 0) ? 'today' : (dd === -1 ? 'yesterday' : ((-dd) + 'd ago'));
+  var h = '<div class="sc-title">' + escapeHtml(changeLabel(c)) + '</div>';
+  var bits = ['<span class="lanetag">by ' + escapeHtml(c.actor || 'system') + '</span>',
+    '<span>' + escapeHtml(when) + '</span>'];
+  h += '<div class="sc-meta">' + bits.join('') + '</div>';
   return h;
 }
 
@@ -1630,6 +1745,10 @@ function sweepActionsHtml(key, r) {
     }
     return h;
   }
+  if (key === 'systemChanges') {
+    h += sbtn('1', 'Keep', 'keep', 'primary') + sbtn('u', 'Undo', 'undo', 'danger');
+    return h + '</div>';
+  }
   if (key === 'autoFiled') {
     h += sbtn('1', 'Keep', 'keep', 'primary') + sbtn('2', 'Change', 'change') +
       sbtn('x', 'Drop', 'drop', 'danger');
@@ -1656,6 +1775,7 @@ function sweepHintText(key) {
   if (key === 'projectsCheckIn') return 'Keys: 1 Keep active · 2 Park · 3 Done · Space skip · Esc back';
   if (key === 'decide') return 'Keys: 1 Submit · 2 Pass · 3 Later · x Drop · Space skip · Esc back';
   if (key === 'autoFiled') return 'Keys: 1 Keep · 2 Change · x Drop · Space skip · Esc back';
+  if (key === 'systemChanges') return 'Keys: 1 Keep · u Undo · Space skip · Esc back';
   return 'Space skip · Esc back';
 }
 
@@ -1670,6 +1790,7 @@ function sweepKeyMap(key) {
   if (key === 'projectsCheckIn') return { '1': 'keepactive', '2': 'park', '3': 'projdone', ' ': 'skip' };
   if (key === 'decide') return { '1': 'submit', '2': 'pass', '3': 'later', 'x': 'drop', ' ': 'skip' };
   if (key === 'autoFiled') return { '1': 'keep', '2': 'change', 'x': 'drop', ' ': 'skip' };
+  if (key === 'systemChanges') return { '1': 'keep', 'u': 'undo', ' ': 'skip' };
   return base;
 }
 
@@ -1696,6 +1817,7 @@ function sweepCardsFor(key) {
   if (key === 'projectsCheckIn') return projectsToCheckIn(c.projects, c.today);
   if (key === 'decide') return oppDecideQueue(c.opps, c.today);
   if (key === 'autoFiled') return autoFiledQueue(c.items, c.readlater, c.garden, c.opps, c.today);
+  if (key === 'systemChanges') return systemChanges(c.changes, c.today);
   return [];
 }
 function currentSweepCountsSource() {
@@ -1707,6 +1829,7 @@ function currentSweepCountsSource() {
     opps: lensOpps(),
     readlater: (state.readlater || []).filter(function (r) { return !optimistic[r.id]; }),
     garden: (state.garden || []).filter(function (g) { return !optimistic[g.id]; }),
+    changes: (state.changes || []).filter(function (c) { return !optimistic[c.ts]; }),
     today: todayISO()
   };
 }
@@ -1802,6 +1925,19 @@ function handleSweepAction(act, payload) {
   if (act === 'submit' && key === 'decide') return sweepToggle('submit');
   if (act === 'pass' && key === 'decide') return sweepToggle('pass');
   if (act === 'change' && key === 'autoFiled') return sweepToggle('refile');
+  // System-changes: Keep = advance (no write); Undo = reverse via /api/changes/undo
+  // through the shared 5s undoable. Keyed by the change line's own ts (so one record
+  // with two receipts stays distinct). Handled before the generic `name`/`id` below.
+  if (key === 'systemChanges') {
+    if (act === 'keep') { state.sweepTally.kept = (state.sweepTally.kept || 0) + 1; return sweepSkip(); }
+    if (act === 'undo') {
+      var cts = row.ts, cid = row.id;
+      return sweepStep('Undone: ' + changeLabel(row), 'undone', cts, function () {
+        return api('/api/changes/undo', { method: 'POST', body: { ts: cts, id: cid || '' } });
+      });
+    }
+    return;
+  }
   var id = row.id,
     name = (key === 'pastMeetings' || key === 'projectsCheckIn') ? (row.title || 'project')
       : (key === 'decide') ? (row.title || 'opportunity')
@@ -2639,6 +2775,12 @@ function statusIssues() {
   if (Array.isArray(h.conflicts) && h.conflicts.length) out.push('Dropbox conflict files: ' + h.conflicts.length);
   if (h.sync && (h.sync.stalled || h.sync.reboot_needed)) out.push(h.sync.reboot_needed ? 'Dropbox sync: reboot needed' : 'Dropbox sync stalled');
   if (h.calendar && h.calendar.degraded) out.push('Calendar coverage partial');
+  // Nightly lint (2026-11): a warn-level anomaly (a vanished record, a conflict
+  // fork, a torn log) belongs on the status pill — it changes what the ledger can
+  // be trusted to say. Info-level lint never surfaces here.
+  if (h.lint && h.lint.warn) {
+    out.push(h.lint.warn + ' anomaly' + (h.lint.warn > 1 ? 'ies' : 'y') + ' to review (Sweeps, System changes)');
+  }
   if (state.memo && state.memo.heads_up && state.memo.heads_up.kind === 'email_stale') {
     out.push(state.memo.heads_up.text || 'Work email not synced recently');
   }
@@ -2769,6 +2911,8 @@ document.addEventListener('click', function (e) {
   }
   var sref = el.closest && el.closest('[data-sweeprefile]');
   if (sref) { handleSweepAction('refileto', sref.getAttribute('data-sweeprefile')); return; }
+  var cu = el.closest && el.closest('[data-change-undo]');
+  if (cu) { undoChange(cu.getAttribute('data-ts'), cu.getAttribute('data-cid')); return; }
   var sa = el.closest && el.closest('[data-sweepact]');
   if (sa) { handleSweepAction(sa.getAttribute('data-sweepact')); return; }
   // Areas / Library / Kitchen actions (data-pact). Must run before row-level,

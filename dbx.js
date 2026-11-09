@@ -441,6 +441,33 @@
     }
     if (path.startsWith('/api/health')) return resp(await computeHealth(new URLSearchParams(path.split('?')[1] || '').get('domain')));
     if (path === '/api/weekly-summary') return resp(await computeWeekly());
+    // Change log (2026-11, "nothing disappears silently") — READ-ONLY mirror. Parse
+    // changes.log (JSONL) and filter by actor/since/limit; newest first. Undo is
+    // LOCAL-only (the Home strip hides its Undo button hosted), so /api/changes/undo
+    // is NOT implemented here (it 404s, which the hidden-button UI never reaches).
+    if (path === '/api/changes' || path.startsWith('/api/changes?')) {
+      const q = new URLSearchParams(path.split('?')[1] || '');
+      const actor = (q.get('actor') || 'all').toLowerCase();
+      const since = q.get('since');
+      const limit = parseInt(q.get('limit') || '0', 10);
+      const text = await download('changes.log');
+      let lines = [];
+      if (text) for (const ln of text.split('\n')) {
+        const s = ln.trim(); if (!s) continue;
+        try { const o = JSON.parse(s); if (o && typeof o === 'object') lines.push(o); } catch (e) {}
+      }
+      lines.reverse();   // newest first
+      lines = lines.filter(l => {
+        const a = l.actor;
+        if (actor === 'user' && a !== 'user') return false;
+        if (actor === 'system') { if (a === 'user') return false; if (a === 'lint' || l.action === 'lint' || l.action === 'undo') return false; }
+        if (since && String(l.ts || '') < String(since)) return false;
+        return true;
+      });
+      if (limit) lines = lines.slice(0, limit);
+      return resp(lines);
+    }
+    if (path === '/api/lint') { const l = await readJson('lint.json', null); return resp((l && typeof l === 'object') ? { issues: [], ...l } : { issues: [] }); }
     if (path.startsWith('/api/email/outbox') && !path.startsWith('/api/email/outbox-mark')) {
       const status = new URLSearchParams(path.split('?')[1] || '').get('status');
       let items = await readJson('draft-outbox.json', []);
@@ -1114,13 +1141,25 @@
     try {
       conflicts = (await listDir('')).filter(n => n.toLowerCase().includes('conflicted copy')).sort();
     } catch (e) { conflicts = []; }
+    // Nightly lint summary (2026-11) — mirror server's health.lint {warn, info, date}.
+    let lint = { warn: 0, info: 0, date: null };
+    try {
+      const lj = await readJson('lint.json', null);
+      if (lj && Array.isArray(lj.issues)) {
+        lint = {
+          warn: lj.issues.filter(i => i && i.severity === 'warn').length,
+          info: lj.issues.filter(i => i && i.severity === 'info').length,
+          date: lj.date || null,
+        };
+      }
+    } catch (e) { lint = { warn: 0, info: 0, date: null }; }
     return {
       inbox: inbox.length, stale,
       unsorted: items.filter(i => i.unsorted && i.list !== 'done' && inDom(i)).length,
       unclassified: items.filter(i => ['inbox','thisweek','someday','waiting'].includes(i.list) && !['work','life'].includes(i.domain)).length,
       waiting_overdue: items.filter(i => i.list === 'waiting' && inDom(i) && (now - new Date(i.waitingSince || i.created)) / day >= 7).length,
       recipe_queue: 0, stalled, ea_topics, catchup_threshold: 25, travel,
-      agents, overdue, conflicts,
+      agents, overdue, conflicts, lint,
     };
   }
   async function computeWeekly() {
