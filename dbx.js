@@ -407,7 +407,7 @@
       }
       rows.sort((a, b) => String(b[1].started || b[1].ts || '').localeCompare(String(a[1].started || a[1].ts || '')));
       let totalMin = 0; const days = new Set();
-      const byProject = new Map(), byDay = new Map();
+      const byProject = new Map(), byDay = new Map(), dayPids = new Map();
       const outcomes = { done: 0, partial: 0, switched: 0, skipped: 0 };
       const resistance = [];
       for (const [ymd, e] of rows) {
@@ -416,6 +416,7 @@
         const pid = (e.project_id != null && e.project_id !== '') ? e.project_id : null;
         const pa = byProject.get(pid) || [0, 0]; pa[0]++; pa[1] += mn; byProject.set(pid, pa);
         const da = byDay.get(ymd) || [0, 0]; da[0]++; da[1] += mn; byDay.set(ymd, da);
+        if (pid) { const dp = dayPids.get(ymd) || []; if (!dp.includes(pid)) dp.push(pid); dayPids.set(ymd, dp); }
         if (Object.prototype.hasOwnProperty.call(outcomes, e.outcome)) outcomes[e.outcome]++;
         for (const r of (Array.isArray(e.resistance) ? e.resistance : [])) {
           if (typeof r === 'string' && r.trim() && resistance.length < 40) resistance.push(r.trim());
@@ -427,7 +428,7 @@
         byProjectList.push({ project_id: pid, title: proj ? (proj.title || null) : null, blocks: b, minutes: mn });
       }
       byProjectList.sort((a, b) => (b.minutes - a.minutes) || (b.blocks - a.blocks));
-      const byDayList = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, [b, mn]]) => ({ date: d, blocks: b, minutes: mn }));
+      const byDayList = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([d, [b, mn]]) => ({ date: d, blocks: b, minutes: mn, projects: (dayPids.get(d) || []).map(pid => (pmap[pid] && pmap[pid].title) || null).filter(Boolean) }));
       return resp({
         week: weekStr, blocks: rows.length, minutes: totalMin, days_with_block: days.size,
         target_days: 5, target_minutes_min: 25,
@@ -445,10 +446,12 @@
     // today.json — the day's negotiated portion. Stale (date != today local) or
     // absent → an empty shell (a new day starts empty), mirroring _read_today.
     if (path === '/api/today' && method === 'GET') {
-      const empty = { date: null, items: [], set_at: null };
+      const empty = { date: null, items: [], set_at: null, plate_project_id: null, one_thing: null };
       const t = await readJson('today.json', null);
       if (!t || typeof t !== 'object' || t.date !== todayLocal()) return resp(empty);
-      return resp({ date: t.date, items: Array.isArray(t.items) ? t.items : [], set_at: t.set_at || null });
+      const ot = (t.one_thing && typeof t.one_thing === 'object' && t.one_thing.id) ? t.one_thing : null;
+      return resp({ date: t.date, items: Array.isArray(t.items) ? t.items : [], set_at: t.set_at || null,
+        plate_project_id: t.plate_project_id || null, one_thing: ot });
     }
     // briefings/*.md — the EA's "Ask EA" return channel, newest first, ≤20. A
     // Dropbox folder listing per load is acceptable here (small, one section).
@@ -481,8 +484,8 @@
     }
     if (path === '/api/projects') {
       const ps = await readJson('projects.json', []);
-      // blocker/blocker_updated default "" for old records (mirror the server).
-      return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled, blocker: p.blocker || '', blocker_updated: p.blocker_updated || '' }; }) });
+      // blocker/stage/waiting_on default "" for old records (mirror the server).
+      return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled, blocker: p.blocker || '', blocker_updated: p.blocker_updated || '', stage: p.stage || '', stage_updated: p.stage_updated || '', waiting_on: p.waiting_on || '', waiting_on_updated: p.waiting_on_updated || '' }; }) });
     }
     if (path === '/api/meetings') {
       // Mirror server.py _meetings_with_computed: start is naive-local
@@ -814,7 +817,7 @@
         if (out) return a;
         out = { id: genId(), title: t, domain: ['work', 'life'].includes(body.domain) ? body.domain : null,
           status: ['active', 'paused', 'done'].includes(body.status) ? body.status : 'active',
-          goal: body.goal || null, state_note: null, state_updated: null, blocker: '', blocker_updated: '', last_movement: nowIso(),
+          goal: body.goal || null, state_note: null, state_updated: null, blocker: '', blocker_updated: '', stage: '', stage_updated: '', waiting_on: '', waiting_on_updated: '', last_movement: nowIso(),
           stall_days: Number.isInteger(body.stall_days) ? body.stall_days : null, target: body.target || null,
           notes: body.notes || null, keywords: Array.isArray(body.keywords) ? body.keywords : [],
           created: nowIso(), source_id: src };
@@ -825,7 +828,13 @@
     if (path === '/api/projects/update') {
       // Mirror server._handle_project_update (Phase 5): kind validated to
       // project|area (anything else ignored), focus coerced to bool.
-      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note', 'kind', 'focus', 'blocker'];
+      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note', 'kind', 'focus', 'blocker', 'stage', 'waiting_on'];
+      // stage (the whiteboard) is a validated enum: an unknown value is a 400,
+      // never coerced. "" clears the stage.
+      const STAGES = ['', 'idea', 'design', 'data', 'analysis', 'draft', 'sent'];
+      if (body.fields && 'stage' in body.fields && !STAGES.includes(body.fields.stage)) {
+        return resp({ error: 'invalid stage' }, 400);
+      }
       await updateJson('projects.json', a => { const p = a.find(x => x.id === body.id); if (p && body.fields) {
         for (const k of Object.keys(body.fields)) {
           if (!allowed.includes(k)) continue;
@@ -838,9 +847,17 @@
             v = ((typeof v === 'string') ? v.trim() : '').slice(0, 2000);
             if (v !== (p.blocker || '')) p.blocker_updated = v ? new Date().toLocaleDateString('en-CA') : '';
           }
+          // stage: a change stamps stage_updated AND is movement (set, not clear).
+          if (k === 'stage' && v !== (p.stage || '')) p.stage_updated = v ? new Date().toLocaleDateString('en-CA') : '';
+          // waiting_on (free text, capped): noted-not-progress, so NOT movement.
+          if (k === 'waiting_on') {
+            v = ((typeof v === 'string') ? v.trim() : '').slice(0, 2000);
+            if (v !== (p.waiting_on || '')) p.waiting_on_updated = v ? new Date().toLocaleDateString('en-CA') : '';
+          }
           p[k] = v;
           const hasNote = (typeof v === 'string') ? v.trim() : !!v;
-          if (k === 'state_note' && hasNote) { p.state_updated = nowIso(); p.last_movement = nowIso(); } } }
+          if (k === 'state_note' && hasNote) { p.state_updated = nowIso(); p.last_movement = nowIso(); }
+          if (k === 'stage' && v) p.last_movement = nowIso(); } }
         return a; }, []);
       return resp({ ok: true });
     }
@@ -1202,7 +1219,12 @@
       }
       clean.sort((a, b) => a.order - b.order);
       clean.forEach((it, n) => { it.order = n; });
-      const rec = { date, items: clean, set_at: nowIso() };
+      // Preserve the per-day choices (plate / one thing); a bare set only sends items.
+      const prev = await readJson('today.json', null);
+      const keep = (prev && typeof prev === 'object' && prev.date === date) ? prev : {};
+      const rec = { date, items: clean, set_at: nowIso(),
+        plate_project_id: keep.plate_project_id || null,
+        one_thing: (keep.one_thing && keep.one_thing.id) ? keep.one_thing : null };
       await upload('today.json', JSON.stringify(rec), 'overwrite');
       return resp(rec);
     }
@@ -1210,12 +1232,33 @@
       const iid = (body.id != null && body.id !== '') ? String(body.id).trim() : '';
       if (!iid) return resp({ error: 'id is required' }, 400);
       const cur = await readJson('today.json', null);
-      if (!cur || typeof cur !== 'object' || cur.date !== todayLocal()) return resp({ date: null, items: [], set_at: null });
+      if (!cur || typeof cur !== 'object' || cur.date !== todayLocal()) return resp({ date: null, items: [], set_at: null, plate_project_id: null, one_thing: null });
       const items = (Array.isArray(cur.items) ? cur.items : []).filter(x => String(x.id) !== iid);
       items.forEach((it, n) => { it.order = n; });
-      const rec = { date: cur.date, items, set_at: nowIso() };
+      const rec = { date: cur.date, items, set_at: nowIso(),
+        plate_project_id: cur.plate_project_id || null,
+        one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null };
       await upload('today.json', JSON.stringify(rec), 'overwrite');
       return resp(rec);
+    }
+    // Per-day choices (2026-11-19, the Today rebuild). Both read-modify-write the
+    // today record preserving items; "" / no id clears back to the computed default.
+    if (path === '/api/today/plate' || path === '/api/today/one-thing') {
+      const cur = await readJson('today.json', null);
+      const base = (cur && typeof cur === 'object' && cur.date === todayLocal())
+        ? { date: cur.date, items: Array.isArray(cur.items) ? cur.items : [], plate_project_id: cur.plate_project_id || null, one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null }
+        : { date: todayLocal(), items: [], plate_project_id: null, one_thing: null };
+      if (path === '/api/today/plate') {
+        base.plate_project_id = (body.project_id || '').trim() || null;
+      } else {
+        const iid = (body.id != null && body.id !== '') ? String(body.id).trim() : '';
+        let kind = (body.kind || 'task').trim().toLowerCase();
+        if (kind !== 'task' && kind !== 'deadline') kind = 'task';
+        base.one_thing = iid ? { kind, id: iid } : null;
+      }
+      base.set_at = nowIso();
+      await upload('today.json', JSON.stringify(base), 'overwrite');
+      return resp(base);
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —

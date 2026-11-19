@@ -27,6 +27,15 @@
     --gray: #b4b2ad;     --gray-bg: #eaf0f6;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Apple SD Gothic Neo", sans-serif;
     --radius: 6px;
+    /* Today-view accent tokens, ported from the approved mockup
+       (mockups/today-v2.html — "1000x better", John). A slightly stronger cool
+       blue than --blue, used only by the .t2-* Today components; the other five
+       views keep the existing palette untouched. No red/orange anywhere. */
+    --t-accent: #3d5fc4;
+    --t-accent-soft: #e9eefb;
+    --t-mark: #2f4fb5;
+    --t-wait: #8b93a7;
+    --t-board: #fbfcfe;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -265,6 +274,8 @@
     .memo-row { grid-template-columns: 1fr; gap: 2px; }
     .row { grid-template-columns: 22px minmax(0, 1fr); }
     .meta { grid-column: 2; padding-top: 0; }
+    .t2-meal, .t2-two { grid-template-columns: 1fr !important; }
+    .t2-wrow { grid-template-columns: 22px minmax(0, 1fr) 24px; }
     .focus { grid-template-columns: 1fr; }
     .g-note { display: none; }
     .tabbar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,.95); backdrop-filter: blur(10px); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); z-index: 10; }
@@ -566,6 +577,111 @@
     .crow-acts, .prow-acts { flex-wrap: wrap; justify-content: flex-end; }
     .veg-top { flex-direction: column; gap: 2px; align-items: flex-start; }
   }
+
+  /* ============ Today rebuild (2026-11-19, mockups/today-v2.html) ============ */
+  .t2-sec { margin: 0 0 34px; }
+  .t2-h2 { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); margin: 0 0 12px; font-weight: 600; }
+  /* 1. Research, the meal */
+  .t2-goals { font-size: 14px; color: var(--text-2); margin: 0 0 12px; }
+  .t2-goals b { color: var(--text); font-weight: 600; }
+  .t2-meal { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
+  .t2-plate-empty { color: var(--text-2); font-size: 14px; border: 1px dashed var(--line); border-radius: 8px; padding: 12px 14px; }
+  .t2-plate-empty a { color: var(--t-accent); }
+  .t2-card { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; display: grid; gap: 10px; align-content: start; }
+  .t2-card.t2-main { border-color: var(--t-accent); box-shadow: 0 1px 3px rgba(38, 70, 120, .06); }
+  .t2-tag { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--t-accent); font-weight: 600; }
+  .t2-card-h { margin: 0; font-size: 19px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+  .t2-card.t2-next .t2-card-h { font-size: 16px; }
+  .t2-card .block-start { background: var(--t-mark); margin-top: 0; justify-self: start; }
+  .t2-chip { font-size: 12px; font-weight: 500; color: var(--green); background: var(--green-bg); border-radius: 999px; padding: 1px 8px; margin-left: 8px; vertical-align: middle; letter-spacing: 0; text-transform: none; }
+  .t2-run { display: grid; gap: 4px; }
+  .t2-run-lab { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
+  .t2-run-lab b { color: var(--text); font-weight: 600; }
+  .t2-bar { height: 8px; border-radius: 4px; background: var(--t-accent-soft); overflow: hidden; }
+  .t2-bar span { display: block; height: 100%; background: var(--t-mark); border-radius: 4px; }
+  .t2-steps { display: flex; gap: 4px; flex-wrap: wrap; font-size: 11px; color: var(--text-2); align-items: center; }
+  .t2-step { padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); }
+  .t2-step.on { background: var(--t-mark); border-color: var(--t-mark); color: #fff; font-weight: 600; }
+  .t2-step.done { background: var(--t-accent-soft); }
+  .t2-step-hint { font-size: 12px; color: var(--text-3); border: 0; padding: 0; }
+  .t2-kv { display: grid; gap: 2px; }
+  .t2-k { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  .t2-move { font-size: 15px; font-weight: 600; }
+  .t2-val { text-align: left; font: inherit; color: var(--text); }
+  .t2-val:hover { color: #000; }
+  .t2-none-edit { text-align: left; font: inherit; color: var(--text-3); }
+  .t2-none-edit:hover { color: var(--text-2); }
+  .pc-ed { color: var(--text-3); font-size: 12px; }
+  .t2-nm-form { display: flex; gap: 6px; }
+  .t2-nm-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .t2-nm-form button, .pd-edit button { font-size: 13px; color: var(--t-accent); padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; }
+  .t2-btn { justify-self: start; font: inherit; font-weight: 600; color: #fff; background: var(--t-mark); border-radius: 8px; padding: 9px 14px; }
+  .t2-btn.ghost { background: transparent; color: var(--t-accent); border: 1px solid var(--line); font-weight: 500; }
+  .t2-weekrow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
+  .t2-wd { background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; color: var(--text-2); min-width: 0; }
+  .t2-wd b { display: block; color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .t2-wd.fed { background: var(--t-accent-soft); border-color: var(--t-accent-soft); }
+  .t2-wd.now { border-color: var(--t-accent); }
+  .t2-weeksum { font-size: 13px; color: var(--text-2); margin: 8px 0 0; }
+  .t2-ideas { font-size: 13px; color: var(--text-2); margin: 6px 0 0; }
+  /* 2. Work today */
+  .t2-one { background: var(--t-accent-soft); border-radius: 8px; padding: 12px 14px; font-size: 16px; margin: 0 0 14px; }
+  .t2-one b { color: var(--t-accent); }
+  .t2-one-why { color: var(--text-2); font-size: 14px; }
+  .t2-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .t2-col { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+  .t2-col h3 { margin: 0 0 8px; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; font-weight: 600; }
+  .t2-col h3 span { font-size: 13px; color: var(--text-2); font-weight: 400; }
+  .t2-col-empty { color: var(--text-3); font-size: 14px; margin: 2px 0; }
+  .t2-wlist { display: grid; gap: 2px; }
+  .t2-wrow { grid-template-columns: 22px minmax(0, 1fr) 24px; padding: 6px 4px; }
+  .t2-wrow .t { font-weight: 400; }
+  .t2-wrow .t b { font-weight: 600; }
+  .t2-m { display: block; font-size: 13px; color: var(--text-2); margin-top: 1px; }
+  .t2-star { align-self: start; margin-top: 2px; width: 22px; color: var(--text-3); font-size: 15px; line-height: 1; opacity: .35; }
+  .t2-star:hover { opacity: 1; color: var(--t-accent); }
+  .t2-star.on { opacity: 1; color: var(--t-accent); }
+  .page:has(.t2-meal-sec) { max-width: 900px; }
+  .t2-more { font-size: 13px; color: var(--text-2); padding: 6px 0 2px; }
+  .t2-more:hover { color: var(--text); text-decoration: underline; }
+  .t2-fold { font-size: 14px; color: var(--text-2); margin-top: 14px; }
+  .t2-fold-sum { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; color: var(--text-2); padding: 4px 0; }
+  .t2-fold-sum:hover { color: var(--text); }
+  .t2-fold.open .t2-fold-sum .tri { transform: rotate(0); }
+  .t2-fold .t2-fold-sum .tri { transform: rotate(-90deg); }
+  .t2-fold-body { padding: 6px 0 2px; }
+  .t2-fold-h { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); font-weight: 600; margin: 10px 0 4px; }
+  /* 3. Research whiteboard */
+  .t2-boardwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--t-board); -webkit-overflow-scrolling: touch; }
+  .t2-board { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  .t2-board th, .t2-board td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+  .t2-board tr:last-child td { border-bottom: 0; }
+  .t2-board th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; text-align: center; }
+  .t2-board th:first-child, .t2-board th:last-child { text-align: left; }
+  td.t2-p { font-weight: 600; width: 150px; }
+  .t2-stagehint { display: block; font-style: normal; color: var(--text-3); font-size: 12px; font-weight: 400; margin-top: 2px; }
+  td.t2-s { width: 62px; text-align: center; border-left: 1px dotted var(--line); padding: 0; }
+  .t2-scell { display: block; width: 100%; height: 100%; min-height: 34px; padding: 8px 0; }
+  .t2-scell:hover { background: var(--hover); }
+  .wb-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--t-mark); vertical-align: middle; }
+  .wb-dot.w { background: transparent; border: 2px solid var(--t-wait); }
+  td.t2-n { border-left: 1px dotted var(--line); min-width: 220px; }
+  .t2-n b { font-weight: 600; }
+  .t2-n i { display: block; font-style: normal; color: var(--text-2); font-size: 12px; margin-top: 2px; }
+  .t2-grp td { background: var(--t-accent-soft); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; padding: 5px 8px; }
+  .wb-wait-val, .wb-wait-none { display: block; margin-top: 4px; text-align: left; font: inherit; font-size: 12px; color: var(--text-2); }
+  .wb-wait-none { color: var(--text-3); }
+  .wb-wait-val:hover, .wb-wait-none:hover { color: var(--text); }
+  .wb-wait { display: inline-flex; gap: 6px; margin-top: 4px; }
+  .wb-wait-in { border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; font: inherit; font-size: 13px; }
+  .t2-legend { font-size: 13px; color: var(--text-2); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+  .t2-legend .wb-dot { width: 10px; height: 10px; margin-right: 4px; }
+  .t2-parked { font-size: 13px; color: var(--text-2); margin: 10px 0 0; }
+  .t2-parked a { color: var(--t-accent); }
+  @media (max-width: 720px) {
+    .t2-card-h { font-size: 18px; }
+    .t2-one { font-size: 15px; }
+  }
 </style>
 </head>
 <body>
@@ -684,6 +800,8 @@ function normTaskRow(t, linkedDeadline, today) {
     id: t.id, kind: 'task', text: t.text || '', who: t.who || '', lane: laneOf(t),
     url: t.url || '', source: t.source || '', nextStep: cleanNext(t.nextStep), memo: t.memo || '',
     list: t.list, proposed: isProposedTask(t), suggested: false, target: target,
+    tier: t.tier || '', project_id: t.project_id || null,
+    est_minutes: (typeof t.est_minutes === 'number' && t.est_minutes > 0) ? t.est_minutes : null,
     dateStr: dateStr, days: dateStr ? dayDelta(dateStr, today) : null,
     askDays: askDays(t, today), createdMs: Date.parse(t.created || '') || 0,
     deadline_id: linkedDeadline ? linkedDeadline.id : (t.deadline_id || null),
@@ -1377,6 +1495,200 @@ function capacityEstimate(portion) {
   }
   return total;
 }
+
+// ── The Today rebuild (2026-11-19, mockups/today-v2.html) ────────────────
+// The research pipeline stages, left to right on the whiteboard. A project's
+// `stage` is one of these or "" (unset — never guessed).
+var STAGES = ['idea', 'design', 'data', 'analysis', 'draft', 'sent'];
+function validStage(s) { return STAGES.indexOf(s) >= 0; }
+function stageIndex(s) { return STAGES.indexOf(s); }   // -1 when unset/invalid
+
+// Runway bar fraction: the elapsed share of the span from the plan's `set` date to
+// the outcome's `by` date, clamped 0..1. Past-due → 1 (full, calm). Missing or
+// degenerate dates → 0 (the bar just reads empty). Pure, LOCAL-date based.
+function runwayFraction(setDate, byDate, today) {
+  var s = _parseYMD(setDate), b = _parseYMD(byDate), t = _parseYMD(today);
+  if (s == null || b == null || t == null) return 0;
+  if (b <= s) return 1;
+  var f = (t - s) / (b - s);
+  if (f < 0) return 0;
+  if (f > 1) return 1;
+  return f;
+}
+
+function hasWaitingOn(p) { return !!(p && String(p.waiting_on || '').trim()); }
+function _inHeartbeat(plan, pid) {
+  var hb = (plan && Array.isArray(plan.heartbeat)) ? plan.heartbeat : [];
+  return hb.indexOf(pid) >= 0;
+}
+
+// Plate candidates: non-done, non-paused projects that are in the plan heartbeat
+// OR carry at least one plan outcome. The research plate is chosen from these.
+function plateCandidates(projects, plan, today) {
+  return (projects || []).filter(function (p) {
+    return p && p.status !== 'done' && p.status !== 'paused' &&
+      (_inHeartbeat(plan, p.id) || planOutcomesFor(plan, p.id).length > 0);
+  });
+}
+// Order the candidates by the nearest NOT-YET-PASSED outcome date (soonest first);
+// a project with only past outcomes or none sorts after, by title (stable-ish).
+function _plateKey(p, plan, today) {
+  var outs = planOutcomesFor(plan, p.id);
+  var fut = outs.filter(function (o) { var d = o.by ? dayDelta(o.by, today) : null; return d != null && d >= 0; });
+  if (fut.length) return '1_' + fut[0].by;         // has a future outcome: by-date
+  return '2_' + String((p && p.title) || '');       // none future: trails, by title
+}
+function plateOrder(projects, plan, today) {
+  var cands = plateCandidates(projects, plan, today).slice();
+  cands.sort(function (a, b) { return _plateKey(a, plan, today).localeCompare(_plateKey(b, plan, today)); });
+  return cands;
+}
+// Resolve today's plate + the "next up" card. An explicit per-day pick (plateId)
+// wins when it resolves to a non-done project; otherwise the default is the first
+// of plateOrder. nextUp is the first ordered candidate that is not the plate.
+// Returns {plate, next} (either may be null when there is no candidate).
+function platePick(projects, plan, today, plateId) {
+  var order = plateOrder(projects, plan, today);
+  var plate = null;
+  if (plateId) {
+    plate = (projects || []).find(function (p) { return p && p.id === plateId && p.status !== 'done'; }) || null;
+  }
+  if (!plate) plate = order.length ? order[0] : null;
+  var next = null;
+  for (var i = 0; i < order.length; i++) {
+    if (!plate || order[i].id !== plate.id) { next = order[i]; break; }
+  }
+  return { plate: plate, next: next };
+}
+
+// A "reply" item: answered by sending a message. Email reply-needed tasks (tier
+// reply_needed) and any task the user titled "Reply …". Opportunities/deadlines
+// are never replies. Pure (reads the normalized row's own fields).
+function isReplyRow(r) {
+  if (!r || r.kind !== 'task') return false;
+  if (r.tier === 'reply_needed') return true;
+  return /^reply\b/i.test(String(r.text || '').trim());
+}
+// "Presses today" for the Do column: due today or overdue, OR someone is waiting,
+// OR the memo named it. (Opportunities are handled separately — never here.)
+function _pressesToday(r, memoIds) {
+  if (r.candKind === 'opportunity' || r.kind === 'opportunity') return false;
+  if (typeof r.days === 'number' && r.days <= 0) return true;        // due today/overdue
+  if (r.who && String(r.who).trim()) return true;                   // someone waiting
+  if (memoIds && r.id && memoIds[r.id]) return true;                // the EA named it
+  return false;
+}
+
+// Partition the work candidates into Reply / Do / Not-today — each candidate in
+// exactly ONE bucket. Reply is the full open reply backlog (the dashboard John
+// wanted: "emails become reply or tasks"). Do + Not-today are SCOPED to what
+// presses today-ish, exactly like todayCandidates (so the fold holds "near but not
+// today", never the whole inbox — dread must not scale with the backlog):
+//   • tasks: thisweek scheduled today-or-earlier, OR memo-named, OR pinned;
+//   • deadlines: due within 2 days (non-target/non-proposed, deduped to the task);
+//   • opportunities decide_now → always the fold ("optional events and calls").
+// Of those, pressing items (due today/overdue, someone waiting, memo, pinned) → Do;
+// the rest → Not-today. Precedence Reply > Do > Not-today. today='YYYY-MM-DD'.
+function workBuckets(items, deadlines, opps, memo, today, portionIds) {
+  items = items || []; deadlines = deadlines || []; opps = opps || [];
+  portionIds = portionIds || {};
+  var idx = _linkIndex(items, deadlines);
+  var memoIds = {};
+  if (memo && Array.isArray(memo.dont_drop)) {
+    memo.dont_drop.forEach(function (e) { if (e && e.id) memoIds[e.id] = true; });
+  }
+  var reply = [], doRows = [], notToday = [], seen = {};
+  var i, t, d, o;
+  // Reply: every open, non-proposed reply item in inbox/thisweek.
+  for (i = 0; i < items.length; i++) {
+    t = items[i];
+    if (!t || !t.id || isProposedTask(t)) continue;
+    if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
+    var rr = normTaskRow(t, idx.byTask[t.id], today); rr.candKind = 'task';
+    if (isReplyRow(rr)) { if (seen[t.id]) continue; seen[t.id] = true; reply.push(rr); }
+  }
+  // Do tasks: only the ones that press today — due today/overdue (a thisweek task
+  // scheduled today-or-earlier), someone waiting, the memo named it, or pinned. A
+  // non-pressing task is NOT on the Work-today page (it lives in Tasks/Sweeps), so
+  // dread never scales with the backlog.
+  for (i = 0; i < items.length; i++) {
+    t = items[i];
+    if (!t || !t.id || seen[t.id] || isProposedTask(t)) continue;
+    if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
+    var sched = t.scheduled || null;
+    var pinned = !!portionIds[t.id];
+    var r = normTaskRow(t, idx.byTask[t.id], today); r.candKind = 'task';
+    r.slipped = !!(sched && dayDelta(sched, today) != null && dayDelta(sched, today) < 0);
+    if (!pinned && !_pressesToday(r, memoIds)) continue;   // not pressing → off the page
+    seen[t.id] = true;
+    doRows.push(r);
+  }
+  // Deadlines due within 2 days (or pinned), deduped to their linked open task.
+  for (i = 0; i < deadlines.length; i++) {
+    d = deadlines[i];
+    if (!d || d.status === 'done' || d.target || d.proposed || seen[d.id]) continue;
+    if (d.linked_task_id && idx.openIds[d.linked_task_id]) continue;
+    var pinnedD = !!portionIds[d.id];
+    var dl = d.due_date ? dayDelta(d.due_date, today) : null;
+    if (!pinnedD && (dl == null || dl > 2)) continue;
+    seen[d.id] = true;
+    var rd = normDeadlineRow(d, today); rd.candKind = 'deadline';
+    rd.slipped = dl != null && dl < 0;
+    (pinnedD || _pressesToday(rd, memoIds)) ? doRows.push(rd) : notToday.push(rd);
+  }
+  // Opportunities: always the fold's "optional events and calls".
+  var oppRows = [];
+  for (i = 0; i < opps.length; i++) {
+    o = opps[i];
+    if (!o || !o.id || seen[o.id] || !oppDecideNow(o, today)) continue;
+    seen[o.id] = true;
+    oppRows.push({
+      id: o.id, kind: 'opportunity', candKind: 'opportunity', lane: 'dont_drop',
+      text: o.title || 'Opportunity', who: '', memo: o.note || '', url: o.url || '',
+      source: '', dateStr: o.decide_by || null,
+      days: o.decide_by ? dayDelta(o.decide_by, today) : null,
+      askDays: 0, createdMs: 0, project_id: o.project_id || null,
+      opp_kind: o.opp_kind || '', slipped: false, suggested: false, target: false
+    });
+  }
+  reply.sort(rowCompare); doRows.sort(rowCompare); notToday.sort(rowCompare); oppRows.sort(rowCompare);
+  return { reply: reply, do: doRows, notToday: notToday, opps: oppRows };
+}
+
+// The default "one thing today": the pressing item with the hardest consequence
+// (overdue/soonest, then someone-waiting) across Reply + Do, never an opportunity.
+// rowCompare already ranks overdue → soonest → oldest-ask. null when nothing
+// qualifies (the banner is then omitted). Pure.
+function oneThingDefault(reply, doRows, today) {
+  var pool = (reply || []).concat(doRows || []).filter(function (r) {
+    return r && r.kind !== 'opportunity' &&
+      ((typeof r.days === 'number' && r.days <= 0) || (r.who && String(r.who).trim()));
+  });
+  if (!pool.length) return null;
+  pool = pool.slice().sort(rowCompare);
+  // Late is not the same as important: an item due TODAY, or a dated item with
+  // someone waiting, goes ahead of one that is merely old.
+  var first = pool.filter(function (r) {
+    return r.days === 0 || (typeof r.days === 'number' && r.days < 0 && r.who && String(r.who).trim());
+  });
+  return first.length ? first[0] : pool[0];
+}
+
+// The whiteboard groups: Alive and Finish-and-send (from projectDashboardGroups),
+// then Waiting-on-someone-else = any board project whose waiting_on is non-empty
+// (those rows LEAVE their original group). Parked + areas are not on the board;
+// `parkedCount` backs the one quiet "Parked (N)" line. Pure, never throws.
+function whiteboardGroups(projects, plan, today) {
+  var g = projectDashboardGroups(projects, plan, today);
+  var waiting = g.alive.concat(g.finishSend).filter(hasWaitingOn);
+  var wset = {}; waiting.forEach(function (p) { wset[p.id] = true; });
+  return {
+    alive: g.alive.filter(function (p) { return !wset[p.id]; }),
+    finishSend: g.finishSend.filter(function (p) { return !wset[p.id]; }),
+    waiting: waiting,
+    parkedCount: g.parked.length
+  };
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1466,6 +1778,10 @@ var state = {
   // Projects view (2026-11-19 audit): daily|planning mode (always opens Daily, never
   // persisted); editBlocker = the project whose "Blocking" line is being edited.
   projectMode: 'daily', editBlocker: null,
+  // The Today rebuild (2026-11-19): per-column Reply/Do expanders, the Not-today
+  // fold open flag, the whiteboard waiting_on inline-edit target, and the resolved
+  // one-thing id (set during render so the star can mark itself).
+  workExpanded: {}, notTodayOpen: false, editWaiting: null, _oneThingId: null,
   libSomedayOpen: false, libNewsOpen: false, libSearch: '', editRl: null,
   openRecipe: null, kitchenSearch: '',
   // Drop + Opportunities (2026-10-16): the opportunities ledger + the Garden list
@@ -1763,18 +2079,22 @@ function currentSweepCounts() {
 // The old lane lists moved to the Tasks view (tasksHtml) — nothing is lost. Order
 // is fixed: header · (system changes) · goals · research · memo · today · briefings
 // · doors.
+// The "Today" page (2026-11-19 rebuild → mockups/today-v2.html, "1000x better",
+// John). Order is fixed: header, Research (the meal), Work today (Reply/Do), the
+// Research whiteboard, then the EA's memo/briefings, the quiet doors, and the
+// system-change receipts moved to the bottom (quiet, Q1 "nothing vanishes").
 function homeHtml() {
   var h = '';
   h += '<h1>' + escapeHtml(longDate()) + '</h1>';
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
   if (sub) h += '<p class="sub">' + escapeHtml(sub) + '</p>';
-  try { h += systemChangesCollapsedHtml(); } catch (e) {}
-  try { h += goalsHtml(); } catch (e) { reportUiError('goals: ' + e.stack); }
   try { h += researchMealHtml(); } catch (e) { reportUiError('research: ' + e.stack); }
+  try { h += workTodayHtml(); } catch (e) { reportUiError('work: ' + e.stack); }
+  try { h += whiteboardHtml(); } catch (e) { reportUiError('whiteboard: ' + e.stack); }
   try { h += memoCollapsedHtml(); } catch (e) {}
-  try { h += todayNegotiatedHtml(); } catch (e) { reportUiError('today: ' + e.stack); }
   try { h += briefingsHtml(); } catch (e) {}
   try { h += todayDoorsHtml(); } catch (e) {}
+  try { h += systemChangesCollapsedHtml(); } catch (e) {}
   return h;
 }
 
@@ -1855,51 +2175,389 @@ function nextMoveFor(p) {
   }
   return null;
 }
+// ── 1. Research, the meal (mockup "Research, the meal") ──
 function researchMealHtml() {
   var today = todayISO();
-  var focus = focusProjects();
-  var h = '<section class="research" aria-label="Research first">';
-  h += '<p class="h2">Research — the meal</p>';
-  if (!focus.length) {
-    h += '<div class="rm-empty">No focus project yet. Pick one or two in <a href="#projects">Projects</a>.</div>';
-  } else {
-    h += focus.map(function (p) { return researchCardHtml(p, today); }).join('');
+  var plan = state.semesterPlan || null;
+  var h = '<section class="t2-sec t2-meal-sec" aria-label="Research, the meal">';
+  h += '<h2 class="t2-h2">Research, the meal</h2>';
+  // Goals: the two semester goals as ONE quiet line.
+  var goals = (plan && Array.isArray(plan.goals)) ? plan.goals.filter(function (g) { return g && String(g).trim(); }).slice(0, 2) : [];
+  if (goals.length) {
+    h += '<p class="t2-goals">This semester: ' +
+      goals.map(function (g) { return '<b>' + escapeHtml(String(g).trim()) + '</b>'; }).join(' · ') + '</p>';
   }
-  var rl = researchLine(state.research || null, today);
-  if (rl) h += '<div class="research-line">' + escapeHtml(rl) + '</div>';
-  // Ideas — the next big thing (two quiet lines).
-  var ideas = (state.semesterPlan && Array.isArray(state.semesterPlan.ideas)) ? state.semesterPlan.ideas : [];
-  ideas = ideas.filter(function (i) { return i && String(i).trim(); }).slice(0, 2);
+  // Today's plate (one project, big accent card) + the next-up card.
+  var all = lensProjects();
+  var plateId = (state.today && state.today.plate_project_id) || '';
+  var pick = platePick(all, plan, today, plateId);
+  if (!pick.plate) {
+    h += '<div class="t2-plate-empty">No project on today’s plate yet. ' +
+      '<a href="#projects">Pick one in Projects</a> to start the meal.</div>';
+  } else {
+    h += '<div class="t2-meal">';
+    h += plateCardHtml(pick.plate, today, true);
+    if (pick.next) h += plateCardHtml(pick.next, today, false);
+    h += '</div>';
+  }
+  // Week row (Mon..Fri) from the research-block log.
+  h += weekRowHtml(today);
+  // Ideas: not yet projects.
+  var ideas = (plan && Array.isArray(plan.ideas)) ? plan.ideas.filter(function (i) { return i && String(i).trim(); }) : [];
   if (ideas.length) {
-    h += '<div class="ideas"><p class="ideas-h">Ideas — the next big thing</p>' +
-      ideas.map(function (i) { return '<p class="idea">' + escapeHtml(i) + '</p>'; }).join('') + '</div>';
+    h += '<p class="t2-ideas">Not yet projects: ' +
+      ideas.map(function (i) { return escapeHtml(String(i).trim()); }).join(' · ') + '</p>';
   }
   h += '</section>';
   return h;
 }
-function researchCardHtml(p, today) {
-  var h = '<div class="rm-card">';
+
+// The plate card (mockup .card.main / .card.side). main=true → today's plate with
+// the full kv block + block timer; main=false → the "next up" card with a swap
+// button. Wrapped in data-proj so the existing state-note/next-move inline edits
+// (same handlers as the Projects daily card) work unchanged.
+function plateCardHtml(p, today, main) {
+  var h = '<div class="t2-card' + (main ? ' t2-main' : ' t2-next') + '" data-proj="' + escapeHtml(p.id) + '">';
+  // Tag line. No invented times: a slot only shows when the page already knows one
+  // (it does not today), so it reads just "Today's plate" / "Next up".
+  h += '<span class="t2-tag">' + (main ? 'Today’s plate' : 'Next up') + '</span>';
   var mins = researchMinutesFor(p.id);
-  var chip = mins > 0 ? '<span class="rm-chip">' + escapeHtml(fmtHM(mins)) + ' this week</span>' : '';
-  h += '<div class="rm-title">' + escapeHtml(p.title || 'Project') + chip + '</div>';
+  var chip = mins > 0 ? '<span class="t2-chip">' + escapeHtml(fmtHM(mins)) + ' this week</span>' : '';
+  h += '<h3 class="t2-card-h">' + escapeHtml(p.title || 'Project') + chip + '</h3>';
+  // Runway: the nearest (else latest) outcome + a progress bar.
   var outs = outcomesFor(p.id);
-  if (outs.length) h += outs.map(function (o) { return outcomeLineHtml(o, today); }).join('');
-  var note = (p.state_note || '').trim();
-  if (note) h += '<div class="rm-left"><span class="rm-k">Where you left off</span> ' + escapeHtml(note) + '</div>';
-  var nm = nextMoveFor(p);
-  if (nm) {
-    h += '<div class="rm-next"><span class="rm-k">Next move</span> ' +
-      escapeHtml(displayText(normTaskRow(nm, null, today))) + '</div>';
-  } else {
-    h += '<div class="rm-next"><span class="rm-k">Next move</span>' +
-      '<div class="rm-nm-form"><input class="rm-nm-in" data-pid="' + escapeHtml(p.id) +
-      '" placeholder="name the next 25-minute move…">' +
-      '<button data-pact="nmadd" data-pid="' + escapeHtml(p.id) + '">Add</button></div></div>';
+  var rep = outs.length ? _repOutcome(outs, today) : null;
+  if (rep) {
+    var by = rep.by || '';
+    var dd = by ? dayDelta(by, today) : null;
+    var right;
+    if (!by) right = '';
+    else if (dd != null && dd < 0) right = 'was due ' + escapeHtml(monthDay(by));
+    else right = '<b>' + (dd === 0 ? 'due today' : (dd + ' day' + (dd === 1 ? '' : 's') + ' left')) + '</b> · by ' + escapeHtml(monthDay(by));
+    var frac = runwayFraction(plan_set(), by, today);
+    h += '<div class="t2-run"><div class="t2-run-lab"><span>Goal: <b>' + escapeHtml(rep.title || '') + '</b></span>' +
+      (right ? '<span>' + right + '</span>' : '') + '</div>' +
+      '<div class="t2-bar"><span style="width:' + Math.round(frac * 100) + '%"></span></div></div>';
   }
-  h += blockAreaHtml(p, nm);
+  // Stage strip.
+  h += stageStripHtml(p);
+  if (main) {
+    // Where you left off (inline edit, same path as the Projects daily card).
+    h += kvLeftOffHtml(p, today);
+    // In the way (only when a blocker is set).
+    var blk = (p.blocker || '').trim();
+    if (blk) h += '<div class="t2-kv"><span class="t2-k">In the way</span><span>' + escapeHtml(blk) + '</span></div>';
+    // Next 25 minutes.
+    var nm = projectNextMove(state.items, p.id, today);
+    h += '<div class="t2-kv"><span class="t2-k">Next 25 minutes</span>';
+    if (nm) h += '<span class="t2-move">' + escapeHtml(displayText(normTaskRow(nm, null, today))) + '</span></div>';
+    else h += '<span class="t2-nm-form"><input class="rm-nm-in" data-pid="' + escapeHtml(p.id) +
+      '" placeholder="name the next 25-minute move…" aria-label="Name the next move"><button data-pact="nmadd" data-pid="' + escapeHtml(p.id) + '">Add</button></span></div>';
+    // One way in.
+    var sug = restartSuggestion(p, today);
+    if (sug) h += '<div class="t2-kv"><span class="t2-k">One way in</span><span>' + escapeHtml(sug.replace(/^One way in:\s*/, '')) + '</span></div>';
+    // Block timer (existing), bound to the plate project.
+    h += blockAreaHtml(p, nm);
+  } else {
+    var blk2 = (p.blocker || '').trim();
+    if (blk2) h += '<div class="t2-kv"><span class="t2-k">In the way</span><span>' + escapeHtml(blk2) + '</span></div>';
+    var nm2 = projectNextMove(state.items, p.id, today);
+    if (nm2) h += '<div class="t2-kv"><span class="t2-k">Next move</span><span class="t2-move">' + escapeHtml(displayText(normTaskRow(nm2, null, today))) + '</span></div>';
+    h += '<button class="t2-btn ghost" data-pact="plateset" data-pid="' + escapeHtml(p.id) + '">Make this today’s plate</button>';
+  }
   h += '</div>';
   return h;
 }
+// The plan's `set` date (window start for the runway bar); '' when absent.
+function plan_set() { return (state.semesterPlan && state.semesterPlan.set) || ''; }
+
+// The six-stage strip on a plate card. Unset → all-empty + a quiet hint.
+function stageStripHtml(p) {
+  var cur = stageIndex(p.stage || '');
+  var labels = ['Idea', 'Design', 'Data', 'Analysis', 'Draft', 'Sent'];
+  var cells = labels.map(function (lab, i) {
+    var cls = (cur < 0) ? '' : (i < cur ? ' done' : (i === cur ? ' on' : ''));
+    return '<span class="' + ('t2-step' + cls).trim() + '">' + lab + '</span>';
+  }).join('');
+  var hint = (cur < 0) ? '<span class="t2-step-hint">set the stage on the whiteboard below</span>' : '';
+  return '<div class="t2-steps">' + cells + hint + '</div>';
+}
+
+// Where-you-left-off kv with inline edit (reuses editProject + the /api/projects/
+// state path, same .pc-note-in selector the shared savenote handler reads).
+function kvLeftOffHtml(p, today) {
+  var editing = state.editProject === p.id;
+  var note = (p.state_note || '').trim();
+  var h = '<div class="t2-kv"><span class="t2-k">Where you left off</span>';
+  if (editing) {
+    h += '<span class="pd-edit"><input class="pc-note-in" value="' + escapeHtml(p.state_note || '') +
+      '" placeholder="where it stands…" aria-label="Where you left off"><button data-pact="savenote">Save</button></span>';
+  } else if (note) {
+    h += '<button class="t2-val" data-pact="editnote">' + escapeHtml(note) + ' <span class="pc-ed">✎</span></button>';
+  } else {
+    h += '<button class="t2-none-edit" data-pact="editnote">nothing written yet</button>';
+  }
+  return h + '</div>';
+}
+
+// The weekday row (Mon..Fri) from /api/research-week's by_day. Today's cell is
+// outlined; a logged day shows minutes + project(s); an empty past/today day reads
+// a calm "none logged" (no streak or guilt language).
+function weekRowHtml(today) {
+  var r = state.research || null;
+  var byDay = (r && Array.isArray(r.by_day)) ? r.by_day : [];
+  var map = {}; byDay.forEach(function (d) { if (d && d.date) map[d.date] = d; });
+  var monday = weekMonday(today);
+  var base = _parseYMD(monday);
+  var labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  var cells = '';
+  for (var i = 0; i < 5; i++) {
+    var ds = _ymdOf(base + i * 86400000);
+    var isToday = (ds === today);
+    var delta = dayDelta(ds, today);
+    var d = map[ds];
+    var body;
+    if (d && d.minutes > 0) {
+      var projs = (Array.isArray(d.projects) && d.projects.length) ? d.projects.join(', ') : '';
+      body = '<b>' + escapeHtml(fmtHM(d.minutes)) + '</b>' + (projs ? escapeHtml(projs) : '');
+    } else if (delta != null && delta > 0) {
+      body = '<b>—</b>';            // a future day: nothing yet
+    } else {
+      body = '<b>none logged</b>';
+    }
+    cells += '<div class="t2-wd' + (d && d.minutes > 0 ? ' fed' : '') + (isToday ? ' now' : '') + '">' + labels[i] + body + '</div>';
+  }
+  var h = '<div class="t2-weekrow">' + cells + '</div>';
+  var days = (r && typeof r.days_with_block === 'number') ? r.days_with_block : 0;
+  var target = (r && typeof r.target_days === 'number') ? r.target_days : 5;
+  var mins = (r && typeof r.minutes === 'number') ? r.minutes : 0;
+  if (r) h += '<p class="t2-weeksum">Research fed on ' + days + ' of ' + target + ' days this week · ' + escapeHtml(fmtHM(mins)) + '.</p>';
+  return h;
+}
+function _ymdOf(ms) {
+  var d = new Date(ms);
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+}
+
+// ── 2. Work today (mockup "Work today": Reply / Do + the one thing + the fold) ──
+function workTodayHtml() {
+  var today = todayISO();
+  var items = lensItems().filter(function (i) { return !optimistic[i.id]; });
+  var dl = lensDeadlines().filter(function (d) { return !optimistic[d.id]; });
+  var opps = lensOpps();
+  var portionIds = {};
+  ((state.today && state.today.items) || []).forEach(function (it) { if (it && it.id && !optimistic[it.id]) portionIds[it.id] = true; });
+  var b = workBuckets(items, dl, opps, state.memo, today, portionIds);
+  [b.reply, b.do, b.notToday, b.opps].forEach(function (arr) {
+    arr.forEach(function (r) { r.projectTitle = projectTitleOf(r.project_id); });
+  });
+  var one = resolveOneThing(b, today);
+  state._oneThingId = one ? one.id : null;
+
+  var h = '<section class="t2-sec t2-work-sec" aria-label="Work today"><h2 class="t2-h2">Work today</h2>';
+  if (one) {
+    var why = whyLine(one);
+    h += '<div class="t2-one"><b>The one thing today:</b> ' + escapeHtml(displayText(one)) +
+      (why ? ' <span class="t2-one-why">' + escapeHtml(why) + '</span>' : '') + '</div>';
+  }
+  h += '<div class="t2-two">';
+  h += workColumnHtml('Reply', b.reply, 'reply', today);
+  h += workColumnHtml('Do', b.do, 'do', today);
+  h += '</div>';
+  h += notTodayFoldHtml(b, today);
+  h += '</section>';
+  return h;
+}
+// The currently-shown one thing: an explicit per-day override when it still resolves
+// to a Reply/Do row, else the computed default (pure oneThingDefault). null → omit.
+function resolveOneThing(b, today) {
+  var ot = state.today && state.today.one_thing;
+  if (ot && ot.id) {
+    var found = b.reply.concat(b.do).filter(function (r) { return r.id === ot.id; })[0];
+    if (found) return found;
+  }
+  return oneThingDefault(b.reply, b.do, today);
+}
+function workColumnHtml(label, rows, key, today) {
+  var expanded = !!state.workExpanded[key];
+  var shown = expanded ? rows : rows.slice(0, 6);
+  var total = workColTotal(rows);
+  var h = '<div class="t2-col"><h3>' + escapeHtml(label) +
+    ' <span>' + rows.length + (total ? ' · ' + escapeHtml(total) : '') + '</span></h3>';
+  if (!rows.length) {
+    h += '<p class="t2-col-empty">' + (key === 'reply' ? 'No replies owed.' : 'Nothing pressing today.') + '</p>';
+  } else {
+    h += '<div class="t2-wlist">' + shown.map(function (r) { return workRowHtml(r, key, today); }).join('') + '</div>';
+    if (rows.length > 6) {
+      h += '<button class="t2-more" data-pact="workmore" data-col="' + escapeHtml(key) + '">' +
+        (expanded ? 'Show fewer' : ((rows.length - 6) + ' more')) + '</button>';
+    }
+  }
+  return h + '</div>';
+}
+// A column total only when at least half the rows carry a real estimate (never
+// invented): the mockup's "about 35 min".
+function workColTotal(rows) {
+  var withEst = rows.filter(function (r) { return typeof r.est_minutes === 'number' && r.est_minutes > 0; });
+  if (!rows.length || withEst.length * 2 < rows.length) return '';
+  var tot = withEst.reduce(function (s, r) { return s + r.est_minutes; }, 0);
+  return 'about ' + fmtHM(tot);
+}
+// A work row: the mockup checkbox+label+quiet-meta, on the existing .row hooks so
+// the check completes (markDone through undo) and the title expands the actions.
+function workRowHtml(r, key, today) {
+  var isOne = (state._oneThingId === r.id);
+  var titleInner = (key === 'reply') ? replyTitle(r) : doTitle(r);
+  var meta = (key === 'reply') ? replyMeta(r) : doMeta(r, today);
+  var est = (typeof r.est_minutes === 'number' && r.est_minutes > 0) ? (' · ' + escapeHtml(fmtHM(r.est_minutes))) : '';
+  var open = (state.openRow === r.id) ? ' open' : '';
+  var h = '<div class="row t2-wrow' + open + '" data-id="' + escapeHtml(r.id) + '" data-kind="' + r.kind + '">';
+  h += '<button class="check" aria-label="' + escapeHtml('Mark done: ' + displayText(r)) + '"></button>';
+  h += '<div class="rmid"><div class="t" tabindex="0" role="button">' + titleInner + '</div>';
+  if (meta || est) h += '<span class="t2-m">' + meta + est + '</span>';
+  h += '</div>';
+  h += '<button class="t2-star' + (isOne ? ' on' : '') + '" data-pact="onething" data-id="' + escapeHtml(r.id) +
+    '" data-kind="' + escapeHtml(r.candKind || r.kind) + '" aria-label="' +
+    (isOne ? 'This is the one thing today' : 'Make this the one thing today') + '" title="' +
+    (isOne ? 'the one thing today' : 'make this the one thing today') + '">★</button>';
+  h += '<div class="detail">' + detailHtml(r, {}) + '</div></div>';
+  return h;
+}
+function replyTitle(r) {
+  var who = (r.who || '').trim();
+  if (!who) {
+    var m = String(r.text || '').match(/^Reply(?:\s+to)?:?\s*([^—:-]+?)\s*[—:-]\s*(.+)$/i);
+    if (m) return '<b>' + escapeHtml(m[1].trim()) + '</b>: ' + escapeHtml(m[2].trim());
+    return escapeHtml(displayText(r));
+  }
+  var disp = displayText(r);
+  var dm = disp.match(/^Reply to .+?:\s*(.+)$/i);
+  var rest = dm ? dm[1] : disp.replace(/^Reply(?:\s+to)?:?\s*/i, '');
+  return '<b>' + escapeHtml(who) + '</b>: ' + escapeHtml(rest);
+}
+function doTitle(r) {
+  var s = displayText(r);
+  var sp = s.indexOf(' ');
+  if (sp <= 0) return '<b>' + escapeHtml(s) + '</b>';
+  return '<b>' + escapeHtml(s.slice(0, sp)) + '</b>' + escapeHtml(s.slice(sp));
+}
+function replyMeta(r) {
+  var parts = [];
+  if (r.askDays > 0) parts.push(escapeHtml('waiting ' + r.askDays + ' day' + (r.askDays === 1 ? '' : 's')));
+  if (r.who && String(r.who).trim()) parts.push(escapeHtml(String(r.who).trim() + ' is waiting'));
+  return parts.join(' · ');
+}
+function doMeta(r, today) {
+  var parts = [];
+  var d = r.days;
+  if (typeof d === 'number') {
+    if (d < 0) parts.push(escapeHtml('since ' + monthDay(r.dateStr)));
+    else if (d === 0) parts.push(escapeHtml('due today'));
+    else if (d === 1) parts.push(escapeHtml('due tomorrow'));
+    else parts.push(escapeHtml('due ' + dateChip(r.dateStr, today)));
+  }
+  if (r.who && String(r.who).trim()) parts.push(escapeHtml(String(r.who).trim() + ' is waiting'));
+  return parts.join(' · ');
+}
+// The Not-today fold (mockup <details>): opportunities first ("optional events and
+// calls"), then the near-but-not-today candidates, each keeping Today / Not-today.
+function notTodayFoldHtml(b, today) {
+  var hide = notTodaySet();
+  var opps = b.opps.filter(function (o) { return !hide[o.id]; });
+  var others = b.notToday.filter(function (r) { return !hide[r.id]; });
+  if (!opps.length && !others.length) return '';
+  var open = !!state.notTodayOpen;
+  var bits = [];
+  if (opps.length) bits.push(opps.length + ' optional event' + (opps.length === 1 ? '' : 's') + ' and calls');
+  if (others.length) bits.push(others.length + ' other item' + (others.length === 1 ? '' : 's') + ' due later');
+  var h = '<div class="t2-fold' + (open ? ' open' : '') + '">';
+  h += '<button class="t2-fold-sum" data-pact="nottodayfold" aria-expanded="' + open + '">' +
+    '<svg class="tri"><use href="#i-tri"/></svg>Not today: ' + escapeHtml(bits.join(', ')) + '</button>';
+  if (open) {
+    h += '<div class="t2-fold-body">';
+    if (opps.length) {
+      h += '<p class="t2-fold-h">Optional events and calls (' + opps.length + ')</p>';
+      h += opps.map(function (o) { return candidateRowHtml(o, today); }).join('');
+    }
+    if (others.length) {
+      if (opps.length) h += '<p class="t2-fold-h">Due later</p>';
+      h += others.map(function (r) { return candidateRowHtml(r, today); }).join('');
+    }
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+
+// ── 3. Research whiteboard (mockup "Research whiteboard") ──
+function whiteboardHtml() {
+  var today = todayISO();
+  var all = lensProjects();
+  var plan = state.semesterPlan || null;
+  var g = whiteboardGroups(all, plan, today);
+  var h = '<section class="t2-sec t2-board-sec" aria-label="Research whiteboard"><h2 class="t2-h2">Research whiteboard</h2>';
+  var rows = '';
+  if (g.alive.length) { rows += wbGroupRow('Alive'); g.alive.forEach(function (p) { rows += wbRow(p, today); }); }
+  if (g.finishSend.length) { rows += wbGroupRow('Finish and send'); g.finishSend.forEach(function (p) { rows += wbRow(p, today); }); }
+  if (g.waiting.length) { rows += wbGroupRow('Waiting on someone else'); g.waiting.forEach(function (p) { rows += wbRow(p, today); }); }
+  if (!rows) {
+    h += '<div class="t2-plate-empty">No live projects on the board yet. Give a project an outcome in <a href="#projects">Projects</a>.</div>';
+  } else {
+    h += '<div class="t2-boardwrap"><table class="t2-board">' +
+      '<thead><tr><th>Project</th><th>Idea</th><th>Design</th><th>Data</th><th>Analysis</th><th>Draft</th><th>Sent</th><th>Next move, and what is in the way</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table></div>';
+    h += '<div class="t2-legend"><span><span class="wb-dot"></span>your move</span>' +
+      '<span><span class="wb-dot w"></span>someone else’s move</span></div>';
+  }
+  if (g.parkedCount) h += '<p class="t2-parked">Parked (' + g.parkedCount + ') · <a href="#projects">see Projects</a></p>';
+  h += '</section>';
+  return h;
+}
+function wbGroupRow(label) { return '<tr class="t2-grp"><td colspan="8">' + escapeHtml(label) + '</td></tr>'; }
+var STAGE_LABELS = ['Idea', 'Design', 'Data', 'Analysis', 'Draft', 'Sent'];
+function wbRow(p, today) {
+  var cur = stageIndex(p.stage || '');
+  var waiting = hasWaitingOn(p);
+  var h = '<tr data-proj="' + escapeHtml(p.id) + '"><td class="t2-p">' + escapeHtml(p.title || 'Project');
+  if (cur < 0) h += '<i class="t2-stagehint">Stage not set. Tap a column.</i>';
+  h += '</td>';
+  for (var i = 0; i < 6; i++) {
+    var on = (i === cur);
+    var dot = on ? '<span class="wb-dot' + (waiting ? ' w' : '') + '"></span>' : '';
+    var lab = 'Set ' + (p.title || 'project') + ' to ' + STAGE_LABELS[i];
+    h += '<td class="t2-s"><button class="t2-scell" data-pact="wbstage" data-pid="' + escapeHtml(p.id) +
+      '" data-stage="' + STAGES[i] + '" aria-label="' + escapeHtml(lab) + '"' + (on ? ' aria-pressed="true"' : '') + '>' + dot + '</button></td>';
+  }
+  h += '<td class="t2-n">' + wbNextHtml(p, today) + '</td></tr>';
+  return h;
+}
+function wbNextHtml(p, today) {
+  var nm = projectNextMove(state.items, p.id, today);
+  var h = '<b>' + escapeHtml(nm ? displayText(normTaskRow(nm, null, today)) : 'No next move set') + '</b>';
+  var blk = (p.blocker || '').trim();
+  var sub = '';
+  if (blk) sub = 'In the way: ' + blk;
+  else {
+    var outs = outcomesFor(p.id);
+    var rep = outs.length ? _repOutcome(outs, today) : null;
+    if (rep) sub = 'Goal: ' + (rep.title || '') + (rep.by ? ' by ' + monthDay(rep.by) : '');
+  }
+  if (sub) h += '<i>' + escapeHtml(sub) + '</i>';
+  h += wbWaitingHtml(p);
+  return h;
+}
+// waiting_on cell: inline-editable (same pattern as the blocker line). Shown as a
+// quiet value for a waiting row, an "+ waiting on" add otherwise.
+function wbWaitingHtml(p) {
+  var editing = state.editWaiting === p.id;
+  var w = (p.waiting_on || '').trim();
+  if (editing) {
+    return '<span class="pd-edit wb-wait"><input class="wb-wait-in" value="' + escapeHtml(p.waiting_on || '') +
+      '" placeholder="waiting on…" aria-label="Waiting on someone else"><button data-pact="savewait">Save</button></span>';
+  }
+  if (w) return '<button class="wb-wait-val" data-pact="editwait">Waiting on: ' + escapeHtml(w) + ' <span class="pc-ed">✎</span></button>';
+  return '<button class="wb-wait-none" data-pact="editwait">+ waiting on</button>';
+}
+
 // The 25-minute research block: a start panel, a live countdown, and the log on
 // finish. The timer runs on the page only (no server) — closing the tab loses it;
 // a block counts only when Start is pressed (Q12 "protect the research").
@@ -2235,6 +2893,45 @@ function todayReorder(id, dir) {
   if (j < 0 || j >= cur.length) return;
   var tmp = cur[i]; cur[i] = cur[j]; cur[j] = tmp;
   setToday(cur);
+}
+
+// ── Today rebuild (2026-11-19) writes ──
+// Set today's research plate project (the big accent card). Preserves items.
+function setPlate(pid) {
+  api('/api/today/plate', { method: 'POST', body: { project_id: pid } }).then(function (res) {
+    if (res && res.ok && res.data) state.today = res.data;
+    render();
+  }).catch(function () { render(); });
+}
+// Star "the one thing today" (toggle: starring the stored one clears it → default).
+function setOneThing(id, kind) {
+  var ot = state.today && state.today.one_thing;
+  var clearing = !!(ot && ot.id === id);
+  var body = clearing ? { id: '' } : { id: id, kind: (kind === 'deadline') ? 'deadline' : 'task' };
+  api('/api/today/one-thing', { method: 'POST', body: body }).then(function (res) {
+    if (res && res.ok && res.data) state.today = res.data;
+    render();
+  }).catch(function () { render(); });
+}
+// Set a project's whiteboard stage (optimistic, rollback on failure). Clicking the
+// current stage does nothing (guarded) so a tap can't accidentally clear it.
+function setStage(pid, stage) {
+  var p = projectById(pid);
+  if (p && (p.stage || '') === stage) return;
+  var prev = p ? (p.stage || '') : '';
+  if (p) { p.stage = stage; render(); }
+  api('/api/projects/update', { method: 'POST', body: { id: pid, fields: { stage: stage } } }).then(function (res) {
+    if (!res || !res.ok) { if (p) { p.stage = prev; render(); } showToast('Could not set the stage', null); return; }
+    fetchAll();
+  }).catch(function () { if (p) { p.stage = prev; render(); } showToast('Could not set the stage', null); });
+}
+// Save a project's waiting_on (the whiteboard inline-edit cell).
+function saveWaitingOn(pid) {
+  if (!pid) { state.editWaiting = null; render(); return; }
+  var inp = document.querySelector('[data-proj="' + cssEsc(pid) + '"] .wb-wait-in');
+  var val = inp ? inp.value.trim() : '';
+  state.editWaiting = null;
+  api('/api/projects/update', { method: 'POST', body: { id: pid, fields: { waiting_on: val } } }).then(fetchAll);
 }
 
 // Home's "Sweeps waiting" strip — one door per non-zero queue → the #sweeps view.
@@ -3554,6 +4251,18 @@ function handlePageAction(act, el) {
   if (act === 'admintoggle') { state.adminOpen = !state.adminOpen; render(); return true; }
   if (act === 'nmadd') { nmAdd(el.getAttribute('data-pid')); return true; }
   if (act === 'pdnmadd') { pdNmAdd(el.getAttribute('data-pid')); return true; }
+  // ── Today rebuild (2026-11-19) actions ──
+  if (act === 'plateset') { setPlate(el.getAttribute('data-pid')); return true; }
+  if (act === 'onething') { setOneThing(el.getAttribute('data-id'), el.getAttribute('data-kind')); return true; }
+  if (act === 'workmore') { var wc = el.getAttribute('data-col'); state.workExpanded[wc] = !state.workExpanded[wc]; render(); return true; }
+  if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
+  if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
+  if (act === 'editwait') {
+    var wp = el.closest('[data-proj]'); var wid = wp ? wp.getAttribute('data-proj') : null;
+    state.editProject = null; state.editBlocker = null;
+    state.editWaiting = (state.editWaiting === wid) ? null : wid; render(); return true;
+  }
+  if (act === 'savewait') { var sp = el.closest('[data-proj]'); saveWaitingOn(sp ? sp.getAttribute('data-proj') : null); return true; }
   if (act === 'projmode') { state.projectMode = (el.getAttribute('data-mode') === 'planning') ? 'planning' : 'daily'; state.editBlocker = null; state.editProject = null; render(); return true; }
   if (act === 'blockopen') { openBlock(el.getAttribute('data-pid')); return true; }
   if (act === 'blockstart') { startBlock(el.getAttribute('data-pid')); return true; }
@@ -4064,6 +4773,11 @@ document.addEventListener('keydown', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('pd-blk-in')) {
     if (e.key === 'Enter') { e.preventDefault(); var pbc = e.target.closest('[data-proj]'); if (pbc) handleProjectAction('saveblocker', pbc.getAttribute('data-proj')); return; }
     if (e.key === 'Escape') { e.preventDefault(); state.editBlocker = null; render(); return; }
+  }
+  // Whiteboard waiting_on input: Enter saves, Esc cancels.
+  if (e.target && e.target.classList && e.target.classList.contains('wb-wait-in')) {
+    if (e.key === 'Enter') { e.preventDefault(); var wbc = e.target.closest('[data-proj]'); if (wbc) saveWaitingOn(wbc.getAttribute('data-proj')); return; }
+    if (e.key === 'Escape') { e.preventDefault(); state.editWaiting = null; render(); return; }
   }
   // Enter in the block setup task/minutes input = Start.
   if (e.target && (e.target.id === 'block-task' || e.target.id === 'block-min') && e.key === 'Enter') {
