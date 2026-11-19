@@ -396,6 +396,139 @@
     .pc-mv { margin-left: 0; }
     .priorities { grid-template-columns: 1fr; }
   }
+
+  /* ---------- "Today" main page (2026-11-18 audit) ---------- */
+  /* collapsed system-changes line */
+  .syschange-line { display: inline-block; font-size: 13px; color: var(--text-2); background: var(--callout); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; margin: 0 0 20px; }
+  .syschange-line:hover { background: var(--hover); color: var(--text); }
+  .sc-collapse { display: inline-block; font-size: 12px; color: var(--text-3); margin: 2px 0 20px; padding: 2px 8px; border-radius: 5px; }
+  .sc-collapse:hover { background: var(--hover); color: var(--text); }
+
+  /* goals */
+  .goals { margin: 0 0 26px; }
+  .goal { margin: 0 0 4px; font-size: 14px; color: var(--text-2); padding-left: 14px; position: relative; }
+  .goal::before { content: ""; position: absolute; left: 0; top: 9px; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+  /* research — the meal (visually heaviest) */
+  .research { margin: 0 0 40px; }
+  .rm-empty { color: var(--text-3); font-size: 14px; padding: 8px 0; }
+  .rm-empty a { color: var(--blue); }
+  .rm-card { border: 1px solid var(--line); border-left: 3px solid var(--green); border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; background: #fff; box-shadow: 0 1px 2px rgba(15,15,15,.03); }
+  .rm-title { font-size: 18px; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: 10px; }
+  .rm-chip { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--green); background: #eef5ee; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+  .rm-outcome { font-size: 14px; color: var(--text); margin-top: 8px; font-weight: 500; }
+  .rm-when { color: var(--text-3); font-weight: 400; }
+  .rm-left, .rm-next { font-size: 14px; color: var(--text-2); margin-top: 10px; line-height: 1.5; }
+  .rm-k { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-right: 6px; }
+  .rm-nm-form { display: flex; gap: 6px; margin-top: 6px; }
+  .rm-nm-in { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: inherit; }
+  .rm-nm-form button { font-size: 13px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .rm-nm-form button:hover { background: var(--hover); }
+  .block-start { margin-top: 14px; font-size: 14px; font-weight: 600; color: #fff; background: var(--green); border-radius: 8px; padding: 9px 16px; }
+  .block-start:hover { filter: brightness(.95); }
+  .block-form { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .block-form .block-task { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font: inherit; }
+  .block-form-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .block-min-l { font-size: 13px; color: var(--text-2); }
+  .block-min { width: 56px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; font: inherit; margin-left: 4px; }
+  .block-res { flex: 1; min-width: 120px; border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font: inherit; }
+  .block-form-row button { font-size: 13px; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .block-form-row button.primary { background: var(--green); color: #fff; border-color: var(--green); }
+  .block-hint { font-size: 12px; color: var(--text-3); margin-top: 8px; }
+  .block-run { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; text-align: center; }
+  .block-count { font-size: 44px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; color: var(--green); }
+  .block-task-label { font-size: 14px; color: var(--text-2); margin-top: 2px; }
+  .block-note { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; font: inherit; margin-top: 12px; }
+  .block-run-acts { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+  .block-run-acts button { font-size: 14px; padding: 9px 18px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .block-run-acts button.primary { background: var(--green); color: #fff; border-color: var(--green); }
+  .ideas { margin-top: 18px; }
+  .ideas-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin: 0 0 4px; }
+  .idea { margin: 0 0 3px; font-size: 14px; color: var(--text-2); }
+
+  /* memo, collapsed below research */
+  .memo-collapse { margin: 0 0 34px; }
+  .memo-toggle { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text-2); padding: 4px 6px; margin-left: -6px; border-radius: var(--radius); }
+  .memo-toggle:hover { background: var(--hover); color: var(--text); }
+  .memo-toggle .tri { width: 14px; height: 14px; color: var(--text-3); transition: transform .15s ease; }
+  .memo-collapse:not(.open) .tri { transform: rotate(-90deg); }
+  .memo-collapse-body { margin-top: 10px; }
+  .memo-collapse-body .memo { margin-bottom: 0; }
+
+  /* today, negotiated (the vegetables) */
+  .veg { margin: 0 0 36px; }
+  .veg-h { font-size: 1.28rem; font-weight: 650; letter-spacing: -.01em; margin: 0 0 10px; }
+  .veg-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
+  .veg-cap { font-weight: 600; }
+  .veg-est { color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .portion { background: var(--callout); border-radius: 10px; padding: 10px 14px 12px; margin-bottom: 16px; }
+  .portion-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin: 2px 0 6px; }
+  .portion-empty { color: var(--text-3); font-size: 14px; padding: 10px 0 16px; }
+  .prow { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 6px 10px; align-items: start; padding: 7px 4px; border-radius: var(--radius); }
+  .prow:hover { background: rgba(255,255,255,.6); }
+  .prow + .prow { border-top: 1px solid var(--line); }
+  .prow .check { width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; border: 1.5px solid #c8c6c1; background: #fff; }
+  .prow .check:hover { border-color: var(--text-2); }
+  .check-spacer { width: 16px; }
+  .prow-mid { min-width: 0; }
+  .prow-mid .t { font-weight: 500; }
+  .prow-why { font-size: 13px; color: var(--text-2); margin-top: 1px; }
+  .prow-acts { display: flex; align-items: center; gap: 4px; }
+  .pmove { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--text-2); font-size: 13px; line-height: 1; }
+  .pmove:hover:not([disabled]) { background: var(--hover); color: var(--text); }
+  .pmove[disabled] { opacity: .3; cursor: default; }
+  .pdrop { font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; background: #fff; }
+  .pdrop:hover { background: var(--hover); color: var(--text); }
+  .veg-over { font-size: 13px; color: var(--text-2); background: var(--callout); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; }
+  .veg-cands-h { margin-top: 6px; }
+  .veg-clear { color: var(--text-3); font-size: 14px; padding: 4px 0; }
+  .crow { display: grid; grid-template-columns: 10px minmax(0,1fr) auto; gap: 4px 10px; align-items: start; padding: 9px 6px; margin: 0 -6px; border-radius: var(--radius); }
+  .crow:hover { background: var(--hover); }
+  .crow + .crow { border-top: 1px solid var(--line); }
+  .crow .lanedot { width: 7px; height: 7px; border-radius: 50%; margin-top: 7px; }
+  .crow-mid { min-width: 0; }
+  .crow-t { font-weight: 500; text-align: left; }
+  .crow-t .slip { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: 8px; }
+  .crow-why { font-size: 13px; color: var(--text-2); margin-top: 1px; }
+  .crow-acts { display: flex; align-items: center; gap: 6px; }
+  .crow-acts button { font-size: 13px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--line); background: #fff; color: var(--text); }
+  .crow-acts button:hover { background: var(--hover); }
+  .crow-acts button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .crow-acts button.primary:hover { background: #000; }
+  .ab-head { font-weight: 500; color: var(--text); }
+  .ab-head:hover { color: #000; }
+  .ab-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .ab-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .ab-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ab-item button { font-size: 12px; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--line); background: #fff; }
+  .ab-item button.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .slip-verbs { margin-top: 8px; }
+  .slip-verbs .mv-lbl { color: var(--text-3); font-size: 12px; margin-right: 4px; }
+  .slip-verbs button { font-size: 12px; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--line); background: #fff; margin: 2px; }
+  .slip-verbs button:hover { background: var(--hover); }
+  .slip-verbs button.danger:hover { background: var(--red-bg); color: var(--red); border-color: var(--red-bg); }
+  .slip-row { margin-top: 6px; }
+
+  /* briefings */
+  .briefings { margin: 0 0 34px; }
+  .brief-item + .brief-item { margin-top: 6px; }
+  .brief-head { display: flex; align-items: center; gap: 7px; width: 100%; text-align: left; font-size: 14px; font-weight: 600; color: var(--text); padding: 6px 6px; margin-left: -6px; border-radius: var(--radius); }
+  .brief-head:hover { background: var(--hover); }
+  .brief-head .tri { width: 13px; height: 13px; color: var(--text-3); transition: transform .15s ease; }
+  .brief-item:not(.open) .tri { transform: rotate(-90deg); }
+  .brief-body { font-size: 14px; color: var(--text-2); padding: 4px 6px 8px 20px; }
+  .brief-body h2, .brief-body h3, .brief-body h4 { font-size: 14px; margin: 10px 0 4px; color: var(--text); }
+  .brief-body p { margin: 0 0 8px; }
+  .brief-body a { color: var(--blue); }
+
+  .today-doors { margin: 6px 0 20px; }
+
+  @media (max-width: 720px) {
+    .rm-card { padding: 14px 14px; }
+    .block-count { font-size: 38px; }
+    .crow-acts, .prow-acts { flex-wrap: wrap; justify-content: flex-end; }
+    .veg-top { flex-direction: column; gap: 2px; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
@@ -416,7 +549,7 @@
 <div class="shell">
   <aside class="side">
     <div class="ws"><span class="ws-mark"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Triage</div>
-    <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
+    <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
     <a class="nav" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks<span class="n" id="nav-tasks-n"></span></a>
     <a class="nav" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps<span class="n" id="nav-sweeps-n"></span></a>
     <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
@@ -435,7 +568,7 @@
 
   <div class="main">
     <div class="topbar">
-      <span class="crumb"><b id="crumb">Home</b></span>
+      <span class="crumb"><b id="crumb">Today</b></span>
       <div class="seg lens-seg lens-seg-m" aria-label="Work or life"><button data-lens="work">Work</button><button data-lens="life">Life</button><button data-lens="all">All</button></div>
       <span class="status" id="status" style="display:none">
         <button id="status-btn" aria-expanded="false"><span class="status-dot"></span><span id="status-label"></span></button>
@@ -452,7 +585,7 @@
 </div>
 
 <nav class="tabbar">
-  <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
+  <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
   <a class="nav-tab" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks</a>
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
   <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
@@ -1007,6 +1140,112 @@ function researchLine(summary, today) {
   var target = (typeof s.target_days === 'number') ? s.target_days : 5;
   return 'Research this week: ' + days + ' of ' + target + ' days · ' + fmtHM(s.minutes);
 }
+
+// ── The "Today" main page (2026-11-18 audit) ─────────────────────────────
+// The vegetables: what today's portion is NEGOTIATED from. Candidates are the
+// obligations that genuinely press on TODAY — never the backlog (dread scales with
+// list length, so the morning shows today's portion only). Membership:
+//   • This-Week tasks scheduled today or earlier (past ones flagged `slipped`);
+//   • not-done, non-target, non-proposed deadlines due within 2 days (incl. overdue),
+//     with no linked open task (the task carries the date and shows instead);
+//   • opportunities that are decide_now;
+//   • any task the memo named in dont_drop (the EA's own pick), even if undated.
+// Admin-lane items NEVER appear as separate candidates: they collapse into ONE
+// `kind:"admin"` batch candidate (members inside) so the vegetables stay portioned.
+// A task linked to a deadline is deduped (shown once). today = 'YYYY-MM-DD'.
+var DAY_CAPACITY_MIN = 420;   // the DAYCARE workday 09:30–16:30 = 7 hours
+function todayCandidates(items, deadlines, opps, memo, today) {
+  items = items || []; deadlines = deadlines || []; opps = opps || [];
+  var idx = _linkIndex(items, deadlines);
+  var memoIds = {};
+  if (memo && Array.isArray(memo.dont_drop)) {
+    memo.dont_drop.forEach(function (e) { if (e && e.id) memoIds[e.id] = true; });
+  }
+  var seen = {}, out = [], admin = [];
+  function place(row) { (row.lane === 'admin' ? admin : out).push(row); }
+  var i, t, d, o;
+  for (i = 0; i < items.length; i++) {
+    t = items[i];
+    if (!t || !t.id || t.list === 'done' || t.list === 'tabs' ||
+        t.list === 'someday' || t.list === 'waiting' || isProposedTask(t)) continue;
+    var sched = t.scheduled || null;
+    var inWeekToday = t.list === 'thisweek' && sched && dayDelta(sched, today) != null && dayDelta(sched, today) <= 0;
+    if (!inWeekToday && !memoIds[t.id]) continue;
+    if (seen[t.id]) continue; seen[t.id] = true;
+    var r = normTaskRow(t, idx.byTask[t.id], today);
+    r.candKind = 'task';
+    r.slipped = !!(sched && dayDelta(sched, today) != null && dayDelta(sched, today) < 0);
+    place(r);
+  }
+  for (i = 0; i < deadlines.length; i++) {
+    d = deadlines[i];
+    if (!d || d.status === 'done' || d.target || d.proposed) continue;
+    if (d.linked_task_id && idx.openIds[d.linked_task_id]) continue;  // shown as the task
+    if (seen[d.id]) continue;
+    var dl = d.due_date ? dayDelta(d.due_date, today) : null;
+    if (dl == null || dl > 2) continue;
+    seen[d.id] = true;
+    var rd = normDeadlineRow(d, today);
+    rd.candKind = 'deadline';
+    rd.slipped = dl < 0;
+    place(rd);
+  }
+  for (i = 0; i < opps.length; i++) {
+    o = opps[i];
+    if (!o || !o.id || seen[o.id] || !oppDecideNow(o, today)) continue;
+    seen[o.id] = true;
+    out.push({
+      id: o.id, kind: 'opportunity', candKind: 'opportunity', lane: 'dont_drop',
+      text: o.title || 'Opportunity', who: '', memo: o.note || '', url: o.url || '',
+      source: '', dateStr: o.decide_by || null,
+      days: o.decide_by ? dayDelta(o.decide_by, today) : null,
+      askDays: 0, createdMs: 0, project_id: o.project_id || null,
+      opp_kind: o.opp_kind || '', slipped: false, suggested: false, target: false
+    });
+  }
+  out.sort(rowCompare);
+  if (admin.length) {
+    admin.sort(rowCompare);
+    out.push({
+      id: 'admin-batch', kind: 'admin', candKind: 'admin', lane: 'admin',
+      text: 'Admin batch', count: admin.length, members: admin,
+      who: '', memo: '', url: '', dateStr: null, days: null, slipped: false
+    });
+  }
+  return out;
+}
+
+// The one line of reason per item ("compelled" — Q16c): who is waiting, when it is
+// due (relative, so it never fabricates a date), and which project it serves; a
+// bare memo note when there is nothing else. Pure: reads only the row's own fields
+// (projectTitle is resolved onto the row by the caller before this is called).
+function whyLine(row) {
+  if (!row) return '';
+  var parts = [];
+  if (row.who && String(row.who).trim()) parts.push(String(row.who).trim() + ' is waiting');
+  var d = row.days;
+  if (typeof d === 'number') {
+    if (d < 0) parts.push(Math.abs(d) + (Math.abs(d) === 1 ? ' day late' : ' days late'));
+    else if (d === 0) parts.push('due today');
+    else if (d === 1) parts.push('due tomorrow');
+    else parts.push('due in ' + d + ' days');
+  }
+  if (row.projectTitle && String(row.projectTitle).trim()) parts.push('for ' + String(row.projectTitle).trim());
+  if (!parts.length && row.memo && String(row.memo).trim()) parts.push(String(row.memo).trim());
+  return parts.join(' · ');
+}
+
+// Rough size of a portion in minutes: 25 per research block, 30 per other item (the
+// default the running "about Xh" estimate shows). Pure; drives the capacity cap.
+function capacityEstimate(portion) {
+  portion = portion || [];
+  var total = 0;
+  for (var i = 0; i < portion.length; i++) {
+    var it = portion[i];
+    total += (it && it.kind === 'block') ? 25 : 30;
+  }
+  return total;
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1098,7 +1337,16 @@ var state = {
   // Drop + Opportunities (2026-10-16): the opportunities ledger + the Garden list
   // (both feed the Decide / Auto-filed sweep queues). oppInline = the Projects-view
   // Open-calls inline Submit/Pass form currently open ({id, mode}).
-  opps: [], garden: [], oppInline: null
+  opps: [], garden: [], oppInline: null,
+  // The "Today" main page (2026-11-18 audit). semesterPlan = goals/outcomes/ideas;
+  // today = the negotiated portion ({date, items}); briefings = the EA's return
+  // channel. block = the running 25-min timer (null when idle); blockPanel = which
+  // project's start-a-block panel is open; memoOpen = the collapsed memo expanded;
+  // briefingOpen/adminOpen/slippedOpen = per-row toggles; notTodayVer bumps when the
+  // localStorage "not today" set changes so render re-reads it.
+  semesterPlan: null, today: { date: null, items: [] }, briefings: [],
+  block: null, blockPanel: null, memoOpen: false, changesOpen: false,
+  briefingOpen: {}, adminOpen: false, slippedOpen: null, notTodayVer: 0
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -1199,7 +1447,11 @@ function fetchAll() {
     apiJson('/api/changes?actor=system&limit=50'),
     // Research blocks this week (FSP, 2026-11): the "Research this week" line under
     // Focus. 404 until merged → null, which researchLine() treats as zero blocks.
-    apiJson('/api/research-week')
+    apiJson('/api/research-week'),
+    // The "Today" main page (2026-11-18 audit): the semester plan (goals/outcomes/
+    // ideas), today's negotiated portion, and the EA's briefings. All degrade to a
+    // shell/empty on 404 so a not-yet-merged server never blanks the page.
+    apiJson('/api/semester-plan'), apiJson('/api/today'), apiJson('/api/briefings')
   ];
   return Promise.all(gets).then(function (res) {
     var items = res[0];
@@ -1220,6 +1472,9 @@ function fetchAll() {
     state.garden = Array.isArray(res[9].data) ? res[9].data : [];
     state.changes = Array.isArray(res[10].data) ? res[10].data : [];
     state.research = (res[11] && res[11].data && typeof res[11].data === 'object' && !Array.isArray(res[11].data)) ? res[11].data : null;
+    state.semesterPlan = (res[12] && res[12].data && typeof res[12].data === 'object' && !Array.isArray(res[12].data)) ? res[12].data : null;
+    state.today = (res[13] && res[13].data && typeof res[13].data === 'object' && Array.isArray(res[13].data.items)) ? res[13].data : { date: null, items: [] };
+    state.briefings = Array.isArray(res[14] && res[14].data) ? res[14].data : [];
     if (state.view === 'kitchen') ensureRecipes();
     render();
   }).catch(function (e) {
@@ -1265,7 +1520,7 @@ function render() {
       : state.view === 'kitchen' ? kitchenHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen' }[state.view] || 'Home';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen' }[state.view] || 'Today';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -1368,31 +1623,472 @@ function currentSweepCounts() {
 }
 
 /* ---- Home ---- */
+// The "Today" main page (2026-11-18 audit). The rebuild's landing view: research
+// on top (the meal), a NEGOTIATED day's portion below (the vegetables, portioned so
+// dread never scales with the backlog), the EA's briefings, then two quiet doors.
+// The old lane lists moved to the Tasks view (tasksHtml) — nothing is lost. Order
+// is fixed: header · (system changes) · goals · research · memo · today · briefings
+// · doors.
 function homeHtml() {
-  var today = todayISO();
-  var items = lensItems().filter(function (i) { return !optimistic[i.id]; });
-  var dl = lensDeadlines().filter(function (d) { return !optimistic[d.id]; });
-  var g = homeLaneItems(items, dl, today);
   var h = '';
   h += '<h1>' + escapeHtml(longDate()) + '</h1>';
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
-  h += '<p class="sub">' + escapeHtml(sub) + '</p>';
-  h += memoHtml();
-  h += systemChangesStripHtml();
-  h += captureHtml();
-  // "Research is always number 1 priority" (John, 2026-10-02): Focus this week
-  // rides directly under capture, above Never late, with lane-level weight.
-  h += focusGroupHtml();
-  // The FSP research-block count sits directly under the Focus section (2026-11).
-  h += researchLineHtml();
-  h += groupHtml('never_late', 'Never late', LANE_COLOR.never_late, 'letters', g.never_late, { home: true, empty: 'No letters due.' });
-  h += groupHtml('dont_drop', "Don't drop", LANE_COLOR.dont_drop, 'coauthors · class · panels · people waiting', g.dont_drop, { home: true });
-  h += groupHtml('wiggle', 'Can slip, say so', LANE_COLOR.wiggle, 'reviews', g.wiggle, { home: true });
-  h += groupHtml('admin', 'Admin', LANE_COLOR.admin, 'do as a batch', g.admin, { home: true, collapsed: true });
-  h += groupHtml('waiting', 'Waiting on others', LANE_COLOR.admin, '', g.waiting, { home: true, collapsed: true, waiting: true });
-  h += sweepsStripHtml();
-  h += '<div class="foot">Home · ' + (LOCAL ? 'local' : 'hosted') + '. The old dashboard stays at <a href="/">/</a>.</div>';
+  if (sub) h += '<p class="sub">' + escapeHtml(sub) + '</p>';
+  try { h += systemChangesCollapsedHtml(); } catch (e) {}
+  try { h += goalsHtml(); } catch (e) { reportUiError('goals: ' + e.stack); }
+  try { h += researchMealHtml(); } catch (e) { reportUiError('research: ' + e.stack); }
+  try { h += memoCollapsedHtml(); } catch (e) {}
+  try { h += todayNegotiatedHtml(); } catch (e) { reportUiError('today: ' + e.stack); }
+  try { h += briefingsHtml(); } catch (e) {}
+  try { h += todayDoorsHtml(); } catch (e) {}
   return h;
+}
+
+// ── 1. "Changed by the system" — collapsed to one line (Q1: nothing vanishes) ──
+function systemChangesCollapsedHtml() {
+  var sc = systemChanges(state.changes || [], todayISO());
+  if (!sc.length) return '';
+  if (state.changesOpen) {
+    return systemChangesStripHtml() +
+      '<button class="sc-collapse" data-pact="changescollapse">Hide</button>';
+  }
+  var n = sc.length;
+  return '<button class="syschange-line" data-pact="changesexpand">' +
+    n + ' change' + (n > 1 ? 's' : '') + ' by the system · see</button>';
+}
+
+// ── 2. Goals (the two system/term goals he should never have to recall) ──
+function goalsHtml() {
+  var goals = (state.semesterPlan && Array.isArray(state.semesterPlan.goals)) ? state.semesterPlan.goals : [];
+  goals = goals.filter(function (g) { return g && String(g).trim(); }).slice(0, 2);
+  if (!goals.length) return '';
+  return '<section class="goals" aria-label="This term\'s goals">' +
+    goals.map(function (g) { return '<p class="goal">' + escapeHtml(g) + '</p>'; }).join('') +
+    '</section>';
+}
+
+// ── 3. Research (the meal) — heaviest section, nudging the semester outcomes ──
+function focusProjects() {
+  var pr = (state.projects || []).filter(function (p) { return p && p.status !== 'done' && inDomain(p, state.lens); });
+  var focus = pr.filter(function (p) { return p.focus; });
+  if (focus.length) return focus;
+  var hb = (state.semesterPlan && Array.isArray(state.semesterPlan.heartbeat)) ? state.semesterPlan.heartbeat : [];
+  if (hb.length) {
+    var set = {}; hb.forEach(function (id) { set[id] = true; });
+    return pr.filter(function (p) { return set[p.id]; });
+  }
+  return [];
+}
+function outcomesFor(pid) {
+  var outs = (state.semesterPlan && Array.isArray(state.semesterPlan.outcomes)) ? state.semesterPlan.outcomes : [];
+  return outs.filter(function (o) { return o && o.project_id === pid && (o.title || '').trim(); })
+    .slice().sort(function (a, b) { return String(a.by || '9999-99-99').localeCompare(String(b.by || '9999-99-99')); });
+}
+function outcomeLineHtml(o, today) {
+  var t = escapeHtml(o.title || '');
+  var by = o.by || '';
+  if (!by) return '<div class="rm-outcome">' + t + '</div>';
+  var d = dayDelta(by, today), md = monthDay(by);
+  var tail = (d != null && d < 0) ? (' · was ' + md + ', renegotiate') : (' · by ' + md);
+  return '<div class="rm-outcome">' + t + '<span class="rm-when">' + escapeHtml(tail) + '</span></div>';
+}
+function projectTitleOf(pid) {
+  if (!pid) return '';
+  var p = (state.projects || []).find(function (x) { return x.id === pid; });
+  return p ? (p.title || '') : '';
+}
+// The project's next concrete move: the open inbox/thisweek task linked by
+// project_id with the soonest date; else the memo's Main thing when it points here;
+// else null (the card offers the "name the next 25-minute move" input).
+function nextMoveFor(p) {
+  var today = todayISO();
+  var cands = (state.items || []).filter(function (t) {
+    return t && t.project_id === p.id && !isProposedTask(t) &&
+      (t.list === 'inbox' || t.list === 'thisweek');
+  });
+  cands.sort(function (a, b) {
+    var da = a.scheduled ? dayDelta(a.scheduled, today) : null;
+    var db = b.scheduled ? dayDelta(b.scheduled, today) : null;
+    if (da == null && db != null) return 1;
+    if (da != null && db == null) return -1;
+    if (da != null && db != null && da !== db) return da - db;
+    return (Date.parse(b.created || '') || 0) - (Date.parse(a.created || '') || 0);
+  });
+  if (cands.length) return cands[0];
+  if (state.memo && state.memo.main && state.memo.main.id) {
+    var mt = (state.items || []).find(function (i) { return i.id === state.memo.main.id; });
+    if (mt && mt.project_id === p.id) return mt;
+  }
+  return null;
+}
+function researchMealHtml() {
+  var today = todayISO();
+  var focus = focusProjects();
+  var h = '<section class="research" aria-label="Research first">';
+  h += '<p class="h2">Research — the meal</p>';
+  if (!focus.length) {
+    h += '<div class="rm-empty">No focus project yet. Pick one or two in <a href="#projects">Projects</a>.</div>';
+  } else {
+    h += focus.map(function (p) { return researchCardHtml(p, today); }).join('');
+  }
+  var rl = researchLine(state.research || null, today);
+  if (rl) h += '<div class="research-line">' + escapeHtml(rl) + '</div>';
+  // Ideas — the next big thing (two quiet lines).
+  var ideas = (state.semesterPlan && Array.isArray(state.semesterPlan.ideas)) ? state.semesterPlan.ideas : [];
+  ideas = ideas.filter(function (i) { return i && String(i).trim(); }).slice(0, 2);
+  if (ideas.length) {
+    h += '<div class="ideas"><p class="ideas-h">Ideas — the next big thing</p>' +
+      ideas.map(function (i) { return '<p class="idea">' + escapeHtml(i) + '</p>'; }).join('') + '</div>';
+  }
+  h += '</section>';
+  return h;
+}
+function researchCardHtml(p, today) {
+  var h = '<div class="rm-card">';
+  var mins = researchMinutesFor(p.id);
+  var chip = mins > 0 ? '<span class="rm-chip">' + escapeHtml(fmtHM(mins)) + ' this week</span>' : '';
+  h += '<div class="rm-title">' + escapeHtml(p.title || 'Project') + chip + '</div>';
+  var outs = outcomesFor(p.id);
+  if (outs.length) h += outs.map(function (o) { return outcomeLineHtml(o, today); }).join('');
+  var note = (p.state_note || '').trim();
+  if (note) h += '<div class="rm-left"><span class="rm-k">Where you left off</span> ' + escapeHtml(note) + '</div>';
+  var nm = nextMoveFor(p);
+  if (nm) {
+    h += '<div class="rm-next"><span class="rm-k">Next move</span> ' +
+      escapeHtml(displayText(normTaskRow(nm, null, today))) + '</div>';
+  } else {
+    h += '<div class="rm-next"><span class="rm-k">Next move</span>' +
+      '<div class="rm-nm-form"><input class="rm-nm-in" data-pid="' + escapeHtml(p.id) +
+      '" placeholder="name the next 25-minute move…">' +
+      '<button data-pact="nmadd" data-pid="' + escapeHtml(p.id) + '">Add</button></div></div>';
+  }
+  h += blockAreaHtml(p, nm);
+  h += '</div>';
+  return h;
+}
+// The 25-minute research block: a start panel, a live countdown, and the log on
+// finish. The timer runs on the page only (no server) — closing the tab loses it;
+// a block counts only when Start is pressed (Q12 "protect the research").
+function blockAreaHtml(p, nm) {
+  var running = state.block && state.block.running && state.block.projectId === p.id;
+  if (running) {
+    var remain = Math.max(0, Math.round((state.block.endMs - Date.now()) / 1000));
+    return '<div class="block-run">' +
+      '<div class="block-count" id="block-countdown">' + escapeHtml(mmss(remain)) + '</div>' +
+      '<div class="block-task-label">' + escapeHtml(state.block.task || 'Research block') + '</div>' +
+      '<input class="block-note" id="block-note" placeholder="a note when you finish (optional)">' +
+      '<div class="block-run-acts"><button class="primary" data-pact="blockdone">I’m done</button>' +
+      '<button data-pact="blockstop">Stop early</button></div></div>';
+  }
+  if (state.blockPanel === p.id) {
+    var pref = nm ? displayText(normTaskRow(nm, null, todayISO())) : '';
+    return '<div class="block-form">' +
+      '<input class="block-task" id="block-task" placeholder="the one 25-minute move…" value="' + escapeHtml(pref) + '">' +
+      '<div class="block-form-row"><label class="block-min-l">min <input class="block-min" id="block-min" type="number" min="1" max="240" value="25"></label>' +
+      '<input class="block-res" id="block-res" placeholder="what’s the resistance? (optional)">' +
+      '<button class="primary" data-pact="blockstart" data-pid="' + escapeHtml(p.id) + '">Start</button>' +
+      '<button data-pact="blockcancel">Cancel</button></div>' +
+      '<div class="block-hint">Runs on this page only — closing the tab loses the timer. A block counts when you press Start.</div></div>';
+  }
+  if (state.block && state.block.running) return '';   // a timer runs elsewhere
+  return '<button class="block-start" data-pact="blockopen" data-pid="' + escapeHtml(p.id) + '">Start a 25-minute block</button>';
+}
+
+// ── 4. Memo, collapsed below research (one tap opens) ──
+function memoCollapsedHtml() {
+  if (state.memoMissing || !state.memo) return '';
+  var inner = memoHtml();
+  if (!inner) return '';
+  var open = state.memoOpen;
+  return '<div class="memo-collapse' + (open ? ' open' : '') + '">' +
+    '<button class="memo-toggle" data-pact="memotoggle" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+    '<svg class="tri"><use href="#i-tri"/></svg>Memo</button>' +
+    (open ? '<div class="memo-collapse-body">' + inner + '</div>' : '') + '</div>';
+}
+
+// ── 5. Today, negotiated (the vegetables) ──
+// localStorage "not today" set, keyed by date (a hide lasts only today).
+function notTodayKey() { return 'triage-today-hide-' + todayISO(); }
+function notTodaySet() {
+  try {
+    var raw = localStorage.getItem(notTodayKey());
+    var arr = raw ? JSON.parse(raw) : [];
+    var s = {}; (arr || []).forEach(function (x) { s[x] = true; });
+    return s;
+  } catch (e) { return {}; }
+}
+function notTodayAdd(id) {
+  try {
+    var s = notTodaySet(); s[id] = true;
+    localStorage.setItem(notTodayKey(), JSON.stringify(Object.keys(s)));
+  } catch (e) {}
+  state.notTodayVer++; state.slippedOpen = null; render();
+}
+// Resolve today.json's agreed ids against the live stores (a done/gone item simply
+// drops). Each row carries portionKind so reorder/remove send the right {kind,id}.
+function portionRows() {
+  var today = todayISO();
+  var items = state.items || [], deadlines = state.deadlines || [], opps = state.opps || [];
+  var idx = _linkIndex(items, deadlines);
+  var out = [];
+  ((state.today && state.today.items) || []).forEach(function (it) {
+    if (!it || !it.id || optimistic[it.id]) return;
+    var row = null;
+    if (it.kind === 'task') {
+      var t = items.find(function (x) { return x.id === it.id && x.list !== 'done' && x.list !== 'tabs'; });
+      if (t) { row = normTaskRow(t, idx.byTask[t.id], today); row.candKind = 'task'; }
+    } else if (it.kind === 'deadline') {
+      var d = deadlines.find(function (x) { return x.id === it.id && x.status !== 'done'; });
+      if (d) { row = normDeadlineRow(d, today); row.candKind = 'deadline'; }
+    } else if (it.kind === 'opportunity') {
+      var o = opps.find(function (x) { return x.id === it.id; });
+      if (o) row = { id: o.id, kind: 'opportunity', candKind: 'opportunity', text: o.title || 'Opportunity', who: '', days: o.decide_by ? dayDelta(o.decide_by, today) : null, project_id: o.project_id || null, lane: 'dont_drop', url: o.url || '' };
+    } else if (it.kind === 'block') {
+      row = { id: it.id, kind: 'block', candKind: 'block', text: 'Research block', lane: 'wiggle', who: '', days: null };
+    }
+    if (row) { row.portionKind = it.kind; row.projectTitle = projectTitleOf(row.project_id); out.push(row); }
+  });
+  return out;
+}
+function todayNegotiatedHtml() {
+  var today = todayISO();
+  var items = lensItems().filter(function (i) { return !optimistic[i.id]; });
+  var dl = lensDeadlines().filter(function (d) { return !optimistic[d.id]; });
+  var opps = lensOpps();
+  var cands = todayCandidates(items, dl, opps, state.memo, today);
+  var portion = portionRows();
+  var inPortion = {}; portion.forEach(function (r) { inPortion[r.id] = true; });
+  var hide = notTodaySet();
+  cands = cands.map(function (c) {
+    if (c.kind === 'admin') {
+      c.members = (c.members || []).filter(function (m) { return !inPortion[m.id] && !hide[m.id]; });
+      c.count = c.members.length;
+      c.members.forEach(function (m) { m.projectTitle = projectTitleOf(m.project_id); });
+    } else {
+      c.projectTitle = projectTitleOf(c.project_id);
+    }
+    return c;
+  }).filter(function (c) {
+    if (c.kind === 'admin') return c.count > 0;
+    return !inPortion[c.id] && !hide[c.id];
+  });
+
+  var estMin = capacityEstimate(portion);
+  var h = '<section class="veg" aria-label="Today, negotiated">';
+  h += '<h2 class="veg-h">Today, negotiated</h2>';
+  h += '<div class="veg-top"><span class="veg-cap">about 7 hours today</span>' +
+    '<span class="veg-est">' + portion.length + ' item' + (portion.length === 1 ? '' : 's') +
+    ' · about ' + escapeHtml(fmtHM(estMin)) + '</span></div>';
+  if (portion.length) {
+    h += '<div class="portion"><p class="portion-h">Today’s portion</p>';
+    h += portion.map(function (r, i) { return portionRowHtml(r, i, portion.length); }).join('');
+    h += '</div>';
+    if (portion.length > 6 || estMin > DAY_CAPACITY_MIN) {
+      h += '<div class="veg-over">That’s more than today holds.</div>';
+    }
+  } else {
+    h += '<div class="portion-empty">Nothing agreed yet. Choose from below what today holds.</div>';
+  }
+  if (cands.length) {
+    h += '<p class="h2 veg-cands-h">Could be today</p>';
+    h += cands.map(function (c) { return candidateRowHtml(c, today); }).join('');
+  } else if (portion.length) {
+    h += '<p class="veg-clear">Nothing else pressing today.</p>';
+  }
+  h += '</section>';
+  return h;
+}
+function portionRowHtml(r, i, n) {
+  var checkable = (r.kind === 'task' || r.kind === 'deadline');
+  var h = '<div class="prow" data-id="' + escapeHtml(r.id) + '" data-kind="' + escapeHtml(r.kind) + '">';
+  h += checkable
+    ? '<button class="check" aria-label="Mark done: ' + escapeHtml(displayText(r)) + '" data-portion-check></button>'
+    : '<span class="check-spacer"></span>';
+  h += '<div class="prow-mid"><div class="t">' + escapeHtml(displayText(r)) + '</div>';
+  var why = whyLine(r); if (why) h += '<div class="prow-why">' + escapeHtml(why) + '</div>';
+  h += '</div>';
+  h += '<div class="prow-acts">' +
+    '<button class="pmove" data-pact="todayup" data-pid="' + escapeHtml(r.id) + '"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move up">↑</button>' +
+    '<button class="pmove" data-pact="todaydown" data-pid="' + escapeHtml(r.id) + '"' + (i === n - 1 ? ' disabled' : '') + ' aria-label="Move down">↓</button>' +
+    '<button class="pdrop" data-pact="todayremove" data-pid="' + escapeHtml(r.id) + '">Not today</button></div>';
+  h += '</div>';
+  return h;
+}
+function candidateRowHtml(c, today) {
+  if (c.kind === 'admin') return adminBatchHtml(c, today);
+  var h = '<div class="crow" data-id="' + escapeHtml(c.id) + '">';
+  h += '<span class="lanedot" style="background:' + (LANE_COLOR[c.lane] || 'var(--gray)') + '"></span>';
+  h += '<div class="crow-mid"><div class="crow-t">' + escapeHtml(displayText(c)) +
+    (c.slipped ? '<span class="slip">slipped</span>' : '') + '</div>';
+  var why = whyLine(c); if (why) h += '<div class="crow-why">' + escapeHtml(why) + '</div>';
+  if (state.slippedOpen === c.id) h += slipVerbsHtml(c);
+  h += '</div>';
+  h += '<div class="crow-acts"><button class="primary" data-pact="todayadd" data-cid="' + escapeHtml(c.id) +
+    '" data-ckind="' + escapeHtml(c.candKind || 'task') + '">Today</button>' +
+    '<button data-pact="todaynot" data-cid="' + escapeHtml(c.id) + '" data-slip="' + (c.slipped ? '1' : '') + '">Not today</button></div>';
+  h += '</div>';
+  return h;
+}
+// A slipped task's three honest verbs (Q13/Q14): pick a real day, shelve to Someday,
+// or drop it. "Just hide today" leaves it where it is for one day.
+function slipVerbsHtml(c) {
+  var days = weekDays().map(function (d) {
+    return '<button data-pact="slipsched" data-cid="' + escapeHtml(c.id) + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>';
+  }).join('');
+  return '<div class="slip-verbs"><span class="mv-lbl">Pick a day:</span>' + days +
+    '<div class="slip-row"><button data-pact="slipsomeday" data-cid="' + escapeHtml(c.id) + '">Someday</button>' +
+    '<button class="danger" data-pact="slipdrop" data-cid="' + escapeHtml(c.id) + '">Drop</button>' +
+    '<button data-pact="sliphide" data-cid="' + escapeHtml(c.id) + '">Just hide today</button></div></div>';
+}
+function adminBatchHtml(c, today) {
+  var open = state.adminOpen;
+  var h = '<div class="crow admin-batch">';
+  h += '<span class="lanedot" style="background:var(--gray)"></span>';
+  h += '<div class="crow-mid"><button class="crow-t ab-head" data-pact="admintoggle">' +
+    'Admin batch (' + c.count + ') · do as one block</button>';
+  if (open) {
+    h += '<div class="ab-list">' + c.members.map(function (m) {
+      return '<div class="ab-item"><span>' + escapeHtml(displayText(m)) + '</span>' +
+        '<button class="primary" data-pact="todayadd" data-cid="' + escapeHtml(m.id) + '" data-ckind="task">Today</button>' +
+        '<button data-pact="todaynot" data-cid="' + escapeHtml(m.id) + '" data-slip="">Not today</button></div>';
+    }).join('') + '</div>';
+  }
+  h += '</div></div>';
+  return h;
+}
+
+// ── 6. Briefings from the EA (newest first, collapsed after the first) ──
+function briefingsHtml() {
+  var bs = state.briefings || [];
+  if (!bs.length) return '';
+  var h = '<section class="briefings" aria-label="Briefings from the EA"><p class="h2">From the EA</p>';
+  bs.forEach(function (b, i) {
+    var dflt = (i === 0);   // the newest is open by default
+    var open = (state.briefingOpen[b.id] === undefined) ? dflt : !!state.briefingOpen[b.id];
+    h += '<div class="brief-item' + (open ? ' open' : '') + '">' +
+      '<button class="brief-head" data-pact="briefingtoggle" data-bid="' + escapeHtml(b.id) + '">' +
+      '<svg class="tri"><use href="#i-tri"/></svg>' + escapeHtml(b.title || 'Briefing') + '</button>' +
+      (open ? '<div class="brief-body">' + mdToHtml(b.markdown || '') + '</div>' : '') + '</div>';
+  });
+  h += '</section>';
+  return h;
+}
+
+// ── 7. Doors (one quiet line of counts) ──
+function todayDoorsHtml() {
+  var c = visibleSweepCounts();
+  var sweepN = c.suggestions + c.stuck + c.oldReplies + c.waitingCheck + c.pastDeadlines +
+    c.pastMeetings + c.projectsCheckIn + c.decide + c.autoFiled;
+  var emailN = lensItems().filter(function (t) {
+    return t && t.source === 'email' && !isProposedTask(t) && t.list !== 'done' && t.list !== 'tabs';
+  }).length;
+  var doors = [];
+  if (sweepN) doors.push('<a class="door" href="#sweeps"><b>' + sweepN + '</b> <span>to sweep</span></a>');
+  if (emailN) doors.push('<a class="door" href="#tasks"><b>' + emailN + '</b> <span>email waiting</span></a>');
+  if (!doors.length) return '';
+  return '<div class="doors today-doors">' + doors.join('') + '</div>';
+}
+
+// ── Today-page actions (block timer + the negotiation writes) ──
+function mmss(sec) { var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + String(s).padStart(2, '0'); }
+var _blockInterval = null;
+function openBlock(pid) { state.blockPanel = (state.blockPanel === pid) ? null : pid; render(); }
+function cancelBlock() {
+  if (_blockInterval) { clearInterval(_blockInterval); _blockInterval = null; }
+  state.block = null; state.blockPanel = null; render();
+}
+function startBlock(pid) {
+  var taskEl = document.getElementById('block-task');
+  var minEl = document.getElementById('block-min');
+  var resEl = document.getElementById('block-res');
+  var task = taskEl ? taskEl.value.trim() : '';
+  var minutes = minEl ? parseInt(minEl.value, 10) : 25;
+  if (!minutes || minutes < 1) minutes = 25;
+  if (minutes > 240) minutes = 240;
+  var p = (state.projects || []).find(function (x) { return x.id === pid; });
+  var nm = p ? nextMoveFor(p) : null;
+  state.block = {
+    projectId: pid, taskId: (nm && nm.id) ? nm.id : null,
+    task: task || (nm ? (nm.text || '') : ''),
+    minutes: minutes, startedIso: new Date().toISOString(),
+    endMs: Date.now() + minutes * 60000, running: true,
+    resistance: resEl ? resEl.value.trim() : ''
+  };
+  render();
+  if (_blockInterval) clearInterval(_blockInterval);
+  _blockInterval = setInterval(tickBlock, 1000);
+  tickBlock();
+}
+function tickBlock() {
+  if (!state.block || !state.block.running) {
+    if (_blockInterval) { clearInterval(_blockInterval); _blockInterval = null; }
+    return;
+  }
+  var remain = Math.max(0, Math.round((state.block.endMs - Date.now()) / 1000));
+  var el = document.getElementById('block-countdown');
+  if (el) el.textContent = mmss(remain);
+  if (remain <= 0) finishBlock('done');
+}
+function finishBlock(outcome) {
+  if (!state.block) return;
+  if (_blockInterval) { clearInterval(_blockInterval); _blockInterval = null; }
+  var b = state.block;
+  var elapsed = Math.max(1, Math.min(b.minutes, Math.round((Date.now() - Date.parse(b.startedIso)) / 60000)));
+  var minutes = (outcome === 'done') ? b.minutes : elapsed;
+  var noteEl = document.getElementById('block-note');
+  var note = noteEl ? noteEl.value.trim() : '';
+  var res = (b.resistance || '').trim();
+  var body = {
+    skill: 'block', started: b.startedIso, minutes: minutes,
+    project_id: b.projectId || '', task_id: b.taskId || '', task: b.task || '',
+    outcome: outcome, resistance: res ? [res] : [], note: note
+  };
+  state.block = null; state.blockPanel = null;
+  render();
+  apiJson('/api/session-log', { method: 'POST', body: body }).then(function (res2) {
+    showToast(res2 && res2.ok ? ('Block logged: ' + fmtHM(minutes)) : 'Block not logged', null);
+    fetchAll();
+  }).catch(function () { showToast('Block not logged', null); fetchAll(); });
+}
+function nmAdd(pid) {
+  var inp = document.querySelector('.rm-nm-in[data-pid="' + cssEsc(pid) + '"]');
+  var text = inp ? inp.value.trim() : '';
+  if (!text) return;
+  apiJson('/api/capture', { method: 'POST', body: { text: text, project_id: pid, lane: 'dont_drop', list: 'thisweek' } })
+    .then(function (res) {
+      if (res && (res.ok || res.status === 201)) { showToast('Added to this week', null); fetchAll(); }
+      else showToast('Could not add', null);
+    }).catch(function () { showToast('Could not add', null); });
+}
+// today.json writes: the whole ordered list is sent on every add/reorder.
+function setToday(itemsArr) {
+  var body = { date: todayISO(), items: itemsArr.map(function (it, i) { return { kind: it.kind || 'task', id: it.id, order: i }; }) };
+  return apiJson('/api/today', { method: 'POST', body: body }).then(function (res) {
+    if (res && res.ok && res.data) state.today = res.data;
+    render();
+    return res;
+  });
+}
+function todayAdd(cid, ckind) {
+  var cur = (state.today && Array.isArray(state.today.items)) ? state.today.items.slice() : [];
+  if (cur.some(function (it) { return it.id === cid; })) return;
+  cur.push({ kind: ckind || 'task', id: cid });
+  setToday(cur);
+}
+function todayRemove(id) {
+  apiJson('/api/today/remove', { method: 'POST', body: { id: id } }).then(function (res) {
+    if (res && res.ok && res.data) state.today = res.data;
+    render();
+  }).catch(function () { render(); });
+}
+function todayReorder(id, dir) {
+  var cur = (state.today && Array.isArray(state.today.items)) ? state.today.items.slice() : [];
+  var i = -1; cur.forEach(function (it, k) { if (it.id === id) i = k; });
+  if (i < 0) return;
+  var j = i + dir;
+  if (j < 0 || j >= cur.length) return;
+  var tmp = cur[i]; cur[i] = cur[j]; cur[j] = tmp;
+  setToday(cur);
 }
 
 // Home's "Sweeps waiting" strip — one door per non-zero queue → the #sweeps view.
@@ -2556,6 +3252,38 @@ function handleRecipeAction(act, rid) {
 
 /* ---- page-level action dispatch (Areas / Library / Kitchen) ---- */
 function handlePageAction(act, el) {
+  // ── Today-page actions ──
+  if (act === 'changesexpand') { state.changesOpen = true; render(); return true; }
+  if (act === 'changescollapse') { state.changesOpen = false; render(); return true; }
+  if (act === 'memotoggle') { state.memoOpen = !state.memoOpen; render(); return true; }
+  if (act === 'admintoggle') { state.adminOpen = !state.adminOpen; render(); return true; }
+  if (act === 'nmadd') { nmAdd(el.getAttribute('data-pid')); return true; }
+  if (act === 'blockopen') { openBlock(el.getAttribute('data-pid')); return true; }
+  if (act === 'blockstart') { startBlock(el.getAttribute('data-pid')); return true; }
+  if (act === 'blockdone') { finishBlock('done'); return true; }
+  if (act === 'blockstop') { finishBlock('partial'); return true; }
+  if (act === 'blockcancel') { cancelBlock(); return true; }
+  if (act === 'todayadd') { todayAdd(el.getAttribute('data-cid'), el.getAttribute('data-ckind')); return true; }
+  if (act === 'todayremove') { todayRemove(el.getAttribute('data-pid')); return true; }
+  if (act === 'todayup') { todayReorder(el.getAttribute('data-pid'), -1); return true; }
+  if (act === 'todaydown') { todayReorder(el.getAttribute('data-pid'), 1); return true; }
+  if (act === 'todaynot') {
+    var cid = el.getAttribute('data-cid');
+    if (el.getAttribute('data-slip')) { state.slippedOpen = (state.slippedOpen === cid) ? null : cid; render(); }
+    else notTodayAdd(cid);
+    return true;
+  }
+  if (act === 'slipsched') { var id = el.getAttribute('data-cid'); state.slippedOpen = null; notTodayAdd(id); scheduleDay(id, el.getAttribute('data-day')); return true; }
+  if (act === 'slipsomeday') { var sid = el.getAttribute('data-cid'); state.slippedOpen = null; moveList(sid, 'someday'); return true; }
+  if (act === 'slipdrop') { var did = el.getAttribute('data-cid'); state.slippedOpen = null; deleteRow(did, 'task'); return true; }
+  if (act === 'sliphide') { state.slippedOpen = null; notTodayAdd(el.getAttribute('data-cid')); return true; }
+  if (act === 'briefingtoggle') {
+    var bid = el.getAttribute('data-bid');
+    var bs = state.briefings || [];
+    var dflt = (bs.length && bs[0].id === bid);
+    var cur = (state.briefingOpen[bid] === undefined) ? dflt : state.briefingOpen[bid];
+    state.briefingOpen[bid] = !cur; render(); return true;
+  }
   if (act === 'focuschange') { state.focusPickOpen = true; render(); return true; }
   if (act === 'focuscancel') { state.focusPickOpen = false; render(); return true; }
   if (act === 'focussave') { saveFocusPick(); return true; }
@@ -2902,6 +3630,8 @@ function saveNextStep(id, text) { api('/api/update-nextstep', { method: 'POST', 
 function canAutoRefresh() {
   if (state.openRow) return false;
   if (state.sweepQueue) return false;   // never rebuild a queue snapshot mid-sweep
+  if (state.block && state.block.running) return false;  // never interrupt a timer
+  if (state.blockPanel) return false;   // a half-filled start-a-block form
   var a = document.activeElement;
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return false;
   if (_pending) return false;
@@ -2975,6 +3705,9 @@ document.addEventListener('click', function (e) {
   // but after the task-row data-act handling? No — these never carry data-act.
   var pact = el.closest && el.closest('[data-pact]');
   if (pact) { e.preventDefault(); if (handlePageAction(pact.getAttribute('data-pact'), pact)) return; }
+  // Today's-portion done circle (not a .row, so the row handler below won't catch it)
+  var pcheck = el.closest && el.closest('[data-portion-check]');
+  if (pcheck) { var pr = pcheck.closest('.prow'); if (pr) { e.stopPropagation(); markDone(pr.getAttribute('data-id'), pr.getAttribute('data-kind')); } return; }
   // row-level
   var row = el.closest && el.closest('.row');
   if (!row) return;
@@ -3020,6 +3753,16 @@ document.addEventListener('keydown', function (e) {
   if (e.target && e.target.id === 'cap-input' && e.key === 'Enter') {
     e.preventDefault();
     doCapture(e.shiftKey ? 'task' : 'drop', e.target.value);
+    return;
+  }
+  // Enter in a research "next 25-minute move" input = add it to this week.
+  if (e.target && e.target.classList && e.target.classList.contains('rm-nm-in') && e.key === 'Enter') {
+    e.preventDefault(); nmAdd(e.target.getAttribute('data-pid')); return;
+  }
+  // Enter in the block setup task/minutes input = Start.
+  if (e.target && (e.target.id === 'block-task' || e.target.id === 'block-min') && e.key === 'Enter') {
+    e.preventDefault();
+    if (state.blockPanel) startBlock(state.blockPanel);
     return;
   }
   // Enter in the Add-project input

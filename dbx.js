@@ -434,6 +434,43 @@
         by_project: byProjectList, by_day: byDayList, outcomes, resistance
       });
     }
+    // The "Today" main page (2026-11-18 audit). semester-plan.json (EA-written) →
+    // the goals/outcomes/ideas shell, mirroring server._read_semester_plan.
+    if (path === '/api/semester-plan') {
+      const shell = { term: null, set: null, goals: [], split: null, heartbeat: [], ideas: [], outcomes: [] };
+      const p = await readJson('semester-plan.json', null);
+      if (!p || typeof p !== 'object') return resp(shell);
+      return resp({ ...shell, ...p });
+    }
+    // today.json — the day's negotiated portion. Stale (date != today local) or
+    // absent → an empty shell (a new day starts empty), mirroring _read_today.
+    if (path === '/api/today' && method === 'GET') {
+      const empty = { date: null, items: [], set_at: null };
+      const t = await readJson('today.json', null);
+      if (!t || typeof t !== 'object' || t.date !== todayLocal()) return resp(empty);
+      return resp({ date: t.date, items: Array.isArray(t.items) ? t.items : [], set_at: t.set_at || null });
+    }
+    // briefings/*.md — the EA's "Ask EA" return channel, newest first, ≤20. A
+    // Dropbox folder listing per load is acceptable here (small, one section).
+    if (path === '/api/briefings') {
+      let names = [];
+      try { names = (await listDir('briefings')).filter(n => n.endsWith('.md')); } catch (e) { names = []; }
+      names.sort().reverse();
+      const out = [];
+      for (const name of names.slice(0, 20)) {
+        let md = null; try { md = await download('briefings/' + name); } catch (e) { md = null; }
+        if (md == null) continue;
+        let title = null;
+        for (const line of md.split('\n')) {
+          const s = line.trim();
+          if (s.startsWith('#')) { title = s.replace(/^#+/, '').trim(); break; }
+          if (s) { title = s; break; }
+        }
+        const stem = name.slice(0, -3);
+        out.push({ id: stem, ts: stem, title: title || stem, markdown: md });
+      }
+      return resp(out);
+    }
     if (path === '/api/deadlines') {
       const ds = await readJson('deadlines.json', []);
       const day = 86400000, today = new Date(new Date().toDateString());
@@ -1139,6 +1176,39 @@
       const stamp = new Date().toISOString().replace(/[:.]/g, '-');   // filesystem-safe ISO
       await upload('capture/' + stamp + '_drop.txt', payload, 'add');
       return resp({ ok: true, queued: true }, 202);
+    }
+
+    // — "Today" negotiated portion (2026-11-18). CAS-write today.json. Mirror
+    //   server._handle_today_set / _handle_today_remove: whole ordered list each
+    //   POST; a remove drops one id; both re-index order 0..n and stamp date/set_at.
+    if (path === '/api/today') {
+      const date = (body.date || '').trim() || todayLocal();
+      const clean = [];
+      if (Array.isArray(body.items)) {
+        for (const it of body.items) {
+          if (!it || typeof it !== 'object') continue;
+          const iid = (it.id != null && it.id !== '') ? String(it.id).trim() : '';
+          const kind = (it.kind || 'task').trim().toLowerCase();
+          if (!iid || !['task', 'deadline', 'opportunity', 'block'].includes(kind)) continue;
+          clean.push({ kind, id: iid, order: (typeof it.order === 'number') ? it.order : clean.length });
+        }
+      }
+      clean.sort((a, b) => a.order - b.order);
+      clean.forEach((it, n) => { it.order = n; });
+      const rec = { date, items: clean, set_at: nowIso() };
+      await upload('today.json', JSON.stringify(rec), 'overwrite');
+      return resp(rec);
+    }
+    if (path === '/api/today/remove') {
+      const iid = (body.id != null && body.id !== '') ? String(body.id).trim() : '';
+      if (!iid) return resp({ error: 'id is required' }, 400);
+      const cur = await readJson('today.json', null);
+      if (!cur || typeof cur !== 'object' || cur.date !== todayLocal()) return resp({ date: null, items: [], set_at: null });
+      const items = (Array.isArray(cur.items) ? cur.items : []).filter(x => String(x.id) !== iid);
+      items.forEach((it, n) => { it.order = n; });
+      const rec = { date: cur.date, items, set_at: nowIso() };
+      await upload('today.json', JSON.stringify(rec), 'overwrite');
+      return resp(rec);
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —
