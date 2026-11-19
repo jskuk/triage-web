@@ -481,7 +481,8 @@
     }
     if (path === '/api/projects') {
       const ps = await readJson('projects.json', []);
-      return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled }; }) });
+      // blocker/blocker_updated default "" for old records (mirror the server).
+      return resp({ projects: ps.map(p => { const m = projectMovement(p); return { ...p, days_since_movement: m.daysSince, stalled: m.stalled, blocker: p.blocker || '', blocker_updated: p.blocker_updated || '' }; }) });
     }
     if (path === '/api/meetings') {
       // Mirror server.py _meetings_with_computed: start is naive-local
@@ -813,7 +814,7 @@
         if (out) return a;
         out = { id: genId(), title: t, domain: ['work', 'life'].includes(body.domain) ? body.domain : null,
           status: ['active', 'paused', 'done'].includes(body.status) ? body.status : 'active',
-          goal: body.goal || null, state_note: null, state_updated: null, last_movement: nowIso(),
+          goal: body.goal || null, state_note: null, state_updated: null, blocker: '', blocker_updated: '', last_movement: nowIso(),
           stall_days: Number.isInteger(body.stall_days) ? body.stall_days : null, target: body.target || null,
           notes: body.notes || null, keywords: Array.isArray(body.keywords) ? body.keywords : [],
           created: nowIso(), source_id: src };
@@ -824,13 +825,19 @@
     if (path === '/api/projects/update') {
       // Mirror server._handle_project_update (Phase 5): kind validated to
       // project|area (anything else ignored), focus coerced to bool.
-      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note', 'kind', 'focus'];
+      const allowed = ['title', 'domain', 'status', 'goal', 'target', 'notes', 'stall_days', 'keywords', 'state_note', 'kind', 'focus', 'blocker'];
       await updateJson('projects.json', a => { const p = a.find(x => x.id === body.id); if (p && body.fields) {
         for (const k of Object.keys(body.fields)) {
           if (!allowed.includes(k)) continue;
           let v = body.fields[k];
           if (k === 'kind' && v !== 'project' && v !== 'area') continue;
           if (k === 'focus') v = !!v;
+          // blocker (2026-11-19): nullable-field idiom, capped; stamp/clear
+          // blocker_updated on a real change (noting a block is not movement).
+          if (k === 'blocker') {
+            v = ((typeof v === 'string') ? v.trim() : '').slice(0, 2000);
+            if (v !== (p.blocker || '')) p.blocker_updated = v ? new Date().toLocaleDateString('en-CA') : '';
+          }
           p[k] = v;
           const hasNote = (typeof v === 'string') ? v.trim() : !!v;
           if (k === 'state_note' && hasNote) { p.state_updated = nowIso(); p.last_movement = nowIso(); } } }

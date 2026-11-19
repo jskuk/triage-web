@@ -446,6 +446,43 @@
   .ideas-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin: 0 0 4px; }
   .idea { margin: 0 0 3px; font-size: 14px; color: var(--text-2); }
 
+  /* Projects: Daily | Planning mode toggle + the daily card (2026-11-19) */
+  .pmode { display: inline-flex; gap: 0; border: 1px solid var(--line); border-radius: 8px; padding: 2px; margin: 0 0 18px; background: #fff; }
+  .pmode-btn { font-size: 13px; font-weight: 600; color: var(--text-2); padding: 5px 16px; border-radius: 6px; background: transparent; }
+  .pmode-btn:hover { color: var(--text); }
+  .pmode-btn.on { background: var(--callout); color: var(--text); }
+  .pdcard { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; background: #fff; box-shadow: 0 1px 2px rgba(15,15,15,.03); }
+  .pdcard.compact { padding: 11px 14px; background: #fbfcfd; }
+  .pdcard.isfocus { border-left: 3px solid var(--green); }
+  .pd-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pd-title { font-weight: 650; font-size: 16px; letter-spacing: -.01em; }
+  .pdcard.compact .pd-title { font-size: 14px; font-weight: 600; }
+  .pd-runway { font-size: 14px; color: var(--text); margin-top: 8px; font-weight: 500; }
+  .pd-when { color: var(--text-3); font-weight: 400; }
+  .pd-line { font-size: 14px; color: var(--text-2); margin-top: 10px; line-height: 1.5; }
+  .pd-k { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-right: 6px; }
+  .pd-val { text-align: left; color: var(--text-2); }
+  .pd-val:hover { color: var(--text); }
+  .pd-val .pc-ed { color: var(--text-3); font-size: 12px; }
+  .pd-age { color: var(--text-3); }
+  .pd-none { color: var(--text-3); }
+  .pd-none-edit { color: var(--text-3); text-align: left; }
+  .pd-none-edit:hover { color: var(--text-2); }
+  .pd-edit { display: inline-flex; gap: 6px; margin-top: 4px; }
+  .pd-edit input { min-width: 180px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .pd-edit button { font-size: 13px; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .pd-edit button:hover { background: var(--hover); }
+  .pd-nm-form { display: inline-flex; gap: 6px; margin-top: 4px; margin-left: 4px; }
+  .pd-nm-in { min-width: 180px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+  .pd-nm-form button { font-size: 13px; padding: 5px 11px; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .pd-nm-form button:hover { background: var(--hover); }
+  .pd-wayin { font-size: 13px; color: var(--text-2); margin-top: 10px; padding: 7px 11px; background: var(--callout); border-radius: 7px; }
+  .pd-ideas { margin: 2px 0 20px; }
+  .pd-ideas-h { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin: 0 0 4px; }
+  .pd-idea { margin: 0 0 3px; font-size: 14px; color: var(--text-3); }
+  .pc-outcomes { margin-top: 8px; }
+  .pc-outcomes .rm-outcome { font-size: 13.5px; }
+
   /* memo, collapsed below research */
   .memo-collapse { margin: 0 0 34px; }
   .memo-toggle { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--text-2); padding: 4px 6px; margin-left: -6px; border-radius: var(--radius); }
@@ -991,6 +1028,100 @@ function projectTags(p) {
   return out;
 }
 
+// ── Projects view: the daily dashboard (2026-11-19 audit) ─────────────
+// "A way back in" — ONE deterministic offer, worded as an offer, never a judgment
+// and never scolding about elapsed time. The strings live in this one constant so
+// they stay easy to reword (no em-dashes, John's standing rule).
+var RESTART_QUIET_DAYS = 7;
+var RESTART_SUGGESTIONS = {
+  blocker: 'One way in: write down the smallest thing that would remove the block, and who could remove it.',
+  reread: 'One way in: reread the last note, then 10 minutes on the easiest piece. Stopping after 10 counts.',
+  blank: 'One way in: open the main file and write three lines on where it stands. That is the whole session.'
+};
+// Rule-chosen restart offer (pure, NO AI). First match wins. Areas never get one.
+// days_since_movement is the server-computed field; null = never moved = stale.
+function restartSuggestion(p, today) {
+  if (!p || p.kind === 'area') return '';
+  var blocker = (p.blocker || '').trim();
+  var note = (p.state_note || '').trim();
+  var dsm = (typeof p.days_since_movement === 'number') ? p.days_since_movement : null;
+  if (blocker) return RESTART_SUGGESTIONS.blocker;
+  if (note && dsm != null && dsm >= RESTART_QUIET_DAYS) return RESTART_SUGGESTIONS.reread;
+  if (!note && (dsm == null || dsm >= RESTART_QUIET_DAYS)) return RESTART_SUGGESTIONS.blank;
+  return '';   // moved within 7 days: don't clutter a project that is moving
+}
+
+// The project's next move: among its open, non-proposed inbox/thisweek tasks, the
+// earliest-scheduled/dated one; else the oldest open one (by created). null if none.
+function projectNextMove(items, pid, today) {
+  var cands = (items || []).filter(function (t) {
+    return t && t.project_id === pid && !isProposedTask(t) &&
+      (t.list === 'inbox' || t.list === 'thisweek');
+  });
+  if (!cands.length) return null;
+  var scheduled = cands.filter(function (t) { return t.scheduled; });
+  if (scheduled.length) {
+    scheduled.sort(function (a, b) {
+      var da = dayDelta(a.scheduled, today), db = dayDelta(b.scheduled, today);
+      if (da == null) return 1;
+      if (db == null) return -1;
+      if (da !== db) return da - db;
+      return (Date.parse(a.created || '') || 0) - (Date.parse(b.created || '') || 0);
+    });
+    return scheduled[0];
+  }
+  cands.sort(function (a, b) { return (Date.parse(a.created || '') || 8.64e15) - (Date.parse(b.created || '') || 8.64e15); });
+  return cands[0];
+}
+
+// Outcomes for a project from the semester plan, soonest `by` first (undated last).
+// Pure (takes the plan explicitly, unlike the state-reading outcomesFor()).
+function planOutcomesFor(plan, pid) {
+  var outs = (plan && Array.isArray(plan.outcomes)) ? plan.outcomes : [];
+  return outs.filter(function (o) { return o && o.project_id === pid && (o.title || '').trim(); })
+    .slice().sort(function (a, b) { return String(a.by || '9999-99-99').localeCompare(String(b.by || '9999-99-99')); });
+}
+
+// Teaching → admin/service → others when the title/keywords let us tell them apart;
+// equal ranks keep input order (stable sort). Pure, deterministic.
+function _teachRank(p) {
+  var s = (((p && p.title) || '') + ' ' + (((p && p.keywords) || []).join(' '))).toLowerCase();
+  if (/teach|course|class|pls |grad|advis|student|lecture/.test(s)) return 0;
+  if (/admin|service|committee|governance|tenure|dgs|review/.test(s)) return 1;
+  return 2;
+}
+
+// Daily-mode grouping: four calm buckets, in order. Alive = heartbeat ids (or, with
+// no plan, the focus:true projects); Finish and send = non-done projects with a plan
+// outcome, nearest `by` first (past-due first, shown calmly, no red); Teaching and
+// admin = areas + active non-research projects; Parked = everything else non-done
+// (research active without an outcome, and all paused). Done projects are never here.
+// Never throws: an empty plan/list and a plan id with no matching project are fine.
+function projectDashboardGroups(projects, plan, today) {
+  projects = (projects || []).filter(function (p) { return p && p.status !== 'done'; });
+  var hb = (plan && Array.isArray(plan.heartbeat)) ? plan.heartbeat : [];
+  var aliveSet = {};
+  if (hb.length) { hb.forEach(function (id) { aliveSet[id] = true; }); }
+  else { projects.forEach(function (p) { if (p.focus) aliveSet[p.id] = true; }); }
+  var alive = [], rest = [];
+  projects.forEach(function (p) { (aliveSet[p.id] ? alive : rest).push(p); });
+  var finishSend = rest.filter(function (p) { return planOutcomesFor(plan, p.id).length > 0; });
+  finishSend.sort(function (a, b) {
+    var oa = planOutcomesFor(plan, a.id), ob = planOutcomesFor(plan, b.id);
+    var ka = oa.length ? (oa[0].by || '9999-99-99') : '9999-99-99';
+    var kb = ob.length ? (ob[0].by || '9999-99-99') : '9999-99-99';
+    return String(ka).localeCompare(String(kb));
+  });
+  var remain = rest.filter(function (p) { return planOutcomesFor(plan, p.id).length === 0; });
+  var teaching = remain.filter(function (p) {
+    return p.kind === 'area' || ((p.status || 'active') === 'active' && !isResearchProject(p));
+  });
+  var teachSet = {}; teaching.forEach(function (p) { teachSet[p.id] = true; });
+  var parked = remain.filter(function (p) { return !teachSet[p.id]; });
+  teaching.sort(function (a, b) { return _teachRank(a) - _teachRank(b); });
+  return { alive: alive, finishSend: finishSend, teaching: teaching, parked: parked };
+}
+
 // tier of a Read Later record: "soon" or "someday" (absent/invalid → someday, Q7).
 function rlTier(r) { return (r && r.tier === 'soon') ? 'soon' : 'someday'; }
 function readSoonItems(recs) {
@@ -1332,6 +1463,9 @@ var state = {
   // Phase 5: Areas / Library / Kitchen.
   readlater: [], newsletter: null, recipes: [], recipesLoaded: false,
   openProject: null, editProject: null, focusPickOpen: null, openProjectMenu: null,
+  // Projects view (2026-11-19 audit): daily|planning mode (always opens Daily, never
+  // persisted); editBlocker = the project whose "Blocking" line is being edited.
+  projectMode: 'daily', editBlocker: null,
   libSomedayOpen: false, libNewsOpen: false, libSearch: '', editRl: null,
   openRecipe: null, kitchenSearch: '',
   // Drop + Opportunities (2026-10-16): the opportunities ledger + the Garden list
@@ -2052,6 +2186,18 @@ function finishBlock(outcome) {
 }
 function nmAdd(pid) {
   var inp = document.querySelector('.rm-nm-in[data-pid="' + cssEsc(pid) + '"]');
+  var text = inp ? inp.value.trim() : '';
+  if (!text) return;
+  apiJson('/api/capture', { method: 'POST', body: { text: text, project_id: pid, lane: 'dont_drop', list: 'thisweek' } })
+    .then(function (res) {
+      if (res && (res.ok || res.status === 201)) { showToast('Added to this week', null); fetchAll(); }
+      else showToast('Could not add', null);
+    }).catch(function () { showToast('Could not add', null); });
+}
+// The daily dashboard's "No next move set" add — the same existing task-add path as
+// the research card (an undated This-Week task carrying its project_id).
+function pdNmAdd(pid) {
+  var inp = document.querySelector('.pd-nm-in[data-pid="' + cssEsc(pid) + '"]');
   var text = inp ? inp.value.trim() : '';
   if (!text) return;
   apiJson('/api/capture', { method: 'POST', body: { text: text, project_id: pid, lane: 'dont_drop', list: 'thisweek' } })
@@ -2853,7 +2999,141 @@ function projectOpenTaskRows(pid) {
 
 function _mostQuietFirst(a, b) { return (b.days_since_movement || 0) - (a.days_since_movement || 0); }
 
+// The Projects view opens in DAILY mode (next move / blocking / where I left off +
+// a way back in), with PLANNING mode (stage, venue, focus, outcomes) one tap away.
+// The mode lives in state only (never persisted), so a page load always opens Daily.
 function projectsHtml() {
+  var mode = (state.projectMode === 'planning') ? 'planning' : 'daily';
+  var h = '<h1>Projects</h1>';
+  h += '<div class="pmode" role="tablist" aria-label="Projects view mode">' +
+    '<button class="pmode-btn' + (mode === 'daily' ? ' on' : '') + '" data-pact="projmode" data-mode="daily" role="tab" aria-selected="' + (mode === 'daily') + '">Daily</button>' +
+    '<button class="pmode-btn' + (mode === 'planning' ? ' on' : '') + '" data-pact="projmode" data-mode="planning" role="tab" aria-selected="' + (mode === 'planning') + '">Planning</button>' +
+    '</div>';
+  h += (mode === 'planning') ? projectsPlanningHtml() : projectsDailyHtml();
+  return h;
+}
+
+// ── Daily mode: the four calm groups, each a daily card ──
+function projectsDailyHtml() {
+  var today = todayISO();
+  var all = lensProjects();
+  var plan = state.semesterPlan || null;
+  var groups = projectDashboardGroups(all, plan, today);
+  var h = '<p class="sub">Daily: per project, the next move and what\'s blocking it. Stage and planning are one tap away.</p>';
+  // 1. Alive
+  h += '<p class="h2">Alive</p>';
+  h += groups.alive.length ? groups.alive.map(function (p) { return projectDailyCardHtml(p, today, false); }).join('')
+    : '<div class="empty">No live project yet. Pick one or two in Planning.</div>';
+  var ideas = (plan && Array.isArray(plan.ideas)) ? plan.ideas.filter(function (i) { return i && String(i).trim(); }) : [];
+  if (ideas.length) {
+    h += '<div class="pd-ideas"><p class="pd-ideas-h">Ideas, not yet projects</p>' +
+      ideas.map(function (i) { return '<p class="pd-idea">' + escapeHtml(i) + '</p>'; }).join('') + '</div>';
+  }
+  // 2. Finish and send
+  if (groups.finishSend.length) {
+    h += '<p class="h2">Finish and send</p>';
+    h += groups.finishSend.map(function (p) { return projectDailyCardHtml(p, today, false); }).join('');
+  }
+  // 3. Teaching and admin
+  if (groups.teaching.length) {
+    h += '<p class="h2">Teaching and admin</p>';
+    h += groups.teaching.map(function (p) { return projectDailyCardHtml(p, today, true); }).join('');
+  }
+  // 4. Parked (collapsed by default)
+  if (groups.parked.length) {
+    var pkClosed = ('pd-parked' in state.closedGroups) ? state.closedGroups['pd-parked'] : true;
+    h += '<div class="group' + (pkClosed ? ' closed' : '') + '" data-group="pd-parked">' +
+      '<button class="g-head"><svg class="tri"><use href="#i-tri"/></svg><span class="dot" style="background:var(--gray)"></span>Parked <span class="g-count">' + groups.parked.length + '</span></button>' +
+      '<div class="g-body">' + groups.parked.map(function (p) { return projectDailyCardHtml(p, today, true); }).join('') + '</div></div>';
+  }
+  h += '<div class="foot">Projects · daily mode. Switch to Planning for stage, venue and focus.</div>';
+  return h;
+}
+
+// "3 days ago" / "yesterday" / "today" (LOCAL parts, never toISOString).
+function relAge(dateStr, today) {
+  var dd = dayDelta(String(dateStr || '').slice(0, 10), today);
+  if (dd == null) return '';
+  if (dd === 0) return 'today';
+  if (dd === -1) return 'yesterday';
+  return (-dd) + ' days ago';
+}
+// The outcome to SHOW on a daily card: the nearest not-yet-passed, else the latest
+// past one (outs is already soonest-first with undated last).
+function _repOutcome(outs, today) {
+  var future = outs.filter(function (o) { return o.by && dayDelta(o.by, today) != null && dayDelta(o.by, today) >= 0; });
+  if (future.length) return future[0];
+  var dated = outs.filter(function (o) { return o.by; });
+  if (dated.length) return dated[dated.length - 1];
+  return outs[0] || null;
+}
+
+function blockerLineHtml(p) {
+  var editing = state.editBlocker === p.id;
+  var blk = (p.blocker || '').trim();
+  var h = '<div class="pd-line"><span class="pd-k">Blocking</span> ';
+  if (editing) {
+    h += '<span class="pd-edit"><input class="pd-blk-in" value="' + escapeHtml(p.blocker || '') + '" placeholder="what\'s blocking it…" aria-label="What is blocking this project"><button data-pact="saveblocker">Save</button></span>';
+  } else if (blk) {
+    h += '<button class="pd-val" data-pact="editblocker">' + escapeHtml(blk) + ' <span class="pc-ed">✎</span></button>';
+  } else {
+    h += '<button class="pd-none-edit" data-pact="editblocker">nothing noted</button>';
+  }
+  return h + '</div>';
+}
+
+function leftOffLineHtml(p, today) {
+  var editing = state.editProject === p.id;
+  var note = (p.state_note || '').trim();
+  var age = p.state_updated ? relAge(p.state_updated, today) : '';
+  var h = '<div class="pd-line"><span class="pd-k">Where I left off</span> ';
+  if (editing) {
+    h += '<span class="pd-edit"><input class="pc-note-in" value="' + escapeHtml(p.state_note || '') + '" placeholder="where it stands…" aria-label="Where you left off"><button data-pact="savenote">Save</button></span>';
+  } else if (note) {
+    h += '<button class="pd-val" data-pact="editnote">' + escapeHtml(note) +
+      (age ? ' <span class="pd-age">· ' + escapeHtml(age) + '</span>' : '') + ' <span class="pc-ed">✎</span></button>';
+  } else {
+    h += '<button class="pd-none-edit" data-pact="editnote">nothing written yet</button>';
+  }
+  return h + '</div>';
+}
+
+// The daily card: Next move / Blocking / Where I left off, then one quiet way-in.
+function projectDailyCardHtml(p, today, compact) {
+  var h = '<div class="pdcard' + (compact ? ' compact' : '') + (p.focus ? ' isfocus' : '') + '" data-proj="' + escapeHtml(p.id) + '">';
+  var dotColor = p.focus ? 'var(--green)' : (p.kind === 'area' ? 'var(--gray)' : 'var(--blue)');
+  h += '<div class="pd-head"><span class="dot" style="background:' + dotColor + '"></span>' +
+    '<span class="pd-title">' + escapeHtml(p.title || 'Project') + '</span>';
+  if (p.domain) h += '<span class="tag">' + escapeHtml(p.domain === 'life' ? 'Life' : 'Work') + '</span>';
+  h += '</div>';
+  // Finish-and-send runway: the nearest outcome, calm (no red even when past).
+  var outs = outcomesFor(p.id);
+  if (outs.length) {
+    var rep = _repOutcome(outs, today);
+    if (rep) h += '<div class="pd-runway">' + escapeHtml(rep.title || '') +
+      (rep.by ? '<span class="pd-when"> · by ' + escapeHtml(monthDay(rep.by)) + '</span>' : '') + '</div>';
+  }
+  // Next move — render the task AS a row so clicking it expands exactly like a task.
+  var nm = projectNextMove(state.items, p.id, today);
+  h += '<div class="pd-line"><span class="pd-k">Next move</span>';
+  if (nm) {
+    var idx = _linkIndex(state.items, state.deadlines);
+    h += '</div>' + rowHtml(normTaskRow(nm, idx.byTask[nm.id], today), {});
+  } else {
+    h += ' <span class="pd-none">No next move set</span>' +
+      '<span class="pd-nm-form"><input class="pd-nm-in" data-pid="' + escapeHtml(p.id) +
+      '" placeholder="name the next move…" aria-label="Add the next move"><button data-pact="pdnmadd" data-pid="' + escapeHtml(p.id) + '">Add</button></span></div>';
+  }
+  h += blockerLineHtml(p);
+  h += leftOffLineHtml(p, today);
+  var sug = restartSuggestion(p, today);
+  if (sug) h += '<div class="pd-wayin">' + escapeHtml(sug) + '</div>';
+  h += '</div>';
+  return h;
+}
+
+// ── Planning mode: the existing stage/target/focus layout, unchanged ──
+function projectsPlanningHtml() {
   var today = todayISO();
   var all = lensProjects();
   var groups = projectGroups(all);
@@ -2861,8 +3141,7 @@ function projectsHtml() {
     .slice().sort(_mostQuietFirst);
   var focus = activeForPicker.filter(function (p) { return p.focus; });
 
-  var h = '<h1>Projects</h1>';
-  h += '<p class="sub">Research is #1. Projects have an outcome; areas (teaching, service, home) are ongoing and never warn.</p>';
+  var h = '<p class="sub">Research is #1. Projects have an outcome; areas (teaching, service, home) are ongoing and never warn.</p>';
   // (a) This week's focus
   h += focusPanelHtml(activeForPicker, focus, today);
   // (b) Research — two standing priorities + Active / Incubating / Completed
@@ -2964,6 +3243,11 @@ function projectCardHtml(p, opt) {
   h += '</div>';
   // Goal (research.html's goal line) — the outcome, below the title.
   if (p.goal) h += '<div class="pc-goal">' + escapeHtml(p.goal) + '</div>';
+  // Semester outcome(s) with dates (planning mode), if the plan names any.
+  var pouts = outcomesFor(p.id);
+  if (pouts.length) {
+    h += '<div class="pc-outcomes">' + pouts.map(function (o) { return outcomeLineHtml(o, todayISO()); }).join('') + '</div>';
+  }
   if (editing) {
     h += '<div class="ns-edit"><input class="pc-note-in" placeholder="Your angle / next move…" value="' + escapeHtml(p.state_note || '') + '"><button data-pact="savenote">Save</button></div>';
   } else if (p.state_note) {
@@ -3019,12 +3303,23 @@ function handleProjectAction(act, pid) {
   if (act === 'menu') { state.openProjectMenu = (state.openProjectMenu === pid) ? null : pid; render(); return; }
   state.openProjectMenu = null;   // any real action closes the overflow menu
   if (act === 'tasks') { state.openProject = (state.openProject === pid) ? null : pid; render(); return; }
-  if (act === 'editnote') { state.editProject = (state.editProject === pid) ? null : pid; render(); return; }
+  if (act === 'editnote') { state.editBlocker = null; state.editProject = (state.editProject === pid) ? null : pid; render(); return; }
   if (act === 'savenote') {
-    var inp = document.querySelector('.pcard[data-proj="' + cssEsc(pid) + '"] .pc-note-in');
+    // The note input lives in either a .pcard (planning) or a .pdcard (daily) —
+    // both carry data-proj, so match on that.
+    var inp = document.querySelector('[data-proj="' + cssEsc(pid) + '"] .pc-note-in');
     var note = inp ? inp.value.trim() : '';
     state.editProject = null;
     api('/api/projects/state', { method: 'POST', body: { id: pid, note: note } }).then(fetchAll);
+    return;
+  }
+  // Blocking line (daily dashboard): click to edit, Enter/Save commits, Esc cancels.
+  if (act === 'editblocker') { state.editProject = null; state.editBlocker = (state.editBlocker === pid) ? null : pid; render(); return; }
+  if (act === 'saveblocker') {
+    var binp = document.querySelector('[data-proj="' + cssEsc(pid) + '"] .pd-blk-in');
+    var bval = binp ? binp.value.trim() : '';
+    state.editBlocker = null;
+    api('/api/projects/update', { method: 'POST', body: { id: pid, fields: { blocker: bval } } }).then(fetchAll);
     return;
   }
   if (act === 'keepactive') { api('/api/projects/state', { method: 'POST', body: { id: pid, note: p.state_note || '' } }).then(fetchAll); return; }
@@ -3258,6 +3553,8 @@ function handlePageAction(act, el) {
   if (act === 'memotoggle') { state.memoOpen = !state.memoOpen; render(); return true; }
   if (act === 'admintoggle') { state.adminOpen = !state.adminOpen; render(); return true; }
   if (act === 'nmadd') { nmAdd(el.getAttribute('data-pid')); return true; }
+  if (act === 'pdnmadd') { pdNmAdd(el.getAttribute('data-pid')); return true; }
+  if (act === 'projmode') { state.projectMode = (el.getAttribute('data-mode') === 'planning') ? 'planning' : 'daily'; state.editBlocker = null; state.editProject = null; render(); return true; }
   if (act === 'blockopen') { openBlock(el.getAttribute('data-pid')); return true; }
   if (act === 'blockstart') { startBlock(el.getAttribute('data-pid')); return true; }
   if (act === 'blockdone') { finishBlock('done'); return true; }
@@ -3759,6 +4056,15 @@ document.addEventListener('keydown', function (e) {
   if (e.target && e.target.classList && e.target.classList.contains('rm-nm-in') && e.key === 'Enter') {
     e.preventDefault(); nmAdd(e.target.getAttribute('data-pid')); return;
   }
+  // Enter in the daily-card "next move" input = add it to this week.
+  if (e.target && e.target.classList && e.target.classList.contains('pd-nm-in') && e.key === 'Enter') {
+    e.preventDefault(); pdNmAdd(e.target.getAttribute('data-pid')); return;
+  }
+  // Blocking input: Enter saves, Esc cancels (the daily dashboard).
+  if (e.target && e.target.classList && e.target.classList.contains('pd-blk-in')) {
+    if (e.key === 'Enter') { e.preventDefault(); var pbc = e.target.closest('[data-proj]'); if (pbc) handleProjectAction('saveblocker', pbc.getAttribute('data-proj')); return; }
+    if (e.key === 'Escape') { e.preventDefault(); state.editBlocker = null; render(); return; }
+  }
   // Enter in the block setup task/minutes input = Start.
   if (e.target && (e.target.id === 'block-task' || e.target.id === 'block-min') && e.key === 'Enter') {
     e.preventDefault();
@@ -3767,9 +4073,11 @@ document.addEventListener('keydown', function (e) {
   }
   // Enter in the Add-project input
   if (e.target && e.target.id === 'proj-add-in' && e.key === 'Enter') { e.preventDefault(); addProject(); return; }
-  // Enter in a project state-note input = save
-  if (e.target && e.target.classList && e.target.classList.contains('pc-note-in') && e.key === 'Enter') {
-    e.preventDefault(); var pcc = e.target.closest('.pcard'); if (pcc) handleProjectAction('savenote', pcc.getAttribute('data-proj')); return;
+  // Project state-note input (planning .pcard OR daily .pdcard, both data-proj):
+  // Enter saves, Esc cancels.
+  if (e.target && e.target.classList && e.target.classList.contains('pc-note-in')) {
+    if (e.key === 'Enter') { e.preventDefault(); var pcc = e.target.closest('[data-proj]'); if (pcc) handleProjectAction('savenote', pcc.getAttribute('data-proj')); return; }
+    if (e.key === 'Escape') { e.preventDefault(); state.editProject = null; render(); return; }
   }
   // Enter in next-step input = save
   if (e.target && e.target.classList && e.target.classList.contains('ns-in') && e.key === 'Enter') {
