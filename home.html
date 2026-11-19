@@ -624,6 +624,10 @@
   .t2-wd.now { border-color: var(--t-accent); }
   .t2-weeksum { font-size: 13px; color: var(--text-2); margin: 8px 0 0; }
   .t2-ideas { font-size: 13px; color: var(--text-2); margin: 6px 0 0; }
+  /* Captured today (very bottom of Today) — quiet strip, phone-safe */
+  .ct-empty { font-size: 14px; color: var(--text-3); margin: 2px 0; }
+  .ct-more { font-size: 13px; color: var(--text-3); margin: 8px 0 0; }
+  .ct-row .t2-m { color: var(--text-3); }
   /* 2. Work today */
   .t2-one { background: var(--t-accent-soft); border-radius: 8px; padding: 12px 14px; font-size: 16px; margin: 0 0 14px; }
   .t2-one b { color: var(--t-accent); }
@@ -1689,6 +1693,59 @@ function whiteboardGroups(projects, plan, today) {
     parkedCount: g.parked.length
   };
 }
+
+// ── "Captured today" strip (the capture→confirmation→visible-use loop) ──
+// John stopped capturing because captures were never visibly USED. This strip
+// shows everything he captured TODAY, from any path, so a voice/typed/link
+// capture lands somewhere he can SEE within minutes.
+var CAPTURED_CAP = 8;              // newest 8, then "+N more"
+var CAPTURED_DEST = {
+  inbox: 'Inbox', thisweek: 'This week', waiting: 'Waiting',
+  someday: 'Someday', done: 'Done'
+};
+// Local YYYY-MM-DD for a stored (UTC) ISO timestamp — read from LOCAL calendar
+// parts so an evening capture counts as TODAY at the viewer's midnight, never
+// toISOString().slice(0,10) (which rolls a post-8pm ET capture onto tomorrow).
+function localYMD(iso) {
+  if (!iso) return '';
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+    '-' + String(d.getDate()).padStart(2, '0');
+}
+// The one-word provenance shown on a captured row (email is excluded upstream).
+function capturedSource(t) {
+  if (t.source === 'voice') return 'voice';
+  if (t.url) return 'link';
+  return 'typed';
+}
+function capturedDest(t) { return CAPTURED_DEST[t.list] || 'Inbox'; }
+// A captured-today row: the full task-row shape (so the page opens it the usual
+// way) plus the strip's provenance/destination.
+function normCapturedRow(t, today) {
+  var r = normTaskRow(t, null, today);
+  r.capturedSource = capturedSource(t);
+  r.capturedDest = capturedDest(t);
+  return r;
+}
+// Membership: items whose `created` LOCAL-date is today, excluding email-sourced
+// tasks (not a capture the user made) and tab-sweep link collections (they live
+// in Sweeps). Newest first, capped at CAPTURED_CAP with `more` = the overflow
+// count. Pure; works identically local + hosted (both read data.json items).
+function capturedToday(items, today) {
+  items = items || [];
+  var out = [];
+  for (var i = 0; i < items.length; i++) {
+    var t = items[i];
+    if (!t || !t.created) continue;
+    if (t.list === 'tabs') continue;
+    if (t.source === 'email') continue;
+    if (localYMD(t.created) !== today) continue;
+    out.push(normCapturedRow(t, today));
+  }
+  out.sort(function (a, b) { return (b.createdMs || 0) - (a.createdMs || 0); });
+  return { rows: out.slice(0, CAPTURED_CAP), more: Math.max(0, out.length - CAPTURED_CAP) };
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -2095,6 +2152,48 @@ function homeHtml() {
   try { h += briefingsHtml(); } catch (e) {}
   try { h += todayDoorsHtml(); } catch (e) {}
   try { h += systemChangesCollapsedHtml(); } catch (e) {}
+  try { h += capturedTodayHtml(); } catch (e) { reportUiError('captured: ' + e.stack); }
+  return h;
+}
+
+// ── Captured today (very bottom of Today) — the capture→visible-use loop ──
+// One quiet line per thing captured today (voice / typed / link), in the approved
+// v2 style. Tapping a row opens it the usual way (reuses the .row/.t/.detail
+// hooks). Empty → one muted teaching line (shown by default: the point is the
+// habit). Phone-safe: rows stack, no horizontal scroll.
+function capturedTodayHtml() {
+  var ct = capturedToday(state.items || [], todayISO());
+  var h = '<section class="t2-sec ct-sec" aria-label="Captured today">';
+  h += '<h2 class="t2-h2">Captured today</h2>';
+  if (!ct.rows.length) {
+    h += '<p class="ct-empty">Nothing captured today. Say “Hey Siri, Triage”.</p>';
+    return h + '</section>';
+  }
+  h += '<div class="t2-wlist">';
+  h += ct.rows.map(function (r) { return capturedRowHtml(r); }).join('');
+  h += '</div>';
+  if (ct.more) h += '<p class="ct-more">+' + ct.more + ' more</p>';
+  return h + '</section>';
+}
+// Local HH:MM for a captured row's epoch-ms created time (display only).
+function captureClock(ms) {
+  if (!ms) return '';
+  var d = new Date(ms);
+  if (isNaN(d.getTime())) return '';
+  var hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+  var ap = hh < 12 ? 'am' : 'pm';
+  hh = hh % 12; if (hh === 0) hh = 12;
+  return hh + ':' + mm + ' ' + ap;
+}
+function capturedRowHtml(r) {
+  var open = (state.openRow === r.id) ? ' open' : '';
+  var meta = [escapeHtml(r.capturedSource), escapeHtml(captureClock(r.createdMs)),
+  escapeHtml('→ ' + r.capturedDest)].filter(Boolean).join(' · ');
+  var h = '<div class="row ct-row' + open + '" data-id="' + escapeHtml(r.id) + '" data-kind="' + r.kind + '">';
+  h += '<button class="check" aria-label="' + escapeHtml('Mark done: ' + displayText(r)) + '"></button>';
+  h += '<div class="rmid"><div class="t" tabindex="0" role="button">' + escapeHtml(displayText(r)) + '</div>';
+  h += '<span class="t2-m">' + meta + '</span></div>';
+  h += '<div class="detail">' + detailHtml(r, {}) + '</div></div>';
   return h;
 }
 

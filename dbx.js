@@ -610,6 +610,11 @@
         list, created: nowIso(),
         domain: ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(body.text),
         ...(body.unsorted ? { unsorted: true } : {}) };
+      // Pass-through parity with records.make_task: carry `source` (the voice/
+      // email provenance Home's "Captured today" strip reads) and `capture_src`
+      // (the dedupe key checked above) when present. Absent → omitted, not null.
+      if ((body.source || '').trim()) rec.source = body.source.trim();
+      if ((body.capture_src || '').trim()) rec.capture_src = body.capture_src.trim();
       // Lane stamp (Phase 1) — a task gets the 4-rung ladder; a tab-sweep item
       // never does (mirror records.make_task). Trust a valid explicit lane, else
       // the instant heuristic.
