@@ -360,6 +360,41 @@
     return { ...o, days_to_decide: dtd, decide_now: decideNow };
   }
 
+  // ── pending captures (mirror server._pending_captures) ──────────
+  // The capture/ files not yet filed by a router → Today's "waiting to be filed"
+  // rows. Ports only what the strip needs from capture-router._parse_capture: the
+  // voice rule (whole body is the note), the pipe `type|url|note` note, and the
+  // drop/JSON `text` field. A class-note text (students) is NEVER returned.
+  const CAPTURE_TYPES = ['task', 'garden', 'vault', 'spark', 'recipe', 'unsorted',
+    'deadline', 'state', 'read', 'done', 'drop'];
+  const CLASS_NOTE_RE = /^\s*(?:[A-Za-z]{2,4}\s*)?\d{3}\s*:/;
+  function captureIsoFromName(name) {
+    const head = name.split('_', 1)[0];
+    if (head.indexOf('T') < 0) return null;
+    const i = head.indexOf('T'), d = head.slice(0, i), t = head.slice(i + 1).replace(/-/g, ':');
+    const dt = new Date(d + 'T' + t);
+    return isNaN(dt.getTime()) ? null : d + 'T' + t;   // local ISO, no zone
+  }
+  function pendingTextSource(name, raw) {
+    raw = (raw || '').trim();
+    const stem = name.replace(/\.[^.]*$/, '');
+    const cand = stem.indexOf('_') >= 0 ? stem.slice(stem.lastIndexOf('_') + 1).toLowerCase() : '';
+    const low = name.toLowerCase();
+    if (cand === 'voice') return [raw, 'voice'];
+    if (cand === 'drop' || low.endsWith('.json') || low.endsWith('.json.txt')) {
+      try { const o = JSON.parse(raw); if (o && typeof o === 'object' && !Array.isArray(o)) return [String(o.text || o.title || '').trim(), o.url ? 'link' : 'typed']; } catch { /* raw */ }
+      return [raw, 'typed'];
+    }
+    const parts = raw.split('|').map(p => p.trim());
+    const bt = parts[0] ? parts[0].toLowerCase() : null;
+    if (CAPTURE_TYPES.includes(bt)) {
+      const url = parts[1] || '', note = parts[2] || '';
+      return [note || url, (url && !note) ? 'link' : 'typed'];
+    }
+    return [raw, 'typed'];
+  }
+  function isClassNote(text) { return !!(text && CLASS_NOTE_RE.test(text)); }
+
   // ── route table ─────────────────────────────────────────────────
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
     '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
@@ -1289,6 +1324,31 @@
     // — recipes (read-mostly on phone) —
     if (path === '/api/recipes/cooked') { await updateJson('recipes/recipes.json', a => { const r = a.find(x => x.id === body.id); if (r) { r.times_cooked = (r.times_cooked || 0) + 1; r.last_cooked = nowIso(); } return a; }, []); return resp({ ok: true }); }
     if (path === '/api/recipes/enrich' || path === '/api/recipes/bulk-update') return resp({ ok: true });
+
+    // — email-stuck signal: the Mac decides this (maildb/pgrep/email-state); the
+    //   hosted page has none of those, so it is always 'unknown' and the Today
+    //   warning never shows hosted (mirror the server's return shape). —
+    if (path === '/api/email-health') return resp({ state: 'unknown', since: null, reason_code: 'unknown', newest_mail_age_min: null, agent_sync_age_min: null, mail_running: null });
+
+    // — pending captures: list the Dropbox capture/ folder (files only, not
+    //   processed/), read the small text files, return "waiting to be filed" rows.
+    //   Reads only; writes nothing. Class-note text is stripped. —
+    if (path === '/api/pending-captures') {
+      const names = (await listDir('capture'))
+        .filter(n => { const l = n.toLowerCase(); return (l.endsWith('.txt') || l.endsWith('.json')) && !n.startsWith('.'); })
+        .sort();
+      const out = [];
+      for (const name of names) {
+        if (out.length >= 20) break;
+        const raw = await download('capture/' + name);
+        if (raw == null) continue;
+        const [text, source] = pendingTextSource(name, raw.slice(0, 20000));
+        const cls = isClassNote(text);
+        out.push({ id: name, text: cls ? '' : text, source: cls ? '' : source, created: captureIsoFromName(name), classNote: cls });
+      }
+      out.sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
+      return resp(out);
+    }
 
     return resp({ error: 'not found' }, 404);
   }

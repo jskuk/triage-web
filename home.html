@@ -1730,9 +1730,10 @@ function normCapturedRow(t, today) {
 }
 // Membership: items whose `created` LOCAL-date is today, excluding email-sourced
 // tasks (not a capture the user made) and tab-sweep link collections (they live
-// in Sweeps). Newest first, capped at CAPTURED_CAP with `more` = the overflow
-// count. Pure; works identically local + hosted (both read data.json items).
-function capturedToday(items, today) {
+// in Sweeps). Newest first. Pure; works identically local + hosted (both read
+// data.json items). `capturedTodayList` is the full (uncapped) set; `capturedToday`
+// caps it at CAPTURED_CAP with `more` = the overflow (its public shape is unchanged).
+function capturedTodayList(items, today) {
   items = items || [];
   var out = [];
   for (var i = 0; i < items.length; i++) {
@@ -1744,7 +1745,67 @@ function capturedToday(items, today) {
     out.push(normCapturedRow(t, today));
   }
   out.sort(function (a, b) { return (b.createdMs || 0) - (a.createdMs || 0); });
+  return out;
+}
+function capturedToday(items, today) {
+  var out = capturedTodayList(items, today);
   return { rows: out.slice(0, CAPTURED_CAP), more: Math.max(0, out.length - CAPTURED_CAP) };
+}
+// A de-dupe key for a capture: normalized text + the minute it was captured, so a
+// pending row disappears the moment the same text shows up as a filed item.
+function captureKey(text, ms) {
+  var t = String(text || '').trim().toLowerCase();
+  return t + '|' + (ms ? Math.floor(ms / 60000) : 0);
+}
+// Pending captures (files still in capture/, not yet filed by a router) merged ON
+// TOP of today's filed captures. `pending` rows arrive already parsed from the
+// server/dbx `/api/pending-captures` read ({id,text,source,created,classNote}) —
+// a class-note's text is already stripped there (students must not reach the
+// hosted page). Pending rows carry `pending:true` + a "waiting to be filed"
+// destination; they are deduped by text+minute against filed items and the whole
+// list is re-capped at CAPTURED_CAP. Pure.
+function mergeCaptured(items, pending, today) {
+  var filed = capturedTodayList(items, today);
+  var filedKeys = {};
+  filed.forEach(function (r) { filedKeys[captureKey(r.text, r.createdMs)] = true; });
+  var pend = [];
+  (pending || []).forEach(function (p) {
+    if (!p) return;
+    if (localYMD(p.created) !== today) return;   // only today's (safeguard)
+    var ms = Date.parse(p.created || '') || 0;
+    var cls = !!p.classNote;
+    if (!cls && filedKeys[captureKey(p.text, ms)]) return;  // already filed
+    pend.push({
+      pending: true, classNote: cls,
+      id: 'pending:' + (p.id || ms),
+      text: cls ? '' : (p.text || ''),
+      capturedSource: cls ? '' : (p.source || 'typed'),
+      capturedDest: 'waiting to be filed',
+      createdMs: ms
+    });
+  });
+  pend.sort(function (a, b) { return (b.createdMs || 0) - (a.createdMs || 0); });
+  var all = pend.concat(filed);
+  return { rows: all.slice(0, CAPTURED_CAP), more: Math.max(0, all.length - CAPTURED_CAP) };
+}
+// The "Email looks stuck" warning line (shown in the amber status pill, LOCAL-only).
+// Empty unless the signal is 'stuck'. Plain words, no em-dashes; the second sentence
+// varies by reason_code. Pure (a self-contained 12-hour clock so it needs no DOM).
+function emailStuckLine(eh, nowMs) {
+  if (!eh || eh.state !== 'stuck') return '';
+  var first = 'Email looks stuck';
+  var age = eh.newest_mail_age_min;
+  if (typeof age === 'number' && age >= 0 && nowMs) {
+    var d = new Date(nowMs - age * 60000);
+    if (!isNaN(d.getTime())) {
+      var hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+      var ap = hh < 12 ? 'AM' : 'PM'; hh = hh % 12; if (hh === 0) hh = 12;
+      first += ': no new mail since ' + hh + ':' + mm + ' ' + ap;
+    }
+  }
+  var second = (eh.reason_code === 'mail_not_running')
+    ? 'Mail is not open.' : 'Try quitting and reopening Mail.';
+  return first + '. ' + second;
 }
 /* <<<END PURE>>> */
 
@@ -1853,7 +1914,10 @@ var state = {
   // localStorage "not today" set changes so render re-reads it.
   semesterPlan: null, today: { date: null, items: [] }, briefings: [],
   block: null, blockPanel: null, memoOpen: false, changesOpen: false,
-  briefingOpen: {}, adminOpen: false, slippedOpen: null, notTodayVer: 0
+  briefingOpen: {}, adminOpen: false, slippedOpen: null, notTodayVer: 0,
+  // pending = capture/ files not yet filed (Today's "waiting to be filed" rows);
+  // emailHealth = the /api/email-health signal (LOCAL; 'unknown' hosted).
+  pending: [], emailHealth: null
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -1958,7 +2022,12 @@ function fetchAll() {
     // The "Today" main page (2026-11-18 audit): the semester plan (goals/outcomes/
     // ideas), today's negotiated portion, and the EA's briefings. All degrade to a
     // shell/empty on 404 so a not-yet-merged server never blanks the page.
-    apiJson('/api/semester-plan'), apiJson('/api/today'), apiJson('/api/briefings')
+    apiJson('/api/semester-plan'), apiJson('/api/today'), apiJson('/api/briefings'),
+    // Pending captures (2026-11-19): capture/ files not yet filed by a router, shown
+    // at the top of "Captured today" as "waiting to be filed". Hosted → dbx.js lists
+    // the Dropbox capture/ folder. Email-stuck signal (LOCAL only; dbx.js returns
+    // 'unknown' hosted so the warning never shows). Both 404/empty cleanly.
+    apiJson('/api/pending-captures'), apiJson('/api/email-health')
   ];
   return Promise.all(gets).then(function (res) {
     var items = res[0];
@@ -1982,6 +2051,8 @@ function fetchAll() {
     state.semesterPlan = (res[12] && res[12].data && typeof res[12].data === 'object' && !Array.isArray(res[12].data)) ? res[12].data : null;
     state.today = (res[13] && res[13].data && typeof res[13].data === 'object' && Array.isArray(res[13].data.items)) ? res[13].data : { date: null, items: [] };
     state.briefings = Array.isArray(res[14] && res[14].data) ? res[14].data : [];
+    state.pending = Array.isArray(res[15] && res[15].data) ? res[15].data : [];
+    state.emailHealth = (res[16] && res[16].data && typeof res[16].data === 'object' && !Array.isArray(res[16].data)) ? res[16].data : null;
     if (state.view === 'kitchen') ensureRecipes();
     render();
   }).catch(function (e) {
@@ -2158,11 +2229,14 @@ function homeHtml() {
 
 // ── Captured today (very bottom of Today) — the capture→visible-use loop ──
 // One quiet line per thing captured today (voice / typed / link), in the approved
-// v2 style. Tapping a row opens it the usual way (reuses the .row/.t/.detail
-// hooks). Empty → one muted teaching line (shown by default: the point is the
-// habit). Phone-safe: rows stack, no horizontal scroll.
+// v2 style. Pending captures (capture/ files not yet filed by a router) ride at the
+// TOP with a "waiting to be filed" chip, so a capture shows within seconds instead
+// of after the 3-15 min router cycle; each vanishes once filed. Filed rows open the
+// usual way (reuse the .row/.t/.detail hooks); a pending row is a quiet non-clickable
+// twin in the same .ct-* style. Empty → one muted teaching line (shown by default:
+// the point is the habit). Phone-safe: rows stack, no horizontal scroll.
 function capturedTodayHtml() {
-  var ct = capturedToday(state.items || [], todayISO());
+  var ct = mergeCaptured(state.items || [], state.pending || [], todayISO());
   var h = '<section class="t2-sec ct-sec" aria-label="Captured today">';
   h += '<h2 class="t2-h2">Captured today</h2>';
   if (!ct.rows.length) {
@@ -2170,10 +2244,23 @@ function capturedTodayHtml() {
     return h + '</section>';
   }
   h += '<div class="t2-wlist">';
-  h += ct.rows.map(function (r) { return capturedRowHtml(r); }).join('');
+  h += ct.rows.map(function (r) { return r.pending ? pendingRowHtml(r) : capturedRowHtml(r); }).join('');
   h += '</div>';
   if (ct.more) h += '<p class="ct-more">+' + ct.more + ' more</p>';
   return h + '</section>';
+}
+// A pending capture row: the same .ct-* visual (a spacer where the done-circle sits,
+// so it is non-interactive — there is no task to complete yet). A class note shows
+// no text (it may name students); everything else shows its captured text.
+function pendingRowHtml(r) {
+  var label = r.classNote ? '1 class note waiting' : (r.text || '(captured)');
+  var meta = [escapeHtml(r.capturedSource), escapeHtml(captureClock(r.createdMs)),
+  escapeHtml('→ ' + r.capturedDest)].filter(Boolean).join(' · ');
+  var h = '<div class="row ct-row">';
+  h += '<span class="check-spacer" aria-hidden="true"></span>';
+  h += '<div class="rmid"><div class="t">' + escapeHtml(label) + '</div>';
+  h += '<span class="t2-m">' + meta + '</span></div></div>';
+  return h;
 }
 // Local HH:MM for a captured row's epoch-ms created time (display only).
 function captureClock(ms) {
@@ -4654,6 +4741,10 @@ function doCapture(kind, text) {
 /* ---- status pill ---- */
 function statusIssues() {
   var out = [];
+  // Email looks stuck (2026-11-19) — LOCAL only; reuses the amber status-pill
+  // warning style near the top of Today. dbx.js returns 'unknown' hosted, so this
+  // never fires on the phone. Listed first so it leads when nothing else is amber.
+  if (LOCAL) { var es = emailStuckLine(state.emailHealth, Date.now()); if (es) out.push(es); }
   var h = state.health || {};
   var ov = h.overdue || {};
   Object.keys(ov).forEach(function (a) {
