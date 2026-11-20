@@ -686,6 +686,61 @@
     .t2-card-h { font-size: 18px; }
     .t2-one { font-size: 15px; }
   }
+
+  /* ---------- Class notes (FERPA, LOCAL only; mockups/class-notes.html) ---------- */
+  /* Reuses the Today cool-blue accent (--t-*) + the shared palette tokens; only the
+     cn-* layout is new. No red/orange; light theme (like the rest of home.html). */
+  .cn-wrap { display: grid; gap: 18px; max-width: 760px; }
+  .cn-head h1 { font-size: 26px; line-height: 1.2; margin: 0; }
+  .cn-day { color: var(--text-2); margin: 4px 0 0; font-size: 14px; }
+  .cn-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cn-tab { font-size: 14px; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--page); color: var(--text); }
+  .cn-tab.on { background: var(--t-mark); border-color: var(--t-mark); color: #fff; font-weight: 600; }
+  .cn-tab span { color: var(--text-3); font-size: 12px; margin-left: 4px; }
+  .cn-tab.on span { color: #fff; opacity: .8; }
+  .cn-card { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; }
+  .cn-card.main { border-color: var(--t-accent); }
+  .cn-tag { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--t-accent); font-weight: 600; }
+  .cn-ta { font: inherit; width: 100%; box-sizing: border-box; min-height: 84px; border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--callout); color: var(--text); resize: vertical; }
+  .cn-ta:disabled { opacity: .55; }
+  .cn-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+  .cn-hint { font-size: 13px; color: var(--text-2); }
+  .cn-btn { font: inherit; font-weight: 600; color: #fff; background: var(--t-mark); border-radius: 8px; padding: 9px 14px; }
+  .cn-btn.ghost { background: transparent; color: var(--t-accent); border: 1px solid var(--line); font-weight: 500; }
+  .cn-btn.quiet { background: transparent; color: var(--text-2); border: 1px solid var(--line); font-weight: 500; padding: 7px 12px; }
+  .cn-sel { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--page); color: var(--text); }
+  .cn-in { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--callout); color: var(--text); box-sizing: border-box; }
+  .cn-h2 { font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-2); margin: 0 0 8px; font-weight: 600; }
+  .cn-daygrp { display: grid; gap: 8px; }
+  .cn-dh { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--text-2); border-bottom: 1px solid var(--line); padding-bottom: 4px; font-variant-numeric: tabular-nums; }
+  .cn-dh b { color: var(--text); font-weight: 600; }
+  .cn-n { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+  .cn-n.cn-edit { grid-template-columns: 1fr; }
+  .cn-n p { margin: 0; }
+  .cn-right { display: grid; gap: 6px; justify-items: end; }
+  .cn-chip { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--t-accent-soft); color: var(--t-accent); font-weight: 600; white-space: nowrap; }
+  .cn-meta { display: block; font-size: 12px; color: var(--text-2); margin-top: 3px; }
+  .cn-meta a { color: var(--t-accent); }
+  .cn-acts { display: flex; gap: 6px; }
+  .cn-acts button { font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; }
+  .cn-acts button.danger { color: var(--red); }
+  .cn-fold { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+  .cn-edit { display: grid; gap: 8px; }
+  .cn-edit .cn-row { justify-content: flex-start; }
+  .cn-email { background: var(--callout); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 12px; }
+  .cn-email-row { display: grid; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .cn-email-row:last-child { border-bottom: 0; padding-bottom: 0; }
+  .cn-email-sub { font-weight: 600; }
+  .cn-email-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .cn-email-form .cn-in { flex: 1 1 220px; }
+  .cn-note { font-size: 13px; }       /* quiet "Keep for grading" form on Today rows */
+  .cn-note-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .cn-note-form .cn-in { flex: 1 1 200px; }
+  .cn-empty { color: var(--text-2); }
+  @media (max-width: 720px) {
+    .cn-head h1 { font-size: 22px; }
+    .cn-email-form .cn-in, .cn-note-form .cn-in { flex-basis: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -699,6 +754,7 @@
     <symbol id="i-areas" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
     <symbol id="i-lib" viewBox="0 0 24 24"><path d="M5 4h4v16H5zM10 4h4v16h-4zM15.5 4.5l3.7 1 -3.9 14.5 -3.7-1"/></symbol>
     <symbol id="i-kitchen" viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M16 21V3c2.5 1.5 3 5 3 8h-3"/></symbol>
+    <symbol id="i-notes" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14a0 0 0 0 1 0 0H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
     <symbol id="i-tri" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -712,6 +768,7 @@
     <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
     <a class="nav" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
     <a class="nav" data-view="kitchen" href="#kitchen"><svg><use href="#i-kitchen"/></svg>Kitchen</a>
+    <a class="nav cn-nav" data-view="class-notes" href="#class-notes"><svg><use href="#i-notes"/></svg>Class notes</a>
 
     <div id="side-focus-wrap" style="display:none">
       <div class="side-h">Focus this week</div>
@@ -747,6 +804,7 @@
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
   <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
   <a class="nav-tab" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
+  <a class="nav-tab cn-nav" data-view="class-notes" href="#class-notes"><svg><use href="#i-notes"/></svg>Notes</a>
 </nav>
 
 <div class="toast" id="toast"><span id="toast-label"></span><button id="toast-undo">Undo</button></div>
@@ -1807,6 +1865,56 @@ function emailStuckLine(eh, nowMs) {
     ? 'Mail is not open.' : 'Try quitting and reopening Mail.';
   return first + '. ' + second;
 }
+
+// ── Class notes (FERPA, LOCAL only, 2026-11-19) — pure grouping/counts/payload ──
+// How many day-groups show before the rest fold behind "N older notes" (the mockup
+// shows the three most recent days, then folds).
+var CLASS_FOLD_DAYS = 3;
+// Group notes by the LOCAL day they are ABOUT (`date`), newest day first, newest
+// note first within a day (by `created`). Never throws.
+function classDayGroups(notes) {
+  var by = {};
+  (notes || []).forEach(function (n) {
+    if (!n || !n.id) return;
+    var d = String(n.date || '').slice(0, 10);
+    (by[d] = by[d] || []).push(n);
+  });
+  return Object.keys(by).sort().reverse().map(function (d) {
+    var items = by[d].slice().sort(function (a, b) {
+      return String(b.created || '').localeCompare(String(a.created || ''));
+    });
+    return { date: d, items: items };
+  });
+}
+// Split day-groups into the head (first n days shown) and the folded older count.
+function classFold(groups, n) {
+  n = (typeof n === 'number') ? n : CLASS_FOLD_DAYS;
+  var head = (groups || []).slice(0, n), rest = (groups || []).slice(n);
+  var olderCount = rest.reduce(function (s, g) { return s + g.items.length; }, 0);
+  return { head: head, olderGroups: rest, olderCount: olderCount };
+}
+// Per-course tab counts over ALL notes, in registry order, then any course present
+// in the notes but not configured (e.g. a legacy literal key). Plus the grand total
+// for the "All" tab. counts are over the FULL list (never the filtered view).
+function classTabCounts(notes, courses) {
+  var counts = {};
+  (notes || []).forEach(function (n) { if (n) { var c = n.course || ''; counts[c] = (counts[c] || 0) + 1; } });
+  var tabs = (courses || []).map(function (c) { return { key: c.key, label: c.label || c.key, count: counts[c.key] || 0 }; });
+  Object.keys(counts).forEach(function (k) {
+    if (k && !tabs.some(function (t) { return t.key === k; })) tabs.push({ key: k, label: k, count: counts[k] });
+  });
+  return { tabs: tabs, total: (notes || []).length };
+}
+// The POST body for saving a class note from an email (the Kept-for-grading strip
+// or a Today email row): source "email", the chosen course + John's own text, and
+// the Mail deep link. NEVER the subject or body. email_id/date are optional.
+function keepForGradingPayload(course, text, emailRef, emailId, date) {
+  var body = { course: String(course || '').trim(), text: String(text || '').trim(), source: 'email' };
+  if (emailRef) body.email_ref = emailRef;
+  if (emailId) body.email_id = String(emailId);
+  if (date) body.date = date;
+  return body;
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1917,7 +2025,14 @@ var state = {
   briefingOpen: {}, adminOpen: false, slippedOpen: null, notTodayVer: 0,
   // pending = capture/ files not yet filed (Today's "waiting to be filed" rows);
   // emailHealth = the /api/email-health signal (LOCAL; 'unknown' hosted).
-  pending: [], emailHealth: null
+  pending: [], emailHealth: null,
+  // Class notes (FERPA, LOCAL only, 2026-11-19). classNotes = the list response
+  // ({notes,counts,courses,met_today}); classFromEmail = the kept-for-grading email
+  // strip; classTab = the selected course key or 'all'; classOlderOpen = the older-
+  // days fold; classEditId = the note being inline-edited; keepFormId = the Today
+  // email row with the "Keep for grading" inline form open.
+  classNotes: null, classFromEmail: [], classNotesLoaded: false,
+  classTab: null, classOlderOpen: false, classEditId: null, keepFormId: null
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -2096,9 +2211,10 @@ function render() {
       : state.view === 'projects' ? projectsHtml()
       : state.view === 'library' ? libraryHtml()
       : state.view === 'kitchen' ? kitchenHtml()
+      : state.view === 'class-notes' ? classNotesHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen' }[state.view] || 'Today';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes' }[state.view] || 'Today';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -4482,6 +4598,19 @@ function handlePageAction(act, el) {
   if (act === 'addproj') { addProject(); return true; }
   if (act === 'somedaytoggle') { state.libSomedayOpen = !state.libSomedayOpen; render(); return true; }
   if (act === 'newstoggle') { state.libNewsOpen = !state.libNewsOpen; render(); return true; }
+  // ── Class notes (FERPA, LOCAL only) ──
+  if (act === 'cntab') { state.classTab = el.getAttribute('data-key'); state.classEditId = null; state.classOlderOpen = false; render(); return true; }
+  if (act === 'cnsave') { cnSaveNew(); return true; }
+  if (act === 'cnolder') { state.classOlderOpen = !state.classOlderOpen; render(); return true; }
+  if (act === 'cnedit') { state.classEditId = el.getAttribute('data-cnid'); render(); return true; }
+  if (act === 'cneditcancel') { state.classEditId = null; render(); return true; }
+  if (act === 'cneditsave') { cnEditSave(el.getAttribute('data-cnid')); return true; }
+  if (act === 'cndel') { cnDelete(el.getAttribute('data-cnid')); return true; }
+  if (act === 'cnemailsave') { var ees = el.closest('[data-eid]'); if (ees) cnEmailSave(ees.getAttribute('data-eid')); return true; }
+  if (act === 'cnemaildismiss') { var eed = el.closest('[data-eid]'); if (eed) cnEmailDismiss(eed.getAttribute('data-eid')); return true; }
+  if (act === 'cnkeep') { var kr = el.closest('.row'); var kid = kr && kr.getAttribute('data-id'); state.keepFormId = (state.keepFormId === kid) ? null : kid; render(); return true; }
+  if (act === 'cnkeepcancel') { state.keepFormId = null; render(); return true; }
+  if (act === 'cnkeepsave') { var ks = el.closest('.row'); if (ks) cnKeepSave(ks.getAttribute('data-id')); return true; }
   var oc = el.closest('[data-opp]'); if (oc) { handleOpenCallAction(act, oc.getAttribute('data-opp')); return true; }
   var rl = el.closest('[data-rl]'); if (rl) { handleLibraryAction(act, rl.getAttribute('data-rl')); return true; }
   var rc = el.closest('[data-rec]'); if (rc) { handleRecipeAction(act, rc.getAttribute('data-rec')); return true; }
@@ -4646,7 +4775,272 @@ function detailHtml(r, opt) {
         return '<button class="lanepill' + (r.lane === l ? ' on ' + l : '') + '" data-act="lane" data-lane="' + l + '">' + escapeHtml(LANE_LABEL[l]) + '</button>';
       }).join('') + '</div>';
   }
+  // "Keep for grading" (FERPA, LOCAL only, 2026-11-19) — on Today's email rows, a
+  // quiet secondary action that saves a class note carrying THIS email's Mail link.
+  // It never closes, changes, or hides the task.
+  if (LOCAL && state.view === 'home' && r.source === 'email' && r.kind !== 'deadline') {
+    h += classKeepForGradingHtml(r);
+  }
   return h;
+}
+
+/* ---- class notes (FERPA, LOCAL only, 2026-11-19 — mockups/class-notes.html) ---- */
+// The whole page is LOCAL only: applyHash never routes here hosted, the nav entries
+// are removed hosted, and every api() call below runs only when LOCAL. Student-
+// naming text never reaches an AI, a log, the hosted shell, or git (the store is
+// gitignored). Lazy-loaded once (so Today stays fast) + refreshed after a write.
+function ensureClassNotes(force) {
+  if (!LOCAL) return;
+  if (state.classNotesLoaded && !force) { if (state.view === 'class-notes') render(); return; }
+  Promise.all([apiJson('/api/class-notes'), apiJson('/api/class-notes/from-email')]).then(function (res) {
+    var d = res[0].data;
+    state.classNotes = (d && typeof d === 'object' && Array.isArray(d.notes)) ? d
+      : { notes: [], counts: {}, courses: [], met_today: [] };
+    state.classFromEmail = (res[1].data && Array.isArray(res[1].data.records)) ? res[1].data.records : [];
+    state.classNotesLoaded = true;
+    if (state.view === 'class-notes') render();
+  }).catch(function () { state.classNotesLoaded = true; if (state.view === 'class-notes') render(); });
+}
+
+function classNotesHtml() {
+  if (!LOCAL) return '<div class="cn-empty">Class notes live only on your Mac.</div>';
+  if (!state.classNotesLoaded) return '<div class="empty" style="padding:48px 0">Loading class notes…</div>';
+  var data = state.classNotes || { notes: [], counts: {}, courses: [], met_today: [] };
+  var courses = data.courses || [];
+  var allNotes = (data.notes || []).filter(function (n) { return !optimistic[n.id]; });
+  var tc = classTabCounts(allNotes, courses);
+  var tab = state.classTab || classDefaultCourse() || (tc.tabs[0] && tc.tabs[0].key) || 'all';
+
+  var metLabels = (data.met_today || []).map(function (k) { return classLabelFor(k, courses); });
+  var dayLine = longDate() + ' · ' + (metLabels.length ? (metLabels.join(' and ') + ' met today') : 'No class today');
+
+  var h = '<div class="cn-wrap">';
+  h += '<div class="cn-head"><h1>Class notes</h1><p class="cn-day">' + escapeHtml(dayLine) + '</p></div>';
+
+  // course tabs + All
+  h += '<div class="cn-tabs" role="tablist" aria-label="Course">';
+  tc.tabs.forEach(function (t) {
+    h += '<button class="cn-tab' + (tab === t.key ? ' on' : '') + '" role="tab" aria-selected="' + (tab === t.key) +
+      '" data-pact="cntab" data-key="' + escapeHtml(t.key) + '">' + escapeHtml(t.label) + ' <span>' + t.count + '</span></button>';
+  });
+  h += '<button class="cn-tab' + (tab === 'all' ? ' on' : '') + '" role="tab" aria-selected="' + (tab === 'all') +
+    '" data-pact="cntab" data-key="all">All <span>' + tc.total + '</span></button>';
+  h += '</div>';
+
+  h += classNewNoteHtml(tab, courses);
+  h += classFromEmailHtml(courses);
+
+  var shown = (tab === 'all') ? allNotes : allNotes.filter(function (n) { return (n.course || '') === tab; });
+  h += classNotesListHtml(shown, tab, courses);
+
+  h += '<div class="cn-hint">How it works: one box, one course, today’s date filled in. Notes stay on your Mac and never go to the phone page or to any AI service, because they can name students. Each note can be edited or deleted, with undo.</div>';
+  h += '</div>';
+  return h;
+}
+
+function classDefaultCourse() {
+  var data = state.classNotes || {};
+  var met = (data.met_today || [])[0];
+  if (met) return met;
+  var courses = data.courses || [];
+  return courses.length ? courses[0].key : '';
+}
+function classLabelFor(key, courses) {
+  var c = (courses || []).filter(function (x) { return x.key === key; })[0];
+  return c ? (c.label || c.key) : key;
+}
+function classCoursePicker(courses, selectedKey, cls) {
+  var opts = (courses || []).map(function (c) {
+    return '<option value="' + escapeHtml(c.key) + '"' + (c.key === selectedKey ? ' selected' : '') + '>' + escapeHtml(c.label || c.key) + '</option>';
+  }).join('');
+  return '<select class="cn-sel ' + cls + '" aria-label="Course">' + opts + '</select>';
+}
+
+function classNewNoteHtml(tab, courses) {
+  if (tab === 'all') {
+    return '<div class="cn-card main"><div class="cn-tag">New note</div>' +
+      '<textarea class="cn-ta" disabled aria-label="New note"></textarea>' +
+      '<div class="cn-row"><span class="cn-hint">Pick a course tab above to add a note.</span></div></div>';
+  }
+  var label = classLabelFor(tab, courses);
+  return '<div class="cn-card main"><div class="cn-tag">New note · ' + escapeHtml(label) + ' · today</div>' +
+    '<textarea id="cn-new-text" class="cn-ta" aria-label="New note for ' + escapeHtml(label) + '" placeholder="What happened in class today…"></textarea>' +
+    '<div class="cn-row"><span class="cn-hint">Or say it: "Hey Siri, Triage", then "304: three students missed the review".</span>' +
+    '<button class="cn-btn" data-pact="cnsave">Save note</button></div></div>';
+}
+
+function classFromEmailHtml(courses) {
+  var recs = state.classFromEmail || [];
+  if (!recs.length) return '';
+  var def = classDefaultCourse();
+  var h = '<div class="cn-email"><h2 class="cn-h2">Kept for grading from email (' + recs.length + ')</h2>';
+  recs.forEach(function (r) {
+    var meta = [];
+    if (r.date) meta.push(escapeHtml(classDateLabel(r.date)));
+    if (r.from) meta.push(escapeHtml(r.from));
+    h += '<div class="cn-email-row" data-eid="' + escapeHtml(r.id) + '">';
+    if (meta.length) h += '<div class="cn-meta">' + meta.join(' · ') + '</div>';
+    h += '<div class="cn-email-sub">' + escapeHtml(r.subject || '(no subject)') + '</div>';
+    if (r.email_ref) h += '<div><a class="link" href="' + escapeHtml(safeUrl(r.email_ref)) + '">✉ Open in Mail</a></div>';
+    h += '<div class="cn-email-form">' +
+      classCoursePicker(courses, def, 'cn-em-course') +
+      '<input class="cn-in cn-em-text" value="' + escapeHtml(r.note || '') + '" placeholder="Your note (your words)…" aria-label="Class note text">' +
+      '<button class="cn-btn" data-pact="cnemailsave">Save</button>' +
+      '<button class="cn-btn quiet" data-pact="cnemaildismiss">Not needed</button>' +
+      '</div></div>';
+  });
+  return h + '</div>';
+}
+
+function classNotesListHtml(notes, tab, courses) {
+  var label = (tab === 'all') ? 'All' : classLabelFor(tab, courses);
+  var h = '<section><h2 class="cn-h2">' + escapeHtml(label) + ' notes, newest first</h2>';
+  if (!notes.length) {
+    return h + '<div class="cn-card"><p class="cn-empty">No notes yet for ' + escapeHtml(label) + '.</p></div></section>';
+  }
+  var fold = classFold(classDayGroups(notes), CLASS_FOLD_DAYS);
+  h += '<div class="cn-card">';
+  fold.head.forEach(function (g) { h += classDayHtml(g); });
+  if (fold.olderCount > 0) {
+    if (state.classOlderOpen) {
+      fold.olderGroups.forEach(function (g) { h += classDayHtml(g); });
+      h += '<button class="cn-fold" data-pact="cnolder">Show fewer</button>';
+    } else {
+      h += '<button class="cn-fold" data-pact="cnolder">' + fold.olderCount + ' older note' + (fold.olderCount === 1 ? '' : 's') + '</button>';
+    }
+  }
+  return h + '</div></section>';
+}
+
+function classDayHtml(g) {
+  var h = '<div class="cn-daygrp"><div class="cn-dh"><b>' + escapeHtml(classDayHeading(g.date)) +
+    '</b><span>' + g.items.length + ' note' + (g.items.length === 1 ? '' : 's') + '</span></div>';
+  h += g.items.map(classNoteHtml).join('');
+  return h + '</div>';
+}
+
+function classNoteHtml(n) {
+  if (state.classEditId === n.id) return classNoteEditHtml(n);
+  var metaBits = [classSourceLabel(n)];
+  var tm = classClock(n.created);
+  if (tm) metaBits.push(tm);
+  var metaHtml = escapeHtml(metaBits.filter(Boolean).join(', '));
+  if (n.source === 'email' && n.email_ref) {
+    metaHtml += ' · <a class="link" href="' + escapeHtml(safeUrl(n.email_ref)) + '">✉ Open in Mail</a>';
+  }
+  var right = '';
+  if (n.tags && n.tags.indexOf('attendance') >= 0) right += '<span class="cn-chip">attendance</span>';
+  right += '<span class="cn-acts"><button data-pact="cnedit" data-cnid="' + escapeHtml(n.id) + '">Edit</button>' +
+    '<button class="danger" data-pact="cndel" data-cnid="' + escapeHtml(n.id) + '">Delete</button></span>';
+  return '<div class="cn-n"><div><p>' + escapeHtml(n.text || '') + '</p><span class="cn-meta">' + metaHtml + '</span></div>' +
+    '<div class="cn-right">' + right + '</div></div>';
+}
+
+function classNoteEditHtml(n) {
+  return '<div class="cn-n cn-edit" data-cnid="' + escapeHtml(n.id) + '">' +
+    '<textarea class="cn-ta cn-edit-text" aria-label="Edit note">' + escapeHtml(n.text || '') + '</textarea>' +
+    '<div class="cn-row"><input type="date" class="cn-in cn-edit-date" value="' + escapeHtml(String(n.date || '').slice(0, 10)) + '" aria-label="Note date">' +
+    '<button class="cn-btn" data-pact="cneditsave" data-cnid="' + escapeHtml(n.id) + '">Save</button>' +
+    '<button class="cn-btn quiet" data-pact="cneditcancel">Cancel</button></div></div>';
+}
+
+function classSourceLabel(n) {
+  var s = n.source;
+  if (s === 'email') return 'from email';
+  if (s === 'voice') return 'voice';
+  if (s === 'capture') return 'captured';
+  return 'typed';
+}
+function classClock(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  var hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+  var ap = hh < 12 ? 'AM' : 'PM'; hh = hh % 12; if (hh === 0) hh = 12;
+  return hh + ':' + mm + ' ' + ap;
+}
+function classDayHeading(ymd) {
+  var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return ymd || '';
+  var dt = new Date(+m[1], +m[2] - 1, +m[3]);
+  return WD[dt.getDay()] + ' ' + MONTHS[+m[2] - 1] + ' ' + (+m[3]);
+}
+function classDateLabel(ymd) {
+  var m = String(ymd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? (MONTHS[+m[2] - 1] + ' ' + (+m[3])) : (ymd || '');
+}
+
+// The quiet "Keep for grading" form on a Today email row (LOCAL only).
+function classKeepForGradingHtml(r) {
+  var courses = (state.classNotes && state.classNotes.courses) || [];
+  if (state.keepFormId === r.id) {
+    return '<div class="cn-note"><div class="cn-note-form">' +
+      classCoursePicker(courses, classDefaultCourse(), 'cn-keep-course') +
+      '<input class="cn-in cn-keep-text" placeholder="Note for grading (your words)…" aria-label="Class note text">' +
+      '<button class="cn-btn" data-pact="cnkeepsave">Save</button>' +
+      '<button class="cn-btn quiet" data-pact="cnkeepcancel">Cancel</button></div></div>';
+  }
+  return '<div class="acts"><button data-pact="cnkeep">Keep for grading</button></div>';
+}
+
+/* ---- class-notes writes (all LOCAL) ---- */
+function cnSaveNew() {
+  var ta = document.getElementById('cn-new-text');
+  var text = ta ? ta.value.trim() : '';
+  var course = state.classTab || classDefaultCourse();
+  if (!course || course === 'all' || !text) { showToast('Write a note first', null); return; }
+  // date from LOCAL parts (todayISO), never toISOString.
+  api('/api/class-notes/add', { method: 'POST', body: { course: course, text: text, source: 'typed', date: todayISO() } })
+    .then(function () { ensureClassNotes(true); })
+    .catch(function () { showToast('Save failed. Your text is kept.', null); });
+}
+function cnEditSave(id) {
+  var card = document.querySelector('.cn-edit[data-cnid="' + cssEsc(id) + '"]');
+  if (!card) return;
+  var ta = card.querySelector('.cn-edit-text'), di = card.querySelector('.cn-edit-date');
+  var body = { id: id };
+  if (ta) body.text = ta.value.trim();
+  if (di && di.value) body.date = di.value;
+  state.classEditId = null;
+  api('/api/class-notes/edit', { method: 'POST', body: body })
+    .then(function () { ensureClassNotes(true); })
+    .catch(function () { showToast('Save failed', null); });
+}
+function cnDelete(id) {
+  optimistic[id] = true; render();
+  undoable('Note deleted', function () {
+    api('/api/class-notes/delete', { method: 'POST', body: { id: id, actor: 'user' } })
+      .then(function () { delete optimistic[id]; ensureClassNotes(true); })
+      .catch(function () { delete optimistic[id]; ensureClassNotes(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function cnEmailSave(eid) {
+  var rec = (state.classFromEmail || []).filter(function (r) { return r.id === eid; })[0];
+  var rowEl = document.querySelector('.cn-email-row[data-eid="' + cssEsc(eid) + '"]');
+  if (!rec || !rowEl) return;
+  var sel = rowEl.querySelector('.cn-em-course'), txt = rowEl.querySelector('.cn-em-text');
+  var course = sel ? sel.value : '', text = txt ? txt.value.trim() : '';
+  if (!course || !text) { showToast('Pick a course and write a note', null); return; }
+  api('/api/class-notes/add', { method: 'POST', body: keepForGradingPayload(course, text, rec.email_ref, rec.id, rec.date) })
+    .then(function () { showToast('Saved to class notes', null); ensureClassNotes(true); })
+    .catch(function () { showToast('Save failed', null); });
+}
+function cnEmailDismiss(eid) {
+  api('/api/class-notes/dismiss-email', { method: 'POST', body: { id: eid } })
+    .then(function () { ensureClassNotes(true); })
+    .catch(function () { showToast('Could not dismiss', null); });
+}
+function cnKeepSave(id) {
+  var r = rowById(id);
+  var rowEl = document.querySelector('.row[data-id="' + cssEsc(id) + '"]');
+  var sel = rowEl && rowEl.querySelector('.cn-keep-course');
+  var txt = rowEl && rowEl.querySelector('.cn-keep-text');
+  var course = sel ? sel.value : '', text = txt ? txt.value.trim() : '';
+  if (!course || !text) { showToast('Pick a course and write a note', null); return; }
+  // email_ref = the row's Mail deep link; NEVER the subject/body. The task is untouched.
+  state.keepFormId = null;
+  api('/api/class-notes/add', { method: 'POST', body: keepForGradingPayload(course, text, (r && r.url) || '', '', '') })
+    .then(function () { showToast('Kept for grading', null); ensureClassNotes(true); render(); })
+    .catch(function () { showToast('Save failed', null); });
 }
 
 /* ---- memo ---- */
@@ -5041,9 +5435,11 @@ function applyHash() {
   var h = (location.hash || '').replace('#', '');
   if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
   var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen'];
+  if (LOCAL) views.push('class-notes');   // FERPA: never reachable on the hosted shell
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
   if (state.view === 'kitchen') ensureRecipes();
+  if (state.view === 'class-notes') ensureClassNotes();
   if (state.view !== 'sweeps') {
     // leaving the Sweeps area: close any open queue and sync counts if changed.
     state.sweepQueue = null; state.sweepPick = null;
@@ -5062,9 +5458,15 @@ function maybeRefresh() { if (Date.now() - state.lastFetch < 4000) return; if (!
 
 /* ===== boot ===== */
 state.lens = defaultLens();
+// FERPA: the Class notes page is LOCAL only (it can name students). Remove its nav
+// entries entirely on the hosted shell so the phone never links to it.
+if (!LOCAL) { try { document.querySelectorAll('.cn-nav').forEach(function (el) { el.parentNode.removeChild(el); }); } catch (e) {} }
 applyHash();        // sets view + paints an empty shell immediately
 if (LOCAL) {
   fetchAll();
+  // Prime the course registry (for the Today "Keep for grading" course picker);
+  // applyHash already triggered a full load if the Class notes view is open.
+  if (state.view !== 'class-notes') ensureClassNotes();
 } else {
   // Hosted: show the connect-gate at once, then wait for dbx.js to finish any
   // OAuth redirect (?code=) exchange before the first fetch, so a just-connected
