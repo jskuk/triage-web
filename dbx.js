@@ -13,6 +13,7 @@
   const ROOT = '';            // App-folder app: the app folder IS the root
   const LS = { rt: 'dbx-refresh', at: 'dbx-access', exp: 'dbx-exp', ver: 'dbx-verifier' };
   const revs = {};            // rel -> latest rev (for compare-and-swap)
+  const metas = {};           // rel -> last download metadata (client_modified, ...)
   // The Dropbox app registers the FOLDER url (…/triage-web/), so a page reached as
   // …/index.html must still send exactly that, or OAuth rejects the redirect_uri.
   const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, '');
@@ -69,6 +70,7 @@
     if (!r.ok) throw new Error('download ' + r.status);
     const meta = JSON.parse(r.headers.get('Dropbox-API-Result') || '{}');
     if (meta.rev) revs[rel] = meta.rev;
+    metas[rel] = meta;                                    // for client_modified fallback
     return await r.text();
   }
   async function readJson(rel, def) { const t = await download(rel); if (t == null) return def; try { return JSON.parse(t); } catch { return def; } }
@@ -368,6 +370,10 @@
   const CAPTURE_TYPES = ['task', 'garden', 'vault', 'spark', 'recipe', 'unsorted',
     'deadline', 'state', 'read', 'done', 'drop'];
   const CLASS_NOTE_RE = /^\s*(?:[A-Za-z]{2,4}\s*)?\d{3}\s*:/;
+  // A voice capture file: `_voice.txt`, `_voice (N).txt`, `<stem>_voice[ (N)].txt`
+  // (mirror of records.is_voice_name). The empty-date-token bug drops the ISO
+  // prefix and a Dropbox collision adds ` (N)`, so a bare last-segment check missed.
+  const VOICE_NAME_RE = /_voice(?: \(\d+\))?\.txt$/i;
   function captureIsoFromName(name) {
     const head = name.split('_', 1)[0];
     if (head.indexOf('T') < 0) return null;
@@ -375,12 +381,25 @@
     const dt = new Date(d + 'T' + t);
     return isNaN(dt.getTime()) ? null : d + 'T' + t;   // local ISO, no zone
   }
+  // A non-ISO capture name (`_voice.txt`) has no timestamp in its name → fall back
+  // to the Dropbox entry's client_modified (UTC) rendered as a LOCAL ISO, so the
+  // "waiting to be filed" row still carries a `created` and survives Home's
+  // local-date guard instead of being dropped.
+  function dropboxLocalIso(meta) {
+    const s = meta && (meta.client_modified || meta.server_modified);
+    if (!s) return null;
+    const dt = new Date(s);
+    if (isNaN(dt.getTime())) return null;
+    const p = n => String(n).padStart(2, '0');
+    return dt.getFullYear() + '-' + p(dt.getMonth() + 1) + '-' + p(dt.getDate()) +
+      'T' + p(dt.getHours()) + ':' + p(dt.getMinutes()) + ':' + p(dt.getSeconds());
+  }
   function pendingTextSource(name, raw) {
     raw = (raw || '').trim();
     const stem = name.replace(/\.[^.]*$/, '');
     const cand = stem.indexOf('_') >= 0 ? stem.slice(stem.lastIndexOf('_') + 1).toLowerCase() : '';
     const low = name.toLowerCase();
-    if (cand === 'voice') return [raw, 'voice'];
+    if (VOICE_NAME_RE.test(name)) return [raw, 'voice'];
     if (cand === 'drop' || low.endsWith('.json') || low.endsWith('.json.txt')) {
       try { const o = JSON.parse(raw); if (o && typeof o === 'object' && !Array.isArray(o)) return [String(o.text || o.title || '').trim(), o.url ? 'link' : 'typed']; } catch { /* raw */ }
       return [raw, 'typed'];
@@ -1344,7 +1363,10 @@
         if (raw == null) continue;
         const [text, source] = pendingTextSource(name, raw.slice(0, 20000));
         const cls = isClassNote(text);
-        out.push({ id: name, text: cls ? '' : text, source: cls ? '' : source, created: captureIsoFromName(name), classNote: cls });
+        // created from the filename ISO; if the name carries none (`_voice.txt`),
+        // fall back to the Dropbox entry's client_modified (captured on download).
+        const created = captureIsoFromName(name) || dropboxLocalIso(metas['capture/' + name]);
+        out.push({ id: name, text: cls ? '' : text, source: cls ? '' : source, created: created, classNote: cls });
       }
       out.sort((a, b) => String(b.created || '').localeCompare(String(a.created || '')));
       return resp(out);
