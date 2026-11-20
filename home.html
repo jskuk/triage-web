@@ -737,6 +737,15 @@
   .cn-note-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
   .cn-note-form .cn-in { flex: 1 1 200px; }
   .cn-empty { color: var(--text-2); }
+  /* Grading reminder (2026-11-20) — the amber "read these notes before you grade"
+     nudge (mockup .grade card), using the existing amber tokens. On Today it is a
+     quiet clickable line; on the Class-notes view it sits above the notes list.
+     Suppressed at zero; LOCAL only. */
+  .cn-grade { background: var(--yellow-bg); border: 1px solid var(--yellow); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; }
+  .cn-grade b { color: var(--text); font-weight: 600; }
+  .cn-grade small { font-size: 13px; color: var(--text-2); }
+  .cn-grade-x { justify-self: start; font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; margin-top: 4px; background: var(--page); }
+  .cn-grade-today { display: block; width: 100%; text-align: left; margin: 0 0 16px; cursor: pointer; }
   @media (max-width: 720px) {
     .cn-head h1 { font-size: 22px; }
     .cn-email-form .cn-in, .cn-note-form .cn-in { flex-basis: 100%; }
@@ -1915,6 +1924,63 @@ function keepForGradingPayload(course, text, emailRef, emailId, date) {
   if (date) body.date = date;
   return body;
 }
+// ── Grading reminder (2026-11-20, FERPA, LOCAL only) — pure line/card text ──
+// When grading for a course is near, point John at that course's class notes.
+// Input is one course object from GET /api/class-notes/grading-reminder:
+// {course,label,title,due_date,days_left,notes_count,tag_counts}. These builders
+// emit COUNTS ONLY — never a student name, never note text. The title is John's own
+// obligation title (a deadline/task he wrote), not student data.
+function isoWeekday(iso) {
+  var p = String(iso || '').slice(0, 10).split('-');
+  if (p.length !== 3) return '';
+  var d = new Date(Date.UTC(+p[0], (+p[1]) - 1, +p[2]));
+  if (isNaN(d.getTime())) return '';
+  return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getUTCDay()];
+}
+function gradingDuePhrase(dueDate, daysLeft) {
+  var n = (typeof daysLeft === 'number') ? daysLeft : 999;
+  if (n < 0) return 'is overdue';
+  if (n === 0) return 'is due today';
+  if (n === 1) return 'is due tomorrow';
+  var wd = isoWeekday(dueDate);
+  return wd ? ('is due ' + wd) : ('is due in ' + n + ' days');
+}
+function gradingNotesPhrase(n) {
+  n = n || 0;
+  return (n === 1 ? '1 class note' : n + ' class notes');
+}
+// The quiet Today line, e.g. "Grading Paper 2 for PLS 304 is due Tuesday. 6 class
+// notes to read first." "" when there is no obligation (suppress-at-zero).
+function gradingReminderLine(c) {
+  if (!c || !c.title) return '';
+  return String(c.title) + ' ' + gradingDuePhrase(c.due_date, c.days_left) + '. ' +
+    gradingNotesPhrase(c.notes_count) + ' to read first.';
+}
+// The Class-notes .grade card — bold headline + a one-line count. Mockup:
+// "Grading Paper 2 for PLS 304? Read these first." / "6 class notes for PLS 304…".
+function gradingCardHeadline(c) {
+  if (!c || !c.title) return '';
+  return String(c.title) + '? Read these first.';
+}
+function gradingCardCounts(c) {
+  if (!c) return '';
+  var s = gradingNotesPhrase(c.notes_count) + ' for ' + String(c.label || c.course || '');
+  var att = (c.tag_counts && c.tag_counts.attendance) || 0;
+  if (att > 0) s += ', ' + att + ' mention attendance';
+  return s + '.';
+}
+// Per-obligation dismiss key (localStorage, per-viewer convenience only).
+function gradingDismissKey(c) {
+  if (!c) return '';
+  return 'grade-dismiss:' + String(c.course || '') + ':' + String(c.due_date || '') + ':' + String(c.title || '');
+}
+// The courses still worth showing: has an obligation (suppress-at-zero) and not
+// dismissed for the day. `isDismissed(key)` is injected so this stays DOM-free.
+function gradingVisibleCourses(courses, isDismissed) {
+  return (courses || []).filter(function (c) {
+    return c && c.title && !(isDismissed && isDismissed(gradingDismissKey(c)));
+  });
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -2032,7 +2098,11 @@ var state = {
   // days fold; classEditId = the note being inline-edited; keepFormId = the Today
   // email row with the "Keep for grading" inline form open.
   classNotes: null, classFromEmail: [], classNotesLoaded: false,
-  classTab: null, classOlderOpen: false, classEditId: null, keepFormId: null
+  classTab: null, classOlderOpen: false, classEditId: null, keepFormId: null,
+  // Grading reminder (2026-11-20, FERPA, LOCAL only). gradingReminder = the
+  // /api/class-notes/grading-reminder response ({courses, kept_for_grading_emails});
+  // null until fetched / hosted (never fetched hosted). Counts only, no note text.
+  gradingReminder: null
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -2169,6 +2239,7 @@ function fetchAll() {
     state.pending = Array.isArray(res[15] && res[15].data) ? res[15].data : [];
     state.emailHealth = (res[16] && res[16].data && typeof res[16].data === 'object' && !Array.isArray(res[16].data)) ? res[16].data : null;
     if (state.view === 'kitchen') ensureRecipes();
+    ensureGradingReminder();   // FERPA: LOCAL only (never fetched on the hosted shell)
     render();
   }).catch(function (e) {
     showServerDown(true);
@@ -2333,6 +2404,7 @@ function homeHtml() {
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
   if (sub) h += '<p class="sub">' + escapeHtml(sub) + '</p>';
   try { h += researchMealHtml(); } catch (e) { reportUiError('research: ' + e.stack); }
+  try { h += gradingReminderTodayHtml(); } catch (e) { reportUiError('grading: ' + e.stack); }
   try { h += workTodayHtml(); } catch (e) { reportUiError('work: ' + e.stack); }
   try { h += whiteboardHtml(); } catch (e) { reportUiError('whiteboard: ' + e.stack); }
   try { h += memoCollapsedHtml(); } catch (e) {}
@@ -4611,6 +4683,10 @@ function handlePageAction(act, el) {
   if (act === 'cnkeep') { var kr = el.closest('.row'); var kid = kr && kr.getAttribute('data-id'); state.keepFormId = (state.keepFormId === kid) ? null : kid; render(); return true; }
   if (act === 'cnkeepcancel') { state.keepFormId = null; render(); return true; }
   if (act === 'cnkeepsave') { var ks = el.closest('.row'); if (ks) cnKeepSave(ks.getAttribute('data-id')); return true; }
+  // Grading reminder (FERPA, LOCAL only): open the Class notes view on the course's
+  // tab, or dismiss the nudge for the day (per-viewer localStorage convenience).
+  if (act === 'gradedismiss') { gradingDismiss(el.getAttribute('data-key')); render(); return true; }
+  if (act === 'gradeopen') { state.classTab = el.getAttribute('data-course') || null; state.classEditId = null; state.classOlderOpen = false; location.hash = '#class-notes'; return true; }
   var oc = el.closest('[data-opp]'); if (oc) { handleOpenCallAction(act, oc.getAttribute('data-opp')); return true; }
   var rl = el.closest('[data-rl]'); if (rl) { handleLibraryAction(act, rl.getAttribute('data-rl')); return true; }
   var rc = el.closest('[data-rec]'); if (rc) { handleRecipeAction(act, rc.getAttribute('data-rec')); return true; }
@@ -4802,6 +4878,63 @@ function ensureClassNotes(force) {
   }).catch(function () { state.classNotesLoaded = true; if (state.view === 'class-notes') render(); });
 }
 
+// Grading reminder (2026-11-20, FERPA, LOCAL only). Fetched with the main load so
+// the Today line is ready without visiting Class notes. Never fetched hosted (the
+// endpoint has no dbx.js route and the response would be empty anyway). Counts only.
+function ensureGradingReminder() {
+  if (!LOCAL) { state.gradingReminder = null; return; }
+  apiJson('/api/class-notes/grading-reminder').then(function (r) {
+    state.gradingReminder = (r.data && typeof r.data === 'object' && Array.isArray(r.data.courses)) ? r.data : null;
+    render();
+  }).catch(function () { /* leave prior value; a nudge is never load-bearing */ });
+}
+
+// Per-obligation "dismiss for the day" set (localStorage, per-viewer convenience).
+// try/catch everywhere: a private window / blocked storage must never break render.
+function gradingDismissed(key) {
+  try { return localStorage.getItem(key) === todayISO(); } catch (e) { return false; }
+}
+function gradingDismiss(key) {
+  try { localStorage.setItem(key, todayISO()); } catch (e) {}
+}
+
+// The visible, not-dismissed matched courses for Today / Class notes. [] hosted or
+// when nothing is near (suppress-at-zero).
+function gradingCourses() {
+  if (!LOCAL) return [];
+  var gr = state.gradingReminder;
+  if (!gr || !Array.isArray(gr.courses)) return [];
+  return gradingVisibleCourses(gr.courses, gradingDismissed);
+}
+
+// The quiet Today nudge: one clickable amber line per matched course, each opening
+// the Class notes view on that course's tab. Renders nothing when there is no match
+// and nothing at all hosted. Counts only — no student names, every string escaped.
+function gradingReminderTodayHtml() {
+  var cs = gradingCourses();
+  if (!cs.length) return '';
+  return cs.map(function (c) {
+    var k = gradingDismissKey(c);
+    return '<button class="cn-grade cn-grade-today" data-pact="gradeopen" data-course="' + escapeHtml(c.course || '') + '">' +
+      '<b>' + escapeHtml(gradingReminderLine(c)) + '</b>' +
+      '<span class="cn-grade-x" data-pact="gradedismiss" data-key="' + escapeHtml(k) + '" role="button" tabindex="0">Dismiss for today</span>' +
+      '</button>';
+  }).join('');
+}
+
+// The .grade card above the Class-notes list for the selected course (mockup).
+// "" when that course has no near grading obligation (suppress-at-zero).
+function gradingCardHtml(courseKey) {
+  var c = gradingCourses().filter(function (x) { return (x.course || '') === courseKey; })[0];
+  if (!c) return '';
+  var k = gradingDismissKey(c);
+  return '<div class="cn-grade" role="note">' +
+    '<b>' + escapeHtml(gradingCardHeadline(c)) + '</b>' +
+    '<small>' + escapeHtml(gradingCardCounts(c)) + '</small>' +
+    '<button class="cn-grade-x" data-pact="gradedismiss" data-key="' + escapeHtml(k) + '">Dismiss for today</button>' +
+    '</div>';
+}
+
 function classNotesHtml() {
   if (!LOCAL) return '<div class="cn-empty">Class notes live only on your Mac.</div>';
   if (!state.classNotesLoaded) return '<div class="empty" style="padding:48px 0">Loading class notes…</div>';
@@ -4828,6 +4961,7 @@ function classNotesHtml() {
   h += '</div>';
 
   h += classNewNoteHtml(tab, courses);
+  if (tab !== 'all') h += gradingCardHtml(tab);   // "read these before you grade" (suppress-at-zero)
   h += classFromEmailHtml(courses);
 
   var shown = (tab === 'all') ? allNotes : allNotes.filter(function (n) { return (n.course || '') === tab; });
