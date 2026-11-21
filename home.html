@@ -780,6 +780,10 @@
 
   /* ---------- Work / area dashboards (2026-11-20, mockups/area-dashboards.html) ---------- */
   .awrap { display: grid; gap: 22px; }
+  /* Grid items must be allowed to shrink below their min-content, or the wide board
+     table blows the single column out and the whole page scrolls sideways on a phone
+     (the board scrolls inside its own .aboard instead). */
+  .awrap > * { min-width: 0; }
   /* The boards are wide tables: on the Work view the page uses the screen (2026-11-20, John: "narrow boards" on a wide monitor). */
   .page:has(.awrap) { max-width: 1680px; }
   .ahead h1 { font-size: 24px; margin: 0 0 2px; }
@@ -857,6 +861,20 @@
   .anp-pick .anp-add, .anp-pick .anp-skip { color: var(--t-accent); }
   .acn-link { font-size: 13px; color: var(--t-accent); }
   @media (max-width: 720px) { .ahead h1 { font-size: 22px; } }
+  /* Phone (the hosted Work view + Today sort box): the sort/place controls become
+     ≥40px tap targets, the detail columns stack to one, and the page never scrolls
+     sideways (each board still scrolls inside .aboard). Desktop is untouched. */
+  @media (max-width: 460px) {
+    .acols { grid-template-columns: 1fr; }
+    .esort-keys { gap: 8px; }
+    .ekey, .anp-keys button, .anp-pick .arow-opt, .aacts button, .aacts a.amore-tasks,
+    .aday button, .aedit button, .atab { min-height: 40px; display: inline-flex; align-items: center; }
+  }
+  /* On a touch device there is no hardware keyboard, so drop the single-letter hints
+     (the on-screen buttons carry the same actions). */
+  @media (hover: none) and (pointer: coarse) {
+    .ekey kbd, .anp-keys button u { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -3121,15 +3139,16 @@ function workTodayHtml() {
   h += '</section>';
   return h;
 }
-// ── The email sort box (LOCAL only; mockups/today-email.html) ──────────────────
+// ── The email sort box (DUAL-MODE; mockups/today-email.html) ───────────────────
 // One unsorted email at a time, in FULL (subject, sender+date, the body as written —
 // NO AI summary). The queue is the areas board's not-placed EMAIL items (oldest
 // first, pure emailSortQueue). Area keys (t a f s c) place it; r/d set the kind
-// (reply/task via `tier`); n marks it done. Rendered only on the LOCAL Today page —
-// the hosted shell never gets it (student mail stays on the Mac) and dbx.js has no
-// board/email-body route. The box is absent when the queue is empty.
+// (reply/task via `tier`); n marks it done. Dual-mode (2026-11-21, John): the hosted
+// phone renders it too — the board + body ride dbx.js, which reads the body store
+// from HIS Dropbox with HIS key (the page is public, the data is not). The body text
+// never reaches AI or any host other than Dropbox. The box is absent when the queue
+// is empty.
 function emailSortBoxHtml() {
-  if (!LOCAL) return '';
   if (!state.areaBoardLoaded || !state.areaBoard) return '';
   var done = state.emailSortDone || {};
   var queue = emailSortQueue(state.areaBoard.not_placed).filter(function (it) { return !done[it.id]; });
@@ -3188,15 +3207,17 @@ function esortSuggestedArea(id) {
 // The id of the email currently shown in the sort box (the oldest unsorted one), or
 // null. Drives the keyboard shortcuts so a key always acts on what is on screen.
 function currentSortId() {
-  if (!LOCAL || !state.areaBoardLoaded || !state.areaBoard) return null;
+  if (!state.areaBoardLoaded || !state.areaBoard) return null;
   var done = state.emailSortDone || {};
   var q = emailSortQueue(state.areaBoard.not_placed).filter(function (it) { return !done[it.id]; });
   return q.length ? q[0].id : null;
 }
-// Fetch ONE email body (LOCAL only). Caches the record (or null on 404) and
-// re-renders. Never blocks the page; a failure just shows "Body not saved".
+// Fetch ONE email body (dual-mode — LOCAL via the server, hosted via dbx.js's
+// read-only /api/email-body, which reads the body store from John's Dropbox). Caches
+// the record (or null on 404) and re-renders. Never blocks the page; a failure just
+// shows "Body not saved". The body never reaches AI or any host other than Dropbox.
 function loadEmailBody(id) {
-  if (!LOCAL || !id) return;
+  if (!id) return;
   state.emailBodies = state.emailBodies || {};
   state.emailBodyLoading = state.emailBodyLoading || {};
   if (state.emailBodyLoading[id] || state.emailBodies[id] !== undefined) return;
@@ -5506,7 +5527,7 @@ function gradingCardHtml(courseKey) {
    and dbx.js gains NO areas route. Lazy-loaded once (Today stays fast), refetched
    after any placement/edit. No AI anywhere; all inserted text escaped. ---- */
 function ensureAreaBoard(force) {
-  if (!LOCAL) return;
+  // Dual-mode: LOCAL hits the Python server, hosted hits dbx.js's /api/areas/board.
   if (state.areaBoardLoaded && !force) { if (state.view === 'work' || state.view === 'home') render(); return; }
   apiJson('/api/areas/board').then(function (r) {
     var d = r.data;
@@ -5544,7 +5565,6 @@ function allowedRows(areaKey) {
 }
 
 function workHtml() {
-  if (!LOCAL) return '';   // LOCAL only; applyHash already guards, this is defense in depth
   if (!state.areaBoardLoaded) return '<div class="empty" style="padding:48px 0">Loading your work…</div>';
   var board = state.areaBoard || { areas: [], not_placed: [] };
   var today = todayISO();
@@ -5590,7 +5610,9 @@ function workAreaHtml(board, areaKey, today) {
   var area = (board.areas || []).filter(function (a) { return a.area === areaKey; })[0];
   var name = AREA_NAME[areaKey] || areaKey;
   var h = '<div class="asec-lbl" style="color:' + areaColorVar(areaKey) + '">' + escapeHtml(name) + '</div>';
-  if (areaKey === 'teaching') {
+  if (areaKey === 'teaching' && LOCAL) {
+    // FERPA: the grading reminder + Class notes link are LOCAL only (they lead to
+    // student-named notes). Hosted, the Teaching board shows without them.
     h += gradingCourses().map(function (c) {
       return '<div class="cn-grade" role="note" style="margin-bottom:8px"><b>' + escapeHtml(gradingCardHeadline(c)) + '</b><small>' + escapeHtml(gradingCardCounts(c)) + '</small></div>';
     }).join('');
@@ -6339,11 +6361,12 @@ document.addEventListener('keydown', function (e) {
       if (am) { e.preventDefault(); var nid = npRow.getAttribute('data-id'); state.areaPlaceOpen = { id: nid, area: am }; render(); var rf = document.querySelector('.anp-row[data-id="' + cssEsc(nid) + '"]'); if (rf) rf.focus(); return; }
     }
   }
-  // Today email sort box (LOCAL only): one letter sorts the on-screen email —
+  // Today email sort box (dual-mode): one letter sorts the on-screen email —
   // t a f s c set the area, r/d/n the kind/done. Only when NOT typing and focus is
   // inside the box OR on the bare page (no input/textarea/contenteditable focused).
-  // No collision: the Today page binds no other single-letter shortcut here.
-  if (LOCAL && state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  // No collision: the Today page binds no other single-letter shortcut here. On a
+  // phone there is no hardware keyboard; the on-screen buttons carry the same actions.
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey) {
     var aeE = document.activeElement;
     var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
     var inBoxE = aeE && aeE.closest && aeE.closest('#esort');
@@ -6454,14 +6477,14 @@ function defaultLens() {
 function applyHash() {
   var h = (location.hash || '').replace('#', '');
   if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
-  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen'];
-  if (LOCAL) views.push('class-notes', 'work');   // FERPA + LOCAL-only: never reachable on the hosted shell
+  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen', 'work'];   // Work is dual-mode (hosted board via dbx.js)
+  if (LOCAL) views.push('class-notes');   // FERPA: Class notes is LOCAL-only, never reachable on the hosted shell
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
   if (state.view === 'kitchen') ensureRecipes();
   if (state.view === 'class-notes') ensureClassNotes();
   if (state.view === 'work') { state.areaOpen = readRememberedAreaTab(); ensureAreaBoard(); }
-  // The Today (home) page's email sort box reads the same board (LOCAL only).
+  // The Today (home) page's email sort box reads the same board (dual-mode).
   if (state.view === 'home') ensureAreaBoard();
   if (state.view !== 'sweeps') {
     // leaving the Sweeps area: close any open queue and sync counts if changed.
@@ -6482,8 +6505,9 @@ function maybeRefresh() { if (Date.now() - state.lastFetch < 4000) return; if (!
 /* ===== boot ===== */
 state.lens = defaultLens();
 // FERPA: the Class notes page is LOCAL only (it can name students). Remove its nav
-// entries entirely on the hosted shell so the phone never links to it.
-if (!LOCAL) { try { document.querySelectorAll('.cn-nav, .work-nav').forEach(function (el) { el.parentNode.removeChild(el); }); } catch (e) {} }
+// entries entirely on the hosted shell so the phone never links to it. The Work nav
+// STAYS hosted (the board is dual-mode via dbx.js); only `.cn-nav` is removed.
+if (!LOCAL) { try { document.querySelectorAll('.cn-nav').forEach(function (el) { el.parentNode.removeChild(el); }); } catch (e) {} }
 applyHash();        // sets view + paints an empty shell immediately
 if (LOCAL) {
   fetchAll();

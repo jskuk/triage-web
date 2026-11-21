@@ -414,6 +414,309 @@
   }
   function isClassNote(text) { return !!(text && CLASS_NOTE_RE.test(text)); }
 
+  // ── Area dashboards (the Work view) — a faithful JS port of areas.py so the
+  //    hosted board (GET /api/areas/board) is byte-identical to the server's. Keep
+  //    in lockstep with areas.py / config.EMAIL_AREAS / config.CLASS_COURSES; the
+  //    Python↔JS parity test (test-dbx-routes.mjs) guards drift. No AI, no email
+  //    bodies here — has_body is a FLAG the board carries, never the body text. ──
+  var AREA_EMAIL_AREAS = [
+    { key: 'teaching', name: 'Teaching' },
+    { key: 'advising', name: 'Advising & letters' },
+    { key: 'referee', name: 'Referee' },
+    { key: 'service', name: 'Admin' },
+    { key: 'research', name: 'Research' }
+  ];
+  // Mirror of config.CLASS_COURSES (course codes, not student data).
+  var AREA_CLASS_COURSES = [
+    { key: 'PLS 304', aliases: ['304'] },
+    { key: 'PLS 304 Honors', aliases: ['304H', '304 honors', 'honors'] }
+  ];
+  var AREA_VALID = AREA_EMAIL_AREAS.map(function (a) { return a.key; });
+  var AREA_THIS_WEEK_DAYS = 7, AREA_NEXT_TWO_DAYS = 21, AREA_SHORT_CAP = 18;
+  var AREA_DEFAULT_ROW = 'General';
+  var AREA_OPEN_TASK_LISTS = ['inbox', 'thisweek', 'someday', 'waiting'];
+  var AREA_BUCKETS = ['overdue', 'this_week', 'next_two_weeks', 'later', 'no_date'];
+
+  function aCollapse(s) { return (typeof s === 'string') ? s.replace(/\s+/g, ' ').trim() : ''; }
+  function aNormalizeRow(s, existing) {
+    var r = aCollapse(s); if (!r) return '';
+    var low = r.toLowerCase(), i;
+    for (i = 0; existing && i < existing.length; i++) {
+      var ec = aCollapse(existing[i]);
+      if (ec && ec.toLowerCase() === low) return ec;
+    }
+    return r;
+  }
+  function aEscapeRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  // short_name_rule — strip reply/engine prefixes + lead filler, keep first 1-2
+  // content words, title-case (acronyms kept), cap at AREA_SHORT_CAP. Unicode-safe.
+  var AREA_LEAD_PREFIX_RE = /^\s*(?:re|fwd|fw|start|runway\s+open)\s*:\s*/i;
+  var AREA_FILLER = {
+    a: 1, an: 1, the: 1, to: 1, for: 1, of: 1, on: 1, in: 1, about: 1, with: 1,
+    and: 1, or: 1, re: 1, fwd: 1, fw: 1, please: 1, pls: 1, my: 1, your: 1, our: 1,
+    this: 1, that: 1, it: 1, grade: 1, grading: 1, reply: 1, replying: 1, respond: 1,
+    response: 1, send: 1, sending: 1, write: 1, writing: 1, submit: 1, submitting: 1,
+    review: 1, reviewing: 1, read: 1, reading: 1, email: 1, emailing: 1, call: 1,
+    finish: 1, finishing: 1, do: 1, update: 1, updating: 1, check: 1, checking: 1,
+    follow: 1, up: 1, followup: 1, prepare: 1, preparing: 1, schedule: 1,
+    scheduling: 1, book: 1, booking: 1, post: 1, posting: 1, order: 1, ordering: 1,
+    need: 1, needs: 1, needed: 1, approve: 1, approving: 1, confirm: 1, confirming: 1,
+    ask: 1, asking: 1, get: 1, make: 1, give: 1
+  };
+  function aCapWord(w) { if (!w) return w; return /\p{Lu}/u.test(w) ? w : (w.charAt(0).toUpperCase() + w.slice(1)); }
+  function aShortNameRule(title) {
+    if (typeof title !== 'string') return null;
+    var t = title.trim();
+    while (true) { var t2 = t.replace(AREA_LEAD_PREFIX_RE, ''); if (t2 === t) break; t = t2; }
+    var toks = t.match(/[\p{L}\p{N}_]+/gu) || [];
+    var content = toks.filter(function (w) { return !AREA_FILLER[w.toLowerCase()]; });
+    if (!content.length) return null;
+    var name = content.slice(0, 2).map(aCapWord).join(' ').trim();
+    if (name.length > AREA_SHORT_CAP) {
+      var one = aCapWord(content[0]);
+      name = one.length <= AREA_SHORT_CAP ? one : one.slice(0, AREA_SHORT_CAP).trim();
+    }
+    return name || null;
+  }
+
+  // Course alias logic (records.course_in_title — longest \b token wins).
+  function aCourseTokens() {
+    var out = [], i, j;
+    for (i = 0; i < AREA_CLASS_COURSES.length; i++) {
+      var c = AREA_CLASS_COURSES[i], key = (c.key || '').trim(); if (!key) continue;
+      var cands = [key].concat(c.aliases || []);
+      for (j = 0; j < cands.length; j++) { var tk = (cands[j] || '').trim(); if (tk) out.push([tk.toLowerCase(), key, tk.length]); }
+    }
+    return out;
+  }
+  function aCourseInTitle(title) {
+    if (typeof title !== 'string' || !title.trim()) return null;
+    var low = title.toLowerCase(), toks = aCourseTokens(), best = null, i;
+    for (i = 0; i < toks.length; i++) {
+      if (new RegExp('\\b' + aEscapeRe(toks[i][0]) + '\\b').test(low)) {
+        if (best === null || toks[i][2] > best[0]) best = [toks[i][2], toks[i][1]];
+      }
+    }
+    return best ? best[1] : null;
+  }
+
+  // email_area.area_by_rules — generic work-area rule matcher (mirror, in order).
+  function aKw() {
+    var words = Array.prototype.slice.call(arguments);
+    var parts = words.map(function (w) { return aEscapeRe(w).replace(/ /g, '\\s+'); });
+    return new RegExp('(?<![A-Za-z0-9])(?:' + parts.join('|') + ')(?![A-Za-z0-9])', 'i');
+  }
+  function aCourseAliasRe() {
+    var toks = [], i, j;
+    for (i = 0; i < AREA_CLASS_COURSES.length; i++) {
+      var c = AREA_CLASS_COURSES[i], key = (c.key || '').trim(); if (key) toks.push(key);
+      var al = c.aliases || []; for (j = 0; j < al.length; j++) { if (al[j] && al[j].trim()) toks.push(al[j].trim()); }
+    }
+    if (!toks.length) return null;
+    var uniq = toks.filter(function (v, k) { return toks.indexOf(v) === k; }).sort(function (a, b) { return b.length - a.length; });
+    return aKw.apply(null, uniq);
+  }
+  var AREA_REFEREE_SYSTEM_RE = aKw('scholarone', 'editorial manager', 'manuscript central', 'manuscriptcentral');
+  var AREA_REFEREE_INVITE_RE = aKw('invitation to review', 'invited to review', 'reviewer invitation', 'review invitation', 'referee report');
+  var AREA_REFEREE_WEAK_RES = ['manuscript', 'referee', 'reviewer', 'peer review', 'review request'].map(function (w) { return aKw(w); });
+  var AREA_MS_ID_RE = /(?<![A-Za-z0-9])[A-Z]{2,6}-\d{2,6}(?:-\d{1,5})?(?:R\d)?(?![A-Za-z0-9])/;
+  var AREA_MS_REV_RE = /(?<![A-Za-z0-9])\d{5,}R\d(?![A-Za-z0-9])/;
+  var AREA_ADVISING_RE = aKw('recommendation letter', 'letter of recommendation', 'rec letter', 'reference letter', 'letter of reference', 'interfolio', 'advisee', 'my advisor', 'dissertation', 'prospectus defense', 'committee member for', 'comps', 'comprehensive exam');
+  var AREA_SERVICE_RE = aKw('faculty meeting', 'committee', 'department meeting', 'search committee', 'hiring committee', 'annual review', 'merit review', 'faculty senate', 'senate', 'colloquium committee', 'service', 'department chair', 'program committee');
+  var AREA_RESEARCH_RE = aKw('coauthor', 'co-author', 'co author', 'revise and resubmit', 'r&r', 'working paper', 'grant proposal', 'nsf', 'nih', 'co-pi', 'co pi', 'replication', 'data collection', 'irb');
+  var AREA_TEACHING_RE = aKw('d2l', 'brightspace', 'canvas', 'gradebook', 'syllabus', 'lecture', 'office hours', 'section', 'your course', 'this course', 'the course', 'assignment', 'problem set', 'midterm', 'final exam', 'enrolled', 'registrar', 'add/drop', 'incomplete grade', 'extension on');
+  function aAreaByRules(msg) {
+    try {
+      var text = [String((msg && msg.subject) || ''), String((msg && msg.body) || ''), String((msg && msg.note) || '')].join(' ');
+      if (!text.trim()) return null;
+      var ca = aCourseAliasRe();
+      if (ca && ca.test(text)) return 'teaching';
+      if (AREA_REFEREE_SYSTEM_RE.test(text)) return 'referee';
+      if (AREA_REFEREE_INVITE_RE.test(text)) return 'referee';
+      var weak = 0, i; for (i = 0; i < AREA_REFEREE_WEAK_RES.length; i++) if (AREA_REFEREE_WEAK_RES[i].test(text)) weak++;
+      if (weak >= 2) return 'referee';
+      if (AREA_MS_REV_RE.test(text) || AREA_MS_ID_RE.test(text)) return 'referee';
+      if (AREA_ADVISING_RE.test(text)) return 'advising';
+      if (AREA_SERVICE_RE.test(text)) return 'service';
+      if (AREA_RESEARCH_RE.test(text)) return 'research';
+      if (AREA_TEACHING_RE.test(text)) return 'teaching';
+      return null;
+    } catch (e) { return null; }
+  }
+
+  function aRecTitle(item) { return (item && typeof item === 'object') ? aCollapse(item.text || item.title || '') : ''; }
+  function aProjectTitle(projects, pid) {
+    if (!pid || !Array.isArray(projects)) return '';
+    var rec = projects.filter(function (p) { return p && typeof p === 'object' && p.id === pid; })[0];
+    return (rec && typeof rec === 'object') ? aCollapse(rec.title) : '';
+  }
+  // place_item → the area key only (the board's not_placed suggestion). Rules only.
+  function aSuggestArea(item, projects) {
+    try {
+      var title = aRecTitle(item);
+      if (aCourseInTitle(title)) return 'teaching';
+      var pid = item && item.project_id;
+      if (pid && aProjectTitle(projects, pid)) return 'research';
+      var area = aAreaByRules({ subject: title, body: aCollapse((item && (item.memo || item.notes)) || ''), note: aCollapse((item && item.note) || '') });
+      return (AREA_VALID.indexOf(area) >= 0) ? area : null;
+    } catch (e) { return null; }
+  }
+
+  // item_kind → reply | do | decide | item (mirror areas.item_kind).
+  var AREA_DECIDE_RE = /(?<![a-z])(?:approve|approval|decide|decision|choose|pick|select|vote|sign[\s-]?off|which\b|should i|yes or no|accept or decline|go or no)/i;
+  var AREA_DO_RE = /(?<![a-z])(?:grade|write|send|submit|post|order|finish|prepare|draft|build|fix|file|upload|complete|schedule|book|print|sign|pay|register|enter|record|read|revise|edit|review|email|call|plan)/i;
+  function aItemKind(rec, isDeadline) {
+    try {
+      if (!isDeadline) {
+        var src = (rec.source || '').trim().toLowerCase(), url = rec.url || '';
+        if (src === 'email' || (typeof url === 'string' && url.indexOf('message:') === 0)) return 'reply';
+      }
+      var title = aRecTitle(rec);
+      if (AREA_DECIDE_RE.test(title)) return 'decide';
+      if (isDeadline || AREA_DO_RE.test(title)) return 'do';
+    } catch (e) {}
+    return 'item';
+  }
+
+  // Validated optional area/row/short ops (mirror areas.area_edits + apply_ops).
+  function aCleanShort(s) { return aCollapse(s).slice(0, AREA_SHORT_CAP); }
+  function aAreaEdits(src, by) {
+    var ops = [];
+    if (Object.prototype.hasOwnProperty.call(src, 'area')) {
+      var raw = (typeof src.area === 'string') ? src.area.trim().toLowerCase() : '';
+      if (raw === '') ops.push(['area', null], ['area_by', null], ['row', null]);
+      else if (AREA_VALID.indexOf(raw) >= 0) ops.push(['area', raw], ['area_by', by]);
+      else return { ops: [], error: 'unknown area' };
+    }
+    if (Object.prototype.hasOwnProperty.call(src, 'row')) { var row = aNormalizeRow(src.row || ''); ops.push(['row', row || null]); }
+    if (Object.prototype.hasOwnProperty.call(src, 'short')) {
+      var sh = aCleanShort(src.short || '');
+      if (sh) ops.push(['short', sh], ['short_by', by]); else ops.push(['short', null], ['short_by', null]);
+    }
+    return { ops: ops, error: null };
+  }
+  function aApplyOps(rec, ops) {
+    var i; for (i = 0; i < ops.length; i++) { var k = ops[i][0], v = ops[i][1]; if (v === null) { if (k in rec) delete rec[k]; } else rec[k] = v; }
+  }
+
+  // ── Board assembly (mirror areas.build_board + its date math) ──
+  function aIsoToMs(s) {
+    if (typeof s !== 'string' || !s.trim()) return null;
+    var t = s.trim();
+    if (!/(Z|[+-]\d{2}:?\d{2})$/.test(t)) { t = /T/.test(t) ? (t + 'Z') : (t.slice(0, 10) + 'T00:00:00Z'); }
+    var ms = Date.parse(t); return isNaN(ms) ? null : ms;
+  }
+  function aYmdParts(ymd) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || '')); return m ? { y: +m[1], mo: +m[2], d: +m[3] } : null; }
+  function aDaysBetween(a, b) { return Math.round((Date.UTC(b.y, b.mo - 1, b.d) - Date.UTC(a.y, a.mo - 1, a.d)) / 86400000); }
+  function aDueDays(dueDate, today) { var p = aYmdParts(dueDate); return p ? aDaysBetween(today, p) : null; }
+  function aBucketFor(days) {
+    if (days === null) return 'no_date';
+    if (days < 0) return 'overdue';
+    if (days <= AREA_THIS_WEEK_DAYS) return 'this_week';
+    if (days <= AREA_NEXT_TWO_DAYS) return 'next_two_weeks';
+    return 'later';
+  }
+  function aDaysWaiting(rec, today) {
+    var ms = aIsoToMs(rec.lastEmailAt); if (ms === null) ms = aIsoToMs(rec.created);
+    if (ms === null) return 0;
+    var d = new Date(ms), ref = { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate() };
+    return Math.max(0, aDaysBetween(ref, today));
+  }
+  function aIsUpdated(primaryId, signalIds, lastEmailAt, seen, changeTimes) {
+    var seenMs = aIsoToMs((seen || {})[primaryId]); if (seenMs === null) return false;
+    var cands = [aIsoToMs(lastEmailAt)], i;
+    for (i = 0; i < signalIds.length; i++) cands.push(aIsoToMs((changeTimes || {})[signalIds[i]]));
+    var newest = null;
+    for (i = 0; i < cands.length; i++) if (cands[i] !== null && (newest === null || cands[i] > newest)) newest = cands[i];
+    return newest !== null && newest > seenMs;
+  }
+  function aBoardItem(rec, isDeadline, dueDate, primaryId, signalIds, lastEmailAt, today, seen, changeTimes, hasBodyIds) {
+    var title = aRecTitle(rec);
+    return {
+      id: primaryId,
+      kind: aItemKind(rec, isDeadline),
+      short: rec.short || aShortNameRule(title) || '',
+      title: title,
+      due_date: (dueDate === undefined ? null : dueDate),
+      days_waiting: aDaysWaiting(rec, today),
+      updated: aIsUpdated(primaryId, signalIds, lastEmailAt, seen, changeTimes),
+      days_left: aDueDays(dueDate, today),
+      source: (rec.source || ''),
+      has_body: !!(hasBodyIds && hasBodyIds[primaryId])
+    };
+  }
+  function aMergedPlacement(task, deadline) {
+    var m = {}, k; for (k in task) m[k] = task[k];
+    ['area', 'row', 'short'].forEach(function (f) { if (!m[f] && deadline[f]) m[f] = deadline[f]; });
+    return m;
+  }
+  function aSortedRows(rows) {
+    return rows.slice().sort(function (a, b) {
+      var ga = a === AREA_DEFAULT_ROW ? 1 : 0, gb = b === AREA_DEFAULT_ROW ? 1 : 0;
+      if (ga !== gb) return ga - gb;
+      var la = a.toLowerCase(), lb = b.toLowerCase(); return la < lb ? -1 : la > lb ? 1 : 0;
+    });
+  }
+  function aBucketize(items) {
+    var out = {}, i; for (i = 0; i < AREA_BUCKETS.length; i++) out[AREA_BUCKETS[i]] = [];
+    for (i = 0; i < items.length; i++) out[aBucketFor(items[i].days_left)].push(items[i]);
+    ['overdue', 'this_week', 'next_two_weeks', 'later'].forEach(function (b) {
+      out[b].sort(function (x, y) { return (x.days_left === null ? 0 : x.days_left) - (y.days_left === null ? 0 : y.days_left); });
+    });
+    out.no_date.sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
+    return out;
+  }
+  function aBuildBoard(tasks, deadlines, projects, seen, changeTimes, todayYmd, hasBodyIds) {
+    var today = aYmdParts(todayYmd) || aYmdParts((new Date()).toLocaleDateString('en-CA'));
+    seen = seen || {}; changeTimes = changeTimes || {};
+    tasks = (tasks || []).filter(function (t) { return t && typeof t === 'object'; });
+    deadlines = (deadlines || []).filter(function (d) { return d && typeof d === 'object'; });
+    var openTasks = tasks.filter(function (t) { return AREA_OPEN_TASK_LISTS.indexOf(t.list) >= 0 && (t.domain || '').toLowerCase() !== 'life'; });
+    var openTaskIds = {}; openTasks.forEach(function (t) { openTaskIds[t.id] = true; });
+    var openDeadlines = deadlines.filter(function (d) { return d.status !== 'done' && (d.domain || '').toLowerCase() !== 'life'; });
+    var dlById = {}; openDeadlines.forEach(function (d) { dlById[d.id] = d; });
+    var dlByTask = {};
+    openDeadlines.forEach(function (d) { var lt = d.linked_task_id; if (lt && openTaskIds[lt] && !(lt in dlByTask)) dlByTask[lt] = d; });
+    var consumed = {}, units = [];
+    openTasks.forEach(function (t) {
+      var tid = t.id, dl = dlByTask[tid];
+      if (!dl) { var did = t.deadline_id; if (did && dlById[did]) dl = dlById[did]; }
+      var due = null, sig = [tid], placement = t;
+      if (dl) {
+        consumed[dl.id] = true; due = dl.due_date; sig.push(dl.id);
+        if (!t.area && dl.area) placement = aMergedPlacement(t, dl);
+      }
+      units.push([placement, false, due, tid, sig, t.lastEmailAt]);
+    });
+    openDeadlines.forEach(function (d) { if (!consumed[d.id]) units.push([d, true, d.due_date, d.id, [d.id], null]); });
+    var byArea = {}, notPlaced = [];
+    units.forEach(function (u) {
+      var placement = u[0], item = aBoardItem(placement, u[1], u[2], u[3], u[4], u[5], today, seen, changeTimes, hasBodyIds);
+      var area = placement.area;
+      if (AREA_VALID.indexOf(area) >= 0) {
+        var row = aCollapse(placement.row) || AREA_DEFAULT_ROW;
+        if (!byArea[area]) byArea[area] = {}; if (!byArea[area][row]) byArea[area][row] = [];
+        byArea[area][row].push(item);
+      } else {
+        item.suggested_area = aSuggestArea(placement, projects);
+        notPlaced.push(item);
+      }
+    });
+    var outAreas = [];
+    AREA_EMAIL_AREAS.forEach(function (a) {
+      var rowsMap = byArea[a.key]; if (!rowsMap) return;
+      var rows = [], total = 0;
+      aSortedRows(Object.keys(rowsMap)).forEach(function (row) {
+        var items = rowsMap[row]; total += items.length;
+        rows.push({ row: row, count: items.length, buckets: aBucketize(items) });
+      });
+      outAreas.push({ area: a.key, name: a.name, count: total, rows: rows });
+    });
+    notPlaced.sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
+    return { areas: outAreas, not_placed: notPlaced };
+  }
+
   // ── route table ─────────────────────────────────────────────────
   const DISABLED = ['/api/presort', '/api/backfill-domains', '/api/recipes/promote-full',
     '/api/recipes/purge-excluded', '/api/recipes/plan', '/api/import',
@@ -654,6 +957,43 @@
       if (status) items = items.filter(e => e.status === status);
       return resp({ items });
     }
+    // Area dashboards board (the Work view) — READ-ONLY, byte-identical to the
+    // server's GET /api/areas/board (aBuildBoard mirrors areas.build_board). Reads
+    // the same stores: tasks (data.json), deadlines, projects, the seen stamps
+    // (area-seen.json, Mac-written) and the reschedule/schedule change-log times.
+    // `has_body` is a FLAG computed from the KEY SET of the email body store; the
+    // body TEXT never rides the board (same as the server).
+    if (path === '/api/areas/board') {
+      const changeTimes = {};
+      const chText = await download('changes.log');
+      if (chText) for (const ln of chText.split('\n')) {
+        const s = ln.trim(); if (!s) continue;
+        let o; try { o = JSON.parse(s); } catch (e) { continue; }
+        if (o && typeof o === 'object' && (o.action === 'reschedule' || o.action === 'schedule') && o.id && o.ts) {
+          if (String(o.ts) > String(changeTimes[o.id] || '')) changeTimes[o.id] = o.ts;
+        }
+      }
+      const bodyIds = {};
+      const bstore = await readJson('email-bodies.json', {});   // key set only — never the text
+      if (bstore && typeof bstore === 'object') for (const k of Object.keys(bstore)) bodyIds[k] = true;
+      const board = aBuildBoard(
+        await readJson('data.json', []), await readJson('deadlines.json', []),
+        await readJson('projects.json', []), await readJson('area-seen.json', {}),
+        changeTimes, todayLocal(), bodyIds);
+      return resp(board);
+    }
+    // Stored email body for the Today sort box (FERPA) — READ-ONLY mirror of the
+    // server's GET /api/email-body?id=. Same {body, from, date, saved_at} shape, same
+    // 404 for an unknown id / absent store. The body lives only in the user's Dropbox
+    // (reached with his own key); it NEVER goes to AI or any other host, and the
+    // hosted shell is NEVER a writer (no POST, no sweep — the Mac server owns writes).
+    if (path.startsWith('/api/email-body')) {
+      const id = (new URLSearchParams(path.split('?')[1] || '').get('id') || '').trim();
+      const bstore = await readJson('email-bodies.json', {});
+      const rec = (id && bstore && typeof bstore === 'object') ? bstore[id] : null;
+      if (!rec) return resp({ error: 'not found' }, 404);
+      return resp(rec);
+    }
 
     // — task writes (data.json) —
     if (path === '/api/capture') return resp(await updateJson('data.json', a => {
@@ -701,6 +1041,31 @@
     if (path === '/api/set-domain') { await setField(i => i.domain = body.domain); return resp({ ok: true }); }
     if (path === '/api/log') return resp(await updateJson('journal.json', a => { a.push({ id: genId(), text: body.text, timestamp: nowIso() }); return a; }, []), 201);
 
+    // Work-view / Today-sort-box task edit — mirror server._handle_task_update:
+    // reads `text` (required, non-blank) + the OPTIONAL area/row/short at the TOP
+    // level (marks `*_by:"john"`; an unknown area is a 400 BEFORE any write) + the
+    // optional email `tier` (reply_needed|action_needed only). 404 unknown id.
+    if (path === '/api/task/update') {
+      const itemId = body.id;
+      const text = (body.text || '').trim();
+      if (!itemId) return resp({ error: 'id required' }, 400);
+      if (!text) return resp({ error: 'text required' }, 400);
+      const ae = aAreaEdits(body, 'john');
+      if (ae.error) return resp({ error: ae.error }, 400);
+      const newTier = (body.tier || '').trim().toLowerCase();
+      let found = null;
+      await updateJson('data.json', a => {
+        const it = a.find(i => i.id === itemId);
+        if (it) { it.text = text; aApplyOps(it, ae.ops); if (newTier === 'reply_needed' || newTier === 'action_needed') it.tier = newTier; found = it; }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp(found);
+    }
+    // Area "seen" stamp — the "changed since you last looked" dot is Mac-only
+    // (area-seen.json is server-owned; home.html guards the call with !LOCAL). A
+    // harmless hosted no-op that never writes; the dot clears on the Mac. Never a 404.
+    if (path === '/api/areas/seen') return resp({ ok: true, stamped: 0, hosted: true });
     // — task lane / proposal lifecycle (Phase 1 + Phase 6; pure data.json edits) —
     // One-tap lane correction. Mirror server._handle_set_lane: lane must be in
     // LANES (else 400); find the id among tasks first, then deadlines. 404 unknown.
@@ -825,6 +1190,11 @@
       const fields = (body.fields && typeof body.fields === 'object') ? body.fields : null;
       if (!body.id || !fields) return resp({ error: 'id and fields required' }, 400);
       const allowed = ['title', 'due_date', 'lead_time_days', 'domain', 'status', 'notes', 'type', 'linked_task_id'];
+      // Optional area/row/short (Work-view edit) — validated + john-marked out of
+      // band (NOT in `allowed`, so the generic loop ignores them). Unknown area → 400
+      // BEFORE any write (mirror the server).
+      const aeD = aAreaEdits(fields, 'john');
+      if (aeD.error) return resp({ error: aeD.error }, 400);
       let found = null, finishing = false, linked = null;
       await updateJson('deadlines.json', a => {
         const d = a.find(x => x.id === body.id);
@@ -837,6 +1207,7 @@
           if (finishing && k === 'status') continue;   // set below via the chain
           d[k] = fields[k];
         }
+        aApplyOps(d, aeD.ops);
         if (finishing) { d.status = 'done'; linked = d.linked_task_id || null; }
         return a;
       }, []);
