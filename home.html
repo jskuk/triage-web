@@ -682,6 +682,17 @@
   .ekey kbd { font: inherit; font-weight: 700; color: var(--t-accent); margin-right: 4px; }
   .ekey.on { background: var(--t-mark); border-color: var(--t-mark); color: #fff; }
   .ekey.on kbd { color: #fff; }
+  /* 2b. Schedule form (key e): native date/time inputs so the phone shows pickers */
+  .esch { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 2px; }
+  .esch label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+  .esch label.esch-wide { flex: 1 1 100%; }
+  .esch input, .esch select { font: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 38px; }
+  .esch-acts { display: flex; gap: 8px; flex: 1 1 100%; margin-top: 2px; }
+  .esch-add { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--t-accent); background: var(--t-accent); color: #fff; cursor: pointer; min-height: 38px; }
+  .esch-add[disabled] { opacity: .5; cursor: default; }
+  .esch-cancel { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; min-height: 38px; }
+  .esort-ok { font-size: 13px; color: var(--text); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .esch-undo { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--t-accent); background: var(--page); color: var(--t-accent); cursor: pointer; }
   /* 3. Research whiteboard */
   .t2-boardwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--t-board); -webkit-overflow-scrolling: touch; }
   .t2-board { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
@@ -1905,8 +1916,9 @@ function emailSortQueue(notPlaced) {
 }
 // Key → the action the sort box commits. Area keys (t a f s c) via AREA_PLACE_KEYS
 // set the area; r/d set the item's KIND through its `tier` (reply_needed = reply,
-// action_needed = task — the field the Today Reply/Do split reads); n marks it done
-// (the existing done path). null for any other key. No parallel field is invented.
+// action_needed = task — the field the Today Reply/Do split reads); e opens the
+// Schedule form (a time to put on the calendar); n marks it done (the existing done
+// path). null for any other key. No parallel field is invented.
 function emailSortAction(key) {
   if (!key) return null;
   key = String(key).toLowerCase();
@@ -1915,8 +1927,67 @@ function emailSortAction(key) {
   }
   if (key === 'r') return { type: 'kind', tier: 'reply_needed' };
   if (key === 'd') return { type: 'kind', tier: 'action_needed' };
+  if (key === 'e') return { type: 'schedule' };
   if (key === 'n') return { type: 'done' };
   return null;
+}
+// The Length choices (minutes) the Schedule form offers. 30 is the default when no
+// proposed meeting prefills a duration.
+var SCHEDULE_LENGTHS = [15, 30, 45, 60, 90, 120];
+// Build a naive-local meeting start 'YYYY-MM-DDTHH:MM' from an <input type=date>
+// value (YYYY-MM-DD) + an <input type=time> value (HH:MM), using the LOCAL date
+// parts VERBATIM — never new Date()/toISOString (the UTC roll a late-evening capture
+// hits, CLAUDE.md gotcha). "" when either part is missing/malformed, so the Add
+// button stays disabled. The server stores meeting starts as naive local wall-clock.
+function scheduleStart(day, time) {
+  var d = String(day || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  var t = String(time || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!d || !t) return '';
+  var hh = +t[1], mm = +t[2];
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return '';
+  var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+  return d[1] + '-' + d[2] + '-' + d[3] + 'T' + pad(hh) + ':' + pad(mm);
+}
+// Add is enabled only once a day AND a time are set (and parse to a real start).
+function scheduleCanAdd(day, time) { return !!scheduleStart(day, time); }
+// The PROPOSED meeting tied to this email task, or null. Match by linked_task_id
+// first (the link the email agent actually stamps), else by the task's thread_key /
+// Mail message id against the meeting's thread_key / source_id. Confirmed meetings
+// are never returned (only a proposal is a prefill source + a confirm-in-place
+// target). Pure over the loaded meetings + the task record. `task` may be null.
+function linkedProposedMeeting(taskId, meetings, task) {
+  var ms = (meetings || []).filter(function (m) { return m && m.proposed; });
+  if (!ms.length) return null;
+  var byLink = ms.filter(function (m) { return m.linked_task_id && m.linked_task_id === taskId; });
+  if (byLink.length) return byLink[0];
+  if (task) {
+    var tk = task.thread_key || task.emailThread || '';
+    var mid = task.emailMessageId || '';
+    var hit = ms.filter(function (m) {
+      return (tk && (m.thread_key === tk)) || (mid && m.source_id === mid);
+    });
+    if (hit.length) return hit[0];
+  }
+  return null;
+}
+// The Schedule form's initial values. What = the task's subject/short; Day/Time/
+// Length/Where are prefilled from a linked PROPOSED meeting when one exists (its
+// start split into local date + HH:MM parts, deterministically — the stored start is
+// already naive local), else Day/Time empty and Length 30. Pure (no AI, no fetch).
+function schedulePrefill(task, item, meetings) {
+  var what = (item && item.title) || (task && (task.text || '')) || '';
+  var m = linkedProposedMeeting(item && item.id, meetings, task);
+  if (m) {
+    var sp = String(m.start || '').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
+    return {
+      what: m.title || what,
+      day: sp ? sp[1] : '',
+      time: sp ? sp[2] : '',
+      length: m.minutes ? String(m.minutes) : '30',
+      where: m.location || ''
+    };
+  }
+  return { what: what, day: '', time: '', length: '30', where: '' };
 }
 // Split a ranked reply list into the head shown by default + the hidden remainder,
 // for the "Show all N replies" control. n = head size. Pure.
@@ -3180,12 +3251,52 @@ function emailSortBoxHtml() {
       escapeHtml(cur.id) + '" data-area="' + escapeHtml(p.area) + '"><kbd>' + p.key + '</kbd>' + escapeHtml(p.label) + '</button>';
   });
   h += '</div><div class="esort-keys"><span class="esort-grp">Then</span>';
-  [['r', 'Reply'], ['d', 'Task'], ['n', 'No need']].forEach(function (p) {
-    h += '<button class="ekey" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
+  [['r', 'Reply'], ['d', 'Task'], ['e', 'Schedule'], ['n', 'No need']].forEach(function (p) {
+    var on = (p[0] === 'e' && state.emailScheduleOpen === cur.id) ? ' on' : '';
+    h += '<button class="ekey' + on + '" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
       '" data-key="' + p[0] + '"><kbd>' + p[0] + '</kbd>' + p[1] + '</button>';
   });
-  h += '</div></div>';
+  h += '</div>';
+  if (state.emailScheduleOpen === cur.id) h += emailScheduleFormHtml(cur);
+  var sres = state.emailScheduleResult && state.emailScheduleResult[cur.id];
+  if (sres) {
+    h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(sres.msg) +
+      (sres.meetingId ? ' <button class="esch-undo" data-pact="eschundo" data-id="' + escapeHtml(cur.id) + '">Undo</button>' : '') +
+      '</div>';
+  }
+  h += '</div>';
   return h;
+}
+// The inline Schedule form inside the sort box (key e). Native date/time inputs
+// (good on a phone); a small Length select; Add is disabled until Day + Time are
+// set. Prefilled once on open into state.emailScheduleForm (no re-render per
+// keystroke — the input handler updates state + toggles Add in place, so focus is
+// kept across the fields). Esc / Cancel closes it; while it is open the single-letter
+// sort keys are suppressed so typing "r" in a field types an r.
+function emailScheduleFormHtml(cur) {
+  var f = state.emailScheduleForm || {};
+  var canAdd = scheduleCanAdd(f.day, f.time);
+  var h = '<div class="esch" id="esch">';
+  h += '<label class="esch-wide">What<input class="esch-in" data-f="what" value="' + escapeHtml(f.what || '') + '"></label>';
+  h += '<label>Day<input class="esch-in" type="date" data-f="day" value="' + escapeHtml(f.day || '') + '"></label>';
+  h += '<label>Time<input class="esch-in" type="time" data-f="time" value="' + escapeHtml(f.time || '') + '"></label>';
+  h += '<label>Length<select class="esch-in" data-f="length">';
+  SCHEDULE_LENGTHS.forEach(function (mn) {
+    h += '<option value="' + mn + '"' + (String(f.length) === String(mn) ? ' selected' : '') + '>' + scheduleLengthLabel(mn) + '</option>';
+  });
+  h += '</select></label>';
+  h += '<label class="esch-wide">Where<input class="esch-in" data-f="where" value="' + escapeHtml(f.where || '') + '"></label>';
+  h += '<div class="esch-acts">' +
+    '<button class="esch-add" id="esch-add" data-pact="eschadd" data-id="' + escapeHtml(cur.id) + '"' + (canAdd ? '' : ' disabled') + '>Add to calendar</button>' +
+    '<button class="esch-cancel" data-pact="eschcancel">Cancel</button></div>';
+  h += '</div>';
+  return h;
+}
+function scheduleLengthLabel(mn) {
+  if (mn < 60) return mn + ' min';
+  if (mn === 60) return '1 hr';
+  if (mn % 60 === 0) return (mn / 60) + ' hr';
+  return (Math.floor(mn / 60)) + ' hr ' + (mn % 60) + ' min';
 }
 // A short "Nov 10, 9:00 AM" from the stored email date; falls back to the raw string.
 function emailWhen(iso) {
@@ -3251,6 +3362,7 @@ function esortThen(id, key) {
   if (!act || key === undefined) return;
   var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
   state.emailSortDone = state.emailSortDone || {};
+  if (act.type === 'schedule') { esortScheduleOpen(id); return; }
   if (act.type === 'done') {
     state.emailSortDone[id] = true;
     optimistic[id] = true;
@@ -3274,6 +3386,114 @@ function esortThen(id, key) {
   } else {
     ensureAreaBoard(true);
   }
+}
+// Schedule (key e): open the inline calendar form, prefilled from a linked proposed
+// meeting when one exists (else Day/Time empty, Length 30). Does NOT advance the
+// queue — the email stays put so John can still Reply/Task/No-need afterward.
+function esortScheduleOpen(id) {
+  var item = (state.areaBoard && state.areaBoard.not_placed || []).filter(function (x) { return x.id === id; })[0] || { id: id };
+  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
+  state.emailScheduleForm = schedulePrefill(task, item, state.meetings);
+  state.emailScheduleOpen = id;
+  render();
+}
+function esortScheduleCancel() {
+  state.emailScheduleOpen = null;
+  state.emailScheduleForm = null;
+  render();
+}
+// Add = a CONFIRMED meeting on the calendar, through the existing meetings API so
+// the existing calendar write happens (the confirmed path creates the Google event
+// on the Meetings calendar + stamps gcal_event_id). If a proposed meeting was the
+// prefill source, UPDATE + CONFIRM that record (no duplicate); else ADD a new one
+// already confirmed, tagged source "today-schedule" + linked_task_id (traceable to
+// the email). Hosted (dbx.js) writes the record WITHOUT a gcal id; the Mac reconcile
+// creates the event on its next cycle. Also commits the lit/suggested area, like r/d.
+function esortScheduleAdd(id) {
+  var f = state.emailScheduleForm || {};
+  var start = scheduleStart(f.day, f.time);
+  if (!start) return;                                    // Add is disabled; belt + braces
+  var minutes = parseInt(f.length, 10) || 30;
+  var item = (state.areaBoard && state.areaBoard.not_placed || []).filter(function (x) { return x.id === id; })[0] || { id: id };
+  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
+  var title = (f.what || '').trim() || item.title || (task && task.text) || 'Meeting';
+  var where = (f.where || '').trim();
+  var m = linkedProposedMeeting(id, state.meetings, task);
+  // Commit the lit/suggested area alongside (like r/d), so the task also lands in its
+  // area board row — best-effort, never blocks the calendar write.
+  var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+  if (litArea && task) {
+    api('/api/task/update', { method: 'POST', body: { id: id, text: task.text || '', area: litArea } })
+      .then(function () { ensureAreaBoard(true); }).catch(function () {});
+  }
+  state.emailScheduleOpen = null;        // close the form; the email stays in the box
+  render();
+  var done = function (res) {
+    var rec = (res && res.data && typeof res.data === 'object') ? res.data : null;
+    // A non-2xx (e.g. the proposed meeting vanished → 404) is a save failure, not a
+    // false success.
+    if (!res || !res.ok || !rec || rec.error || !rec.id) { scheduleShowSaveFailed(id); return; }
+    scheduleShowResult(id, rec, start);
+  };
+  var fail = function () { scheduleShowSaveFailed(id); };
+  if (m) {
+    apiJson('/api/meetings/update', { method: 'POST', body: { id: m.id, fields: { title: title, start: start, minutes: minutes, location: where } } })
+      .then(function () { return apiJson('/api/meetings/confirm', { method: 'POST', body: { id: m.id } }); })
+      .then(done).catch(fail);
+  } else {
+    apiJson('/api/meetings/add', { method: 'POST', body: {
+      title: title, start: start, minutes: minutes, location: where,
+      proposed: false, source: 'today-schedule', linked_task_id: id, domain: 'work'
+    } }).then(done).catch(fail);
+  }
+}
+// Render the one-line result in the box + a 5-second Undo. Distinguishes a real
+// Google event (gcal_event_id present) from "saved only" (hosted, or a Mac calendar
+// failure) so it NEVER shows a false success.
+function scheduleShowResult(id, rec, start) {
+  state.emailScheduleResult = state.emailScheduleResult || {};
+  var when = scheduleWhenLabel(start);
+  var msg, mid = rec && rec.id;
+  if (rec && rec.gcal_event_id) msg = 'Added: ' + when;
+  else if (!LOCAL) msg = 'Saved. It reaches Google calendar when your Mac next checks.';
+  else msg = 'Saved here, but not on Google calendar yet.';
+  state.emailScheduleResult[id] = { msg: msg, meetingId: mid };
+  state.emailScheduleForm = null;
+  render();
+  fetchAll();                            // refresh meetings so the board/week reflect it
+  scheduleClearResultLater(id);
+}
+function scheduleShowSaveFailed(id) {
+  state.emailScheduleResult = state.emailScheduleResult || {};
+  state.emailScheduleResult[id] = { msg: 'Could not save it. Try again.', meetingId: null };
+  render();
+  scheduleClearResultLater(id);
+}
+function scheduleClearResultLater(id) {
+  setTimeout(function () {
+    if (state.emailScheduleResult) delete state.emailScheduleResult[id];
+    if (state.view === 'home') render();
+  }, 5000);
+}
+// Undo within 5s: delete the just-created meeting (and its calendar event via the
+// existing server delete path). Hosted removes the record; the Mac never minted an
+// event for it yet, so there is nothing to clean there.
+function esortScheduleUndo(id) {
+  var res = state.emailScheduleResult && state.emailScheduleResult[id];
+  if (!res || !res.meetingId) return;
+  var mid = res.meetingId;
+  delete state.emailScheduleResult[id];
+  render();
+  apiJson('/api/meetings/delete', { method: 'POST', body: { id: mid } })
+    .then(function () { fetchAll(); }).catch(function () { fetchAll(); });
+}
+// A short "Thu Dec 3, 12:15 PM" from a naive-local start, built from LOCAL parts.
+function scheduleWhenLabel(start) {
+  var sp = String(start || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!sp) return String(start || '');
+  var d = new Date(+sp[1], +sp[2] - 1, +sp[3], +sp[4], +sp[5]);
+  try { return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  catch (e) { return String(start); }
 }
 // The currently-shown one thing: an explicit per-day override when it still resolves
 // to a Reply/Do row, else the computed default (pure oneThingDefault). null → omit.
@@ -5174,6 +5394,9 @@ function handlePageAction(act, el) {
   if (act === 'workmore') { var wc = el.getAttribute('data-col'); state.workExpanded[wc] = !state.workExpanded[wc]; render(); return true; }
   if (act === 'esortarea') { esortSetArea(el.getAttribute('data-id'), el.getAttribute('data-area')); return true; }
   if (act === 'esortthen') { esortThen(el.getAttribute('data-id'), el.getAttribute('data-key')); return true; }
+  if (act === 'eschadd') { esortScheduleAdd(el.getAttribute('data-id')); return true; }
+  if (act === 'eschcancel') { esortScheduleCancel(); return true; }
+  if (act === 'eschundo') { esortScheduleUndo(el.getAttribute('data-id')); return true; }
   if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
   if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
   if (act === 'editwait') {
@@ -6340,6 +6563,8 @@ document.addEventListener('click', function (e) {
 document.addEventListener('keydown', function (e) {
   // Escape closes the Areas overflow (⋯) menu first.
   if (e.key === 'Escape' && state.openProjectMenu) { e.preventDefault(); state.openProjectMenu = null; render(); return; }
+  // Escape closes the Today sort box's Schedule form (Cancel).
+  if (e.key === 'Escape' && state.emailScheduleOpen) { e.preventDefault(); esortScheduleCancel(); return; }
   // sweep flashcard shortcuts (digits/letters/Space/Esc) — never while typing in
   // the date input or another field.
   if (state.view === 'sweeps' && state.sweepQueue) {
@@ -6366,7 +6591,10 @@ document.addEventListener('keydown', function (e) {
   // inside the box OR on the bare page (no input/textarea/contenteditable focused).
   // No collision: the Today page binds no other single-letter shortcut here. On a
   // phone there is no hardware keyboard; the on-screen buttons carry the same actions.
-  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+  // While the Schedule form is open, the single-letter sort keys must NOT fire (so
+  // typing "r" in a field types an r, even with focus on a form button inside the
+  // box). Esc is handled above.
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen) {
     var aeE = document.activeElement;
     var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
     var inBoxE = aeE && aeE.closest && aeE.closest('#esort');
@@ -6444,6 +6672,14 @@ document.addEventListener('input', function (e) {
   var t = e.target;
   if (t && t.id === 'lib-search') { state.libSearch = t.value; rerenderKeepFocus('lib-search'); }
   else if (t && t.id === 'kitchen-search') { state.kitchenSearch = t.value; rerenderKeepFocus('kitchen-search'); }
+  // Schedule form fields: update state WITHOUT re-rendering (so focus/caret stay put
+  // across the fields); just toggle the Add button in place as Day/Time fill in.
+  else if (t && t.classList && t.classList.contains('esch-in')) {
+    state.emailScheduleForm = state.emailScheduleForm || {};
+    state.emailScheduleForm[t.getAttribute('data-f')] = t.value;
+    var add = document.getElementById('esch-add');
+    if (add) add.disabled = !scheduleCanAdd(state.emailScheduleForm.day, state.emailScheduleForm.time);
+  }
 });
 function rerenderKeepFocus(id) {
   render();

@@ -205,6 +205,7 @@
   // ── deadline heuristics: minimal JS mirror of aihelper (browser can't run the
   //    Python heuristic parser). config.DEADLINE_LEAD_DEFAULTS + _deadline_type.
   const DEADLINE_LEAD_DEFAULTS = { referee: 14, recletter: 7, rnr: 42, grant: 30, conference: 21, teaching: 7, other: 14 };
+  const MEETING_DEFAULT_MINUTES = 60;   // mirror config.MEETING_DEFAULT_MINUTES
   const _DL_MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
   const _DL_TYPES = [
     [['referee', 'review report', 'report for', 'reviewer report'], 'referee'],
@@ -350,6 +351,46 @@
       status: 'open',
       later_until: null, decided_at: null, pass_reason: null, deadline_id: null,
       filed_by: filedBy, filed_at: filedBy ? (body.filed_at || nowIso()) : (body.filed_at || null),
+    };
+  }
+  // Normalize a meeting start to 'YYYY-MM-DDTHH:MM' naive-local, mirroring
+  // server._norm_start (tolerate a space or trailing offset; '' when unparseable).
+  function normMeetingStart(v) {
+    const s = String(v || '').trim().replace(' ', 'T').slice(0, 16);
+    return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s) ? s : '';
+  }
+  // Mirror records.normalize_attendees: a string splits on commas/semicolons; a list
+  // is trimmed to non-empty strings; anything else → []. Guards the char-explode bug.
+  function normalizeAttendees(v) {
+    if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+    if (typeof v === 'string') return v.split(/[,;]/).map(x => x.trim()).filter(Boolean);
+    return [];
+  }
+  // Build a CONFIRMED meeting record (hosted Today "Schedule" add). Mirrors the
+  // server's _handle_meeting_add record shape, minus the Google event: the phone
+  // cannot reach Google, so gcal_event_id stays null and the Mac reconcile creates
+  // the event later. Source "today-schedule" is what the reconcile keys on.
+  function makeMeeting(body) {
+    const title = (body.title || '').trim();
+    const domain = ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(title);
+    return {
+      id: genId(),
+      title,
+      start: normMeetingStart(body.start),
+      minutes: parseInt(body.minutes, 10) || MEETING_DEFAULT_MINUTES,
+      location: (body.location || '').trim(),
+      attendees: normalizeAttendees(body.attendees),
+      domain,
+      status: 'upcoming',
+      notes: (body.notes || '').trim() || null,
+      linked_task_id: (body.linked_task_id || '').trim() || null,
+      thread_key: (body.thread_key || '').trim() || null,
+      proposed: false,
+      source: (body.source || 'today-schedule').trim() || 'today-schedule',
+      source_id: (body.source_id || '').trim() || null,
+      gcal_event_id: null,
+      gcal_calendar_id: null,
+      created: nowIso(),
     };
   }
   // Compute days_to_decide + decide_now the way the server does (mirror the contract).
@@ -1615,6 +1656,95 @@
       let rec = null;
       await updateJson('opportunities.json', a => { const o = a.find(x => x.id === body.id); if (o) { o.status = 'submitted'; o.decided_at = nowIso(); o.deadline_id = deadline.id; if (pid) o.project_id = pid; rec = o; } return a; }, []);
       return resp({ ok: true, record: rec, deadline });
+    }
+
+    // — Meetings: the Today "Schedule" choice (2026-11-21). John decided the phone
+    //   can put an email event on the calendar. The phone cannot reach Google, so a
+    //   hosted add/confirm writes the CONFIRMED record to meetings.json with NO
+    //   gcal_event_id and source "today-schedule"; the Mac reconcile
+    //   (/api/meetings/reconcile-calendar) creates the Google event on its next
+    //   cycle. meetings.json joins the dual-mode CAS-written stores (like data.json /
+    //   today.json / opportunities.json); the Mac server stays the single writer that
+    //   mints calendar events. Dedupe mirrors the server: source_id exact, else same
+    //   start-minute AND (attendee overlap OR equal non-empty location); a hit returns
+    //   the existing record and NEVER flips a confirmed meeting back to proposed.
+    if (path === '/api/meetings/add') {
+      const start = normMeetingStart(body.start);
+      const title = (body.title || '').trim();
+      if (!start || !title) return resp({ error: 'title and parseable start required' }, 400);
+      const rec = makeMeeting(body);
+      const attL = new Set(rec.attendees.map(a => a.toLowerCase()));
+      const locL = rec.location.toLowerCase();
+      const srcId = rec.source_id;
+      let outRec = null;
+      await updateJson('meetings.json', a => {
+        for (const m of a) {
+          if (srcId && m.source_id === srcId) { outRec = m; return a; }
+          if ((m.start || '').slice(0, 16) === start) {
+            const mAtt = new Set((m.attendees || []).map(x => String(x).trim().toLowerCase()));
+            const mLoc = (m.location || '').trim().toLowerCase();
+            const overlap = [...attL].some(x => mAtt.has(x));
+            if (overlap || (locL && mLoc && locL === mLoc)) { outRec = m; return a; }
+          }
+        }
+        outRec = rec; a.push(rec); return a;
+      }, []);
+      return resp(outRec, outRec === rec ? 201 : 200);
+    }
+    if (path === '/api/meetings/update') {
+      const mid = body.id;
+      const fields = (body.fields && typeof body.fields === 'object') ? body.fields : null;
+      if (!mid || !fields) return resp({ error: 'id and fields required' }, 400);
+      const allowed = ['title', 'start', 'minutes', 'location', 'attendees', 'notes', 'domain', 'status', 'linked_task_id'];
+      let found = null;
+      await updateJson('meetings.json', a => {
+        const m = a.find(x => x.id === mid);
+        if (m) {
+          for (const k of Object.keys(fields)) {
+            if (!allowed.includes(k)) continue;
+            if (k === 'start') m[k] = normMeetingStart(fields[k]);
+            else if (k === 'attendees') m[k] = normalizeAttendees(fields[k]);
+            else m[k] = fields[k];
+          }
+          found = m;
+        }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp(found);
+    }
+    // Confirm a proposed meeting on the phone: clear `proposed`; the phone cannot mint
+    // a Google event, so stamp source "today-schedule" (no gcal_event_id) so the Mac
+    // reconcile creates the event next cycle. Idempotent. 404 unknown id.
+    if (path === '/api/meetings/confirm') {
+      const mid = body.id;
+      let found = null;
+      await updateJson('meetings.json', a => {
+        const m = a.find(x => x.id === mid);
+        if (m) {
+          if (m.proposed || !m.gcal_event_id) {
+            m.proposed = false;
+            if (!m.gcal_event_id) m.source = 'today-schedule';   // mark for the Mac reconcile
+          }
+          found = m;
+        }
+        return a;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp(found);
+    }
+    // Delete (the Schedule Undo). The phone never created a Google event for a
+    // today-schedule record, so there is nothing to clean there; the Mac cleans any
+    // event it had minted the next time it deletes through the server.
+    if (path === '/api/meetings/delete') {
+      let found = false;
+      await updateJson('meetings.json', a => {
+        const n = a.filter(x => x.id !== body.id);
+        found = n.length !== a.length;
+        return n;
+      }, []);
+      if (!found) return resp({ error: 'not found' }, 404);
+      return resp({ ok: true });
     }
 
     // — "Drop" capture (2026-10-16): write ONE capture file; the router files it
