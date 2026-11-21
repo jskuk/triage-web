@@ -3180,7 +3180,7 @@ function emailSortBoxHtml() {
       escapeHtml(cur.id) + '" data-area="' + escapeHtml(p.area) + '"><kbd>' + p.key + '</kbd>' + escapeHtml(p.label) + '</button>';
   });
   h += '</div><div class="esort-keys"><span class="esort-grp">Then</span>';
-  [['r', 'Reply'], ['d', 'Task'], ['n', 'Nothing']].forEach(function (p) {
+  [['r', 'Reply'], ['d', 'Task'], ['n', 'No need']].forEach(function (p) {
     h += '<button class="ekey" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
       '" data-key="' + p[0] + '"><kbd>' + p[0] + '</kbd>' + p[1] + '</button>';
   });
@@ -3255,7 +3255,7 @@ function esortThen(id, key) {
     state.emailSortDone[id] = true;
     optimistic[id] = true;
     render();
-    undoable('Sorted: nothing', function () {
+    undoable('Sorted: no need', function () {
       api('/api/done', { method: 'POST', body: { id: id } })
         .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
         .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
