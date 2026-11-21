@@ -762,6 +762,8 @@
 
   /* ---------- Work / area dashboards (2026-11-20, mockups/area-dashboards.html) ---------- */
   .awrap { display: grid; gap: 22px; }
+  /* The boards are wide tables: on the Work view the page uses the screen (2026-11-20, John: "narrow boards" on a wide monitor). */
+  .page:has(.awrap) { max-width: 1680px; }
   .ahead h1 { font-size: 24px; margin: 0 0 2px; }
   .ahead .asub { color: var(--text-2); font-size: 14px; margin: 0; max-width: 62ch; }
   .atabs { display: flex; gap: 6px; flex-wrap: wrap; }
