@@ -36,6 +36,15 @@
     --t-mark: #2f4fb5;
     --t-wait: #8b93a7;
     --t-board: #fbfcfe;
+    /* Area-dashboard tokens (2026-11-20, mockups/area-dashboards.html — the Work
+       view). Five distinguishable, muted hues so the board reads as one system;
+       none of the existing palette tokens gave five distinct area colours. Light
+       only, matching this page (home.html has no dark theme across its views). */
+    --area-teaching: #3d5fc4;
+    --area-advising: #8a4fc0;
+    --area-referee:  #b0672a;
+    --area-service:  #4c7a5a;
+    --area-research: #b23f5e;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -750,6 +759,84 @@
     .cn-head h1 { font-size: 22px; }
     .cn-email-form .cn-in, .cn-note-form .cn-in { flex-basis: 100%; }
   }
+
+  /* ---------- Work / area dashboards (2026-11-20, mockups/area-dashboards.html) ---------- */
+  .awrap { display: grid; gap: 22px; }
+  .ahead h1 { font-size: 24px; margin: 0 0 2px; }
+  .ahead .asub { color: var(--text-2); font-size: 14px; margin: 0; max-width: 62ch; }
+  .atabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .atab { font-size: 13px; color: var(--text-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; background: var(--page); }
+  .atab:hover { background: var(--hover); }
+  .atab.on { color: #fff; background: var(--ac, var(--t-accent)); border-color: var(--ac, var(--t-accent)); }
+  .asec-lbl { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--t-accent); font-weight: 600; }
+  .aboard { overflow-x: auto; background: var(--page); border: 1px solid var(--line); border-radius: 10px; -webkit-overflow-scrolling: touch; }
+  .aboard table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  .aboard th, .aboard td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 7px 8px; vertical-align: top; text-align: left; }
+  .aboard tr:last-child td, .aboard tr:last-child th { border-bottom: 0; }
+  .aboard th:last-child, .aboard td:last-child { border-right: 0; }
+  .aboard thead th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+  .aboard thead th.late { color: #8a6a2b; background: var(--yellow-bg); }
+  .aboard thead th.now { color: var(--t-accent); }
+  .aboard tbody th { font-weight: 600; white-space: nowrap; border-left: 4px solid var(--ac, var(--gray)); }
+  .aboard tbody th button { font: inherit; font-weight: 600; text-align: left; color: var(--text); }
+  .aboard tbody th button:hover { color: var(--t-accent); }
+  .aboard tbody th small { display: block; font-weight: 400; color: var(--text-2); font-size: 12px; }
+  .aboard td.late { background: var(--yellow-bg); }
+  .acell { display: flex; flex-wrap: wrap; gap: 5px; }
+  .apill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--ac, var(--line)); border-radius: 7px; padding: 2px 7px; background: var(--page); white-space: nowrap; font-size: 13px; color: var(--text); }
+  .apill:hover { background: var(--hover); }
+  .apill b { font-weight: 600; }
+  .apill em { font-style: normal; color: var(--ac, var(--text-2)); font-size: 12px; }
+  .apill span { color: var(--text-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .apill.sel { background: var(--t-accent-soft); outline: 2px solid var(--t-accent); }
+  .apill.up::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--area-research); flex: none; }
+  .akey { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); margin-top: 8px; }
+  .akey em { font-style: normal; }
+  .akey i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--area-research); margin-right: 5px; }
+  .acols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; align-items: start; }
+  .acol { background: var(--page); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 8px; min-width: 0; }
+  .acol h3 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); display: flex; justify-content: space-between; font-weight: 600; }
+  .ait { border: 1px solid var(--line); border-left: 3px solid var(--ac, var(--t-accent)); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; background: var(--page); }
+  .ait.sel { outline: 2px solid var(--t-accent); }
+  .ait p { margin: 0; font-size: 14px; }
+  .ait .ashort { font-weight: 600; }
+  .ait .ashort[role="button"] { cursor: text; border-bottom: 1px dashed var(--line); }
+  .ait .am { font-size: 12px; color: var(--text-2); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .ait .am a { color: var(--t-accent); }
+  .arow-chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--gray-bg); color: var(--text-2); font-weight: 600; }
+  .achip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--t-accent-soft); color: var(--t-accent); font-weight: 600; }
+  .aacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .aacts button { font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; background: var(--page); }
+  .aacts button:hover { background: var(--hover); }
+  .aacts button.danger { color: var(--red); }
+  .aacts a.amore-tasks { font-size: 12px; color: var(--t-accent); align-self: center; }
+  .aday { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .aday button { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+  .aedit { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
+  .aedit input { font: inherit; font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; }
+  .aedit select { font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
+  .aedit button { font-size: 12px; color: var(--t-accent); border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; }
+  .amore { justify-self: start; font-size: 13px; color: var(--t-accent); }
+  .aempty { color: var(--text-2); font-size: 14px; border: 1px dashed var(--line); border-radius: 8px; padding: 14px 16px; }
+  .aempty b { color: var(--text); }
+  .anp { border-top: 1px solid var(--line); padding-top: 14px; }
+  .anp-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text); }
+  .anp-head span { font-size: 12px; color: var(--text-2); background: var(--gray-bg); border-radius: 999px; padding: 1px 9px; }
+  .anp-hint { font-size: 12px; color: var(--text-2); margin: 8px 0; }
+  .anp-row { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 7px; display: grid; gap: 6px; }
+  .anp-row:focus-visible { outline: 2px solid var(--t-accent); }
+  .anp-t { font-size: 14px; }
+  .anp-keys { display: flex; gap: 5px; flex-wrap: wrap; }
+  .anp-keys button { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; color: var(--text-2); }
+  .anp-keys button:hover { background: var(--hover); }
+  .anp-keys button u { color: var(--t-accent); font-weight: 600; text-decoration: none; }
+  .anp-pick { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; padding-top: 4px; border-top: 1px dashed var(--line); }
+  .anp-pick .arow-opt { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--text); }
+  .anp-pick .arow-opt:hover { background: var(--hover); }
+  .anp-pick input { font: inherit; font-size: 12px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  .anp-pick .anp-add, .anp-pick .anp-skip { color: var(--t-accent); }
+  .acn-link { font-size: 13px; color: var(--t-accent); }
+  @media (max-width: 720px) { .ahead h1 { font-size: 22px; } }
 </style>
 </head>
 <body>
@@ -772,6 +859,7 @@
   <aside class="side">
     <div class="ws"><span class="ws-mark"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Triage</div>
     <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+    <a class="nav work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
     <a class="nav" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks<span class="n" id="nav-tasks-n"></span></a>
     <a class="nav" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps<span class="n" id="nav-sweeps-n"></span></a>
     <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
@@ -809,6 +897,7 @@
 
 <nav class="tabbar">
   <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+  <a class="nav-tab work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
   <a class="nav-tab" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks</a>
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
   <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
@@ -1981,6 +2070,187 @@ function gradingVisibleCourses(courses, isDismissed) {
     return c && c.title && !(isDismissed && isDismissed(gradingDismissKey(c)));
   });
 }
+
+/* ---- Area dashboards (2026-11-20, mockups/area-dashboards.html — the Work view).
+   Pure board builders: master-board rows, per-area detail columns, pill/date/short
+   text, the bucket mapping and the row ordering. DOM-free; unit-tested by
+   scripts/test-home-logic.mjs. The board data comes from GET /api/areas/board
+   (LOCAL only); these functions only re-shape it for drawing and never fetch. */
+var AREA_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var AREA_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var AREA_SHORT_CAP = 18;                                   // areas.SHORT_CAP mirror
+var AREA_MASTER_COLS = ['overdue', 'this_week', 'next_two_weeks', 'later'];  // dated only
+var AREA_ALL_COLS = ['overdue', 'this_week', 'next_two_weeks', 'later', 'no_date'];
+var AREA_BUCKET_LABEL = { overdue: 'Overdue', this_week: 'This week', next_two_weeks: 'Next two weeks', later: 'Later', no_date: 'No date' };
+var AREA_DETAIL_COLS = ['This week', 'Next two weeks', 'Later and no date'];
+// envelope = reply, ballot box = do, "?" = decide, nothing for a plain item.
+var AREA_KIND_MARK = { reply: '✉', do: '☐', decide: '?', item: '' };
+var AREA_KIND_CHIP = { reply: 'reply', do: 'do', decide: 'decide', item: '' };
+// The quick-place keys, the SAME letters as the label page: t a f s c.
+var AREA_PLACE_KEYS = [
+  { key: 't', area: 'teaching', label: 'Teaching' },
+  { key: 'a', area: 'advising', label: 'Advising' },
+  { key: 'f', area: 'referee', label: 'Referee' },
+  { key: 's', area: 'service', label: 'Admin' },
+  { key: 'c', area: 'research', label: 'Research' }
+];
+
+function areaMonthDay(s) {
+  var m = String(s || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? (AREA_MON[+m[2] - 1] + ' ' + (+m[3])) : '';
+}
+function areaWeekday(s) {
+  var ms = _parseYMD(s);
+  return ms == null ? '' : AREA_DOW[new Date(ms).getUTCDay()];
+}
+// 1-2 word display name: the stored short, else the first two words of the title.
+// Unicode-safe (Korean etc.); "" when nothing. The caller ALWAYS escapes the result.
+function fallbackShort(item) {
+  if (!item) return '';
+  var s = (item.short || '').trim();
+  if (s) return s;
+  var words = String(item.title || '').trim().split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).join(' ');
+}
+function pillText(item) { return fallbackShort(item); }
+function pillKindMark(kind) { return AREA_KIND_MARK[kind] || ''; }
+function pillKindChip(kind) { return AREA_KIND_CHIP[kind] || ''; }
+function isAreaEmail(item) { return !!item && item.kind === 'reply'; }
+
+// The pill's trailing text: a dated item → weekday within a week, else "Dec 4";
+// an undated email → days waiting "6d"; any other undated item → "".
+function pillDatePhrase(item, today) {
+  if (!item) return '';
+  if (item.due_date) {
+    var d = dayDelta(item.due_date, today);
+    if (d != null && d >= 0 && d < 7) return areaWeekday(item.due_date);
+    return areaMonthDay(item.due_date);
+  }
+  if (isAreaEmail(item)) return (item.days_waiting || 0) + 'd';
+  return '';
+}
+// The detail card's due/waiting line — plain words, a calm past-due (never red).
+function cardDueLine(item, today) {
+  if (!item) return '';
+  if (item.due_date) {
+    var d = dayDelta(item.due_date, today);
+    if (d === 0) return 'due today';
+    if (d != null && d < 0) return 'was due ' + areaMonthDay(item.due_date);
+    return 'due ' + pillDatePhrase(item, today);
+  }
+  if (isAreaEmail(item)) { var n = item.days_waiting || 0; return 'waiting ' + n + ' day' + (n === 1 ? '' : 's'); }
+  return '';
+}
+// Whole-days-to-due → a board bucket (mirrors server areas._bucket_for:
+// AREA_THIS_WEEK_DAYS=7, AREA_NEXT_TWO_DAYS=21).
+function areaBucketOf(daysLeft) {
+  if (daysLeft == null) return 'no_date';
+  if (daysLeft < 0) return 'overdue';
+  if (daysLeft <= 7) return 'this_week';
+  if (daysLeft <= 21) return 'next_two_weeks';
+  return 'later';
+}
+function _areaItems(row, cols) {
+  var out = [], i, j;
+  for (i = 0; i < cols.length; i++) { var b = (row && row.buckets && row.buckets[cols[i]]) || []; for (j = 0; j < b.length; j++) out.push(b[j]); }
+  return out;
+}
+// A dated item sorts soonest first (overdue = most-overdue first = days_left asc);
+// an undated item sorts after, longest-waiting first.
+function areaCardSort(a, b) {
+  var na = (a.days_left == null), nb = (b.days_left == null);
+  if (na !== nb) return na ? 1 : -1;
+  if (!na) return a.days_left - b.days_left;
+  return (b.days_waiting || 0) - (a.days_waiting || 0);
+}
+// Soonest due (days_left) among a row's dated items; Infinity when none.
+function areaRowSoonest(row) {
+  var best = Infinity, items = _areaItems(row, AREA_MASTER_COLS), i;
+  for (i = 0; i < items.length; i++) { var d = items[i].days_left; if (d != null && d < best) best = d; }
+  return best;
+}
+function _areaNameCmp(a, b) { a = String(a).toLowerCase(); b = String(b).toLowerCase(); return a < b ? -1 : a > b ? 1 : 0; }
+// Row ordering: teaching rows in config order (General last); every other area by
+// soonest due then name. teachingOrder = the course-key order (optional).
+function areaRowOrder(areaKey, rows, teachingOrder) {
+  rows = (rows || []).slice();
+  if (areaKey === 'teaching') {
+    var ord = teachingOrder || [];
+    rows.sort(function (a, b) {
+      var ga = a.row === 'General', gb = b.row === 'General';
+      if (ga !== gb) return ga ? 1 : -1;
+      var ia = ord.indexOf(a.row), ib = ord.indexOf(b.row);
+      if (ia < 0) ia = 1e9; if (ib < 0) ib = 1e9;
+      if (ia !== ib) return ia - ib;
+      return _areaNameCmp(a.row, b.row);
+    });
+    return rows;
+  }
+  rows.sort(function (a, b) {
+    var sa = areaRowSoonest(a), sb = areaRowSoonest(b);
+    if (sa !== sb) return sa - sb;
+    return _areaNameCmp(a.row, b.row);
+  });
+  return rows;
+}
+// The master board: one row per area that has a dated open item, research split
+// into one row per project row. Each row keeps only the four DATED buckets (the
+// master board is deadlines only); areas stay in config order, research expands
+// in place. count = the area's full open count (row's count for a research row).
+function masterBoardRows(board, today, teachingOrder) {
+  var out = [], areas = (board && board.areas) || [], i, c;
+  for (i = 0; i < areas.length; i++) {
+    var a = areas[i];
+    if (a.area === 'research') {
+      var prows = areaRowOrder('research', a.rows || []), r;
+      for (r = 0; r < prows.length; r++) {
+        var pr = prows[r], pb = {}, anyP = false;
+        for (c = 0; c < AREA_MASTER_COLS.length; c++) {
+          var pcol = AREA_MASTER_COLS[c];
+          pb[pcol] = ((pr.buckets && pr.buckets[pcol]) || []).slice().sort(areaCardSort);
+          if (pb[pcol].length) anyP = true;
+        }
+        if (anyP) out.push({ kind: 'project', area: 'research', label: pr.row, count: pr.count, buckets: pb });
+      }
+    } else {
+      var merged = {}, anyA = false, arows = a.rows || [], k;
+      for (c = 0; c < AREA_MASTER_COLS.length; c++) merged[AREA_MASTER_COLS[c]] = [];
+      for (k = 0; k < arows.length; k++) for (c = 0; c < AREA_MASTER_COLS.length; c++) { var mc = AREA_MASTER_COLS[c]; merged[mc] = merged[mc].concat((arows[k].buckets && arows[k].buckets[mc]) || []); }
+      for (c = 0; c < AREA_MASTER_COLS.length; c++) { merged[AREA_MASTER_COLS[c]].sort(areaCardSort); if (merged[AREA_MASTER_COLS[c]].length) anyA = true; }
+      if (anyA) out.push({ kind: 'area', area: a.area, label: a.name, count: a.count, buckets: merged });
+    }
+  }
+  return out;
+}
+// The three detail columns under an area board: col 1 = overdue + this week,
+// col 2 = next two weeks, col 3 = later + no date. Each item is shallow-copied
+// and tagged with its row label (the source board items are never mutated).
+function detailColumns(area) {
+  var c1 = [], c2 = [], c3 = [], rows = (area && area.rows) || [], r, k;
+  function tag(list, bucket, row) {
+    var b = bucket || [], i;
+    for (i = 0; i < b.length; i++) { var it = {}; for (k in b[i]) it[k] = b[i][k]; it.row = row; list.push(it); }
+  }
+  for (r = 0; r < rows.length; r++) {
+    var row = rows[r], bk = row.buckets || {};
+    tag(c1, bk.overdue, row.row); tag(c1, bk.this_week, row.row);
+    tag(c2, bk.next_two_weeks, row.row);
+    tag(c3, bk.later, row.row); tag(c3, bk.no_date, row.row);
+  }
+  c1.sort(areaCardSort); c2.sort(areaCardSort); c3.sort(areaCardSort);
+  return [{ label: AREA_DETAIL_COLS[0], items: c1 }, { label: AREA_DETAIL_COLS[1], items: c2 }, { label: AREA_DETAIL_COLS[2], items: c3 }];
+}
+// Show the first `cap` cards; fold the rest behind "N more".
+function moreSplit(cards, cap) {
+  cards = cards || []; cap = cap || 3;
+  return { shown: cards.slice(0, cap), more: Math.max(0, cards.length - cap) };
+}
+// Every item id visible in an area, for the POST /api/areas/seen stamp on open.
+function boardVisibleIds(area) {
+  var ids = [], rows = (area && area.rows) || [], r, i;
+  for (r = 0; r < rows.length; r++) { var items = _areaItems(rows[r], AREA_ALL_COLS); for (i = 0; i < items.length; i++) if (items[i].id) ids.push(items[i].id); }
+  return ids;
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -1990,6 +2260,15 @@ var WD_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
 var MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 var LANE_COLOR = { never_late: 'var(--purple)', dont_drop: 'var(--blue)', wiggle: 'var(--yellow)', admin: 'var(--gray)' };
 var LANE_LABEL = { never_late: 'Never late', dont_drop: "Don't drop", wiggle: 'Wiggle', admin: 'Admin' };
+// Area dashboards (Work view): full names (the board echoes these too) + the tab
+// order, and the per-area colour token. Display-side only.
+var AREA_NAME = { teaching: 'Teaching', advising: 'Advising & letters', referee: 'Referee', service: 'Admin', research: 'Research' };
+var AREA_TABS = [
+  { key: 'teaching', name: 'Teaching' }, { key: 'advising', name: 'Advising' },
+  { key: 'referee', name: 'Referee' }, { key: 'service', name: 'Admin' },
+  { key: 'research', name: 'Research' }
+];
+function areaColorVar(k) { return 'var(--area-' + (k || 'teaching') + ')'; }
 
 function todayISO() {
   var d = new Date();
@@ -2102,7 +2381,20 @@ var state = {
   // Grading reminder (2026-11-20, FERPA, LOCAL only). gradingReminder = the
   // /api/class-notes/grading-reminder response ({courses, kept_for_grading_emails});
   // null until fetched / hosted (never fetched hosted). Counts only, no note text.
-  gradingReminder: null
+  gradingReminder: null,
+  // Area dashboards (2026-11-20, the Work view — LOCAL only, mockups/area-
+  // dashboards.html). areaBoard = GET /api/areas/board ({areas,not_placed}); lazy-
+  // loaded once (so Today stays fast) + refetched after a placement/edit. areaOpen
+  // = the open area key (null = master board); areaSel = the highlighted detail
+  // card; areaColExpand = which detail columns have expanded past "N more";
+  // areaEditShort/areaMoveOpen = the card whose short / area+row is being edited;
+  // areaSchedId = the card whose This-week day picker is open; areaPlaceOpen =
+  // {id,area} for a Not-placed row's row picker; notPlacedOpen = the fold;
+  // _areaSeen = areas whose visible ids have been stamped this board-load (so the
+  // POST /api/areas/seen fires once per open).
+  areaBoard: null, areaBoardLoaded: false, areaOpen: null, areaSel: null,
+  areaColExpand: {}, areaEditShort: null, areaMoveOpen: null, areaSchedId: null,
+  areaPlaceOpen: null, notPlacedOpen: false, _areaSeen: {}
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -2239,6 +2531,7 @@ function fetchAll() {
     state.pending = Array.isArray(res[15] && res[15].data) ? res[15].data : [];
     state.emailHealth = (res[16] && res[16].data && typeof res[16].data === 'object' && !Array.isArray(res[16].data)) ? res[16].data : null;
     if (state.view === 'kitchen') ensureRecipes();
+    if (state.view === 'work' && state.areaBoardLoaded) ensureAreaBoard(true);   // LOCAL only
     ensureGradingReminder();   // FERPA: LOCAL only (never fetched on the hosted shell)
     render();
   }).catch(function (e) {
@@ -2283,9 +2576,10 @@ function render() {
       : state.view === 'library' ? libraryHtml()
       : state.view === 'kitchen' ? kitchenHtml()
       : state.view === 'class-notes' ? classNotesHtml()
+      : state.view === 'work' ? workHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes' }[state.view] || 'Today';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes', work: 'Work' }[state.view] || 'Today';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -4687,6 +4981,46 @@ function handlePageAction(act, el) {
   // tab, or dismiss the nudge for the day (per-viewer localStorage convenience).
   if (act === 'gradedismiss') { gradingDismiss(el.getAttribute('data-key')); render(); return true; }
   if (act === 'gradeopen') { state.classTab = el.getAttribute('data-course') || null; state.classEditId = null; state.classOlderOpen = false; location.hash = '#class-notes'; return true; }
+  // ── Work / area dashboards (LOCAL only) ──
+  if (act === 'areaopen') {
+    var ak = el.getAttribute('data-area') || '';
+    state.areaOpen = ak || null; state.areaSel = null; state.areaColExpand = {};
+    state.areaEditShort = null; state.areaMoveOpen = null; state.areaSchedId = null; state.areaPlaceOpen = null;
+    rememberAreaTab(state.areaOpen); render();
+    if (state.areaOpen) stampAreaSeen(state.areaOpen);
+    return true;
+  }
+  if (act === 'pillopen') {
+    state.areaOpen = el.getAttribute('data-area') || null; state.areaSel = el.getAttribute('data-id'); state.areaColExpand = {};
+    rememberAreaTab(state.areaOpen); render();
+    if (state.areaOpen) stampAreaSeen(state.areaOpen);
+    scrollToCard(state.areaSel); return true;
+  }
+  if (act === 'pillsel') { state.areaSel = el.getAttribute('data-id'); render(); scrollToCard(state.areaSel); return true; }
+  if (act === 'acolmore') { state.areaColExpand[el.getAttribute('data-col')] = true; render(); return true; }
+  if (act === 'ashortedit') { state.areaEditShort = el.getAttribute('data-id'); render(); return true; }
+  if (act === 'ashortcancel') { state.areaEditShort = null; render(); return true; }
+  if (act === 'ashortsave') { saveAreaShort(el.getAttribute('data-id')); return true; }
+  if (act === 'acardmoveopen') { var mvid = el.getAttribute('data-id'); state.areaMoveOpen = (state.areaMoveOpen === mvid) ? null : mvid; render(); return true; }
+  if (act === 'acardarea') { changeCardArea(el.getAttribute('data-id'), el.getAttribute('data-area')); return true; }
+  if (act === 'acardrowsave') { saveAreaRow(el.getAttribute('data-id')); return true; }
+  if (act === 'acarddone') { areaDone(el.getAttribute('data-id'), el.getAttribute('data-store')); return true; }
+  if (act === 'acarddel') { areaDelete(el.getAttribute('data-id'), el.getAttribute('data-store')); return true; }
+  if (act === 'acardsched') { var scid = el.getAttribute('data-id'); state.areaSchedId = (state.areaSchedId === scid) ? null : scid; render(); return true; }
+  if (act === 'acardday') { areaSchedule(el.getAttribute('data-id'), el.getAttribute('data-day')); return true; }
+  if (act === 'acardmove') { areaSomeday(el.getAttribute('data-id')); return true; }
+  if (act === 'nptoggle') { state.notPlacedOpen = !state.notPlacedOpen; render(); return true; }
+  if (act === 'npplace') {
+    var npid = el.getAttribute('data-id'), npa = el.getAttribute('data-area');
+    state.areaPlaceOpen = (state.areaPlaceOpen && state.areaPlaceOpen.id === npid && state.areaPlaceOpen.area === npa) ? null : { id: npid, area: npa };
+    render(); return true;
+  }
+  if (act === 'npplacerow') { placeItemArea(el.getAttribute('data-id'), el.getAttribute('data-area'), el.getAttribute('data-row') || ''); return true; }
+  if (act === 'npplacerownew') {
+    var pk = el.closest('.anp-pick'); var ni = pk && pk.querySelector('.anp-newrow');
+    placeItemArea(el.getAttribute('data-id'), el.getAttribute('data-area'), ni ? ni.value.trim() : '');
+    return true;
+  }
   var oc = el.closest('[data-opp]'); if (oc) { handleOpenCallAction(act, oc.getAttribute('data-opp')); return true; }
   var rl = el.closest('[data-rl]'); if (rl) { handleLibraryAction(act, rl.getAttribute('data-rl')); return true; }
   var rc = el.closest('[data-rec]'); if (rc) { handleRecipeAction(act, rc.getAttribute('data-rec')); return true; }
@@ -4934,6 +5268,303 @@ function gradingCardHtml(courseKey) {
     '<button class="cn-grade-x" data-pact="gradedismiss" data-key="' + escapeHtml(k) + '">Dismiss for today</button>' +
     '</div>';
 }
+
+/* ---- Work / area dashboards (FERPA-adjacent, LOCAL only, 2026-11-20 —
+   mockups/area-dashboards.html). The board can name students (teaching/advising),
+   so like Class notes it is LOCAL only: applyHash routes here only when LOCAL, the
+   nav entries are removed hosted, GET /api/areas/board is fetched only when LOCAL,
+   and dbx.js gains NO areas route. Lazy-loaded once (Today stays fast), refetched
+   after any placement/edit. No AI anywhere; all inserted text escaped. ---- */
+function ensureAreaBoard(force) {
+  if (!LOCAL) return;
+  if (state.areaBoardLoaded && !force) { if (state.view === 'work') render(); return; }
+  apiJson('/api/areas/board').then(function (r) {
+    var d = r.data;
+    state.areaBoard = (d && typeof d === 'object' && Array.isArray(d.areas)) ? d : { areas: [], not_placed: [] };
+    state.areaBoardLoaded = true;
+    state._areaSeen = {};   // a fresh board → re-stamp "seen" on the next area open
+    if (state.view === 'work') render();
+  }).catch(function () { state.areaBoardLoaded = true; state.areaBoard = { areas: [], not_placed: [] }; if (state.view === 'work') render(); });
+}
+// localStorage only for the remembered area tab (per-viewer convenience; try/catch).
+function readRememberedAreaTab() {
+  try { var v = localStorage.getItem('triage-work-area'); return (v && ['teaching', 'advising', 'referee', 'service', 'research'].indexOf(v) >= 0) ? v : null; } catch (e) { return null; }
+}
+function rememberAreaTab(key) {
+  try { if (key) localStorage.setItem('triage-work-area', key); else localStorage.removeItem('triage-work-area'); } catch (e) {}
+}
+// Teaching rows are a FIXED set (config.CLASS_COURSES); take their order from the
+// (LOCAL) class-notes course registry, primed on boot. [] → the board's own order.
+function teachingRowOrder() { return (((state.classNotes && state.classNotes.courses) || []).map(function (c) { return c.key; })); }
+function recordById(id) {
+  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  if (t) return { rec: t, store: 'task' };
+  var d = (state.deadlines || []).filter(function (x) { return x.id === id; })[0];
+  if (d) return { rec: d, store: 'deadline' };
+  return null;
+}
+// The allowed rows for a row-picker: teaching → courses + General; research →
+// project titles + General (both FIXED, no free text); the flexible areas → the
+// distinct rows already on the board (plus a free-text "new row" input).
+function allowedRows(areaKey) {
+  if (areaKey === 'teaching') return teachingRowOrder().concat(['General']);
+  if (areaKey === 'research') { var titles = (state.projects || []).filter(function (p) { return p && p.title; }).map(function (p) { return p.title; }); return titles.concat(['General']); }
+  var area = ((state.areaBoard && state.areaBoard.areas) || []).filter(function (a) { return a.area === areaKey; })[0];
+  return area ? (area.rows || []).map(function (r) { return r.row; }) : [];
+}
+
+function workHtml() {
+  if (!LOCAL) return '';   // LOCAL only; applyHash already guards, this is defense in depth
+  if (!state.areaBoardLoaded) return '<div class="empty" style="padding:48px 0">Loading your work…</div>';
+  var board = state.areaBoard || { areas: [], not_placed: [] };
+  var today = todayISO();
+  var h = '<div class="awrap">';
+  h += '<div class="ahead"><h1>Work by area</h1><p class="asub">Everything with a deadline, on one screen. A dot means something changed since you last looked: a new email, or a date that moved. Tap a name to open its area.</p></div>';
+  h += workTabsHtml(state.areaOpen);
+  if (state.areaOpen) h += workAreaHtml(board, state.areaOpen, today);
+  else { h += workMasterHtml(board, today); h += notPlacedHtml(board); }
+  h += '</div>';
+  return h;
+}
+function workTabsHtml(active) {
+  var h = '<div class="atabs">';
+  h += '<button class="atab' + (!active ? ' on' : '') + '" data-pact="areaopen" data-area="">Master board</button>';
+  AREA_TABS.forEach(function (t) {
+    h += '<button class="atab' + (active === t.key ? ' on' : '') + '" style="--ac:' + areaColorVar(t.key) + '" data-pact="areaopen" data-area="' + t.key + '">' + escapeHtml(t.name) + '</button>';
+  });
+  return h + '</div>';
+}
+function workMasterHtml(board, today) {
+  var rows = masterBoardRows(board, today, teachingRowOrder());
+  if (!rows.length) {
+    return '<div class="aempty"><b>Nothing is on the board yet.</b> Place a few items in the <b>Not placed</b> list below, and anything with a deadline will show up here.</div>';
+  }
+  var h = '<div class="asec-lbl">Master board</div><div class="aboard"><table><thead><tr><th></th>';
+  AREA_MASTER_COLS.forEach(function (c) {
+    var cls = c === 'overdue' ? ' class="late"' : c === 'this_week' ? ' class="now"' : '';
+    h += '<th' + cls + '>' + escapeHtml(AREA_BUCKET_LABEL[c]) + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function (r) {
+    h += '<tr style="--ac:' + areaColorVar(r.area) + '"><th><button data-pact="areaopen" data-area="' + escapeHtml(r.area) + '">' + escapeHtml(r.label) + '<small>' + r.count + ' open</small></button></th>';
+    AREA_MASTER_COLS.forEach(function (c) {
+      h += '<td' + (c === 'overdue' ? ' class="late"' : '') + '><div class="acell">' + r.buckets[c].map(function (it) { return pillHtml(it, today, r.area, true); }).join('') + '</div></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '<div class="akey"><span><i></i>changed since you last looked</span><span>Only things with a deadline are here. Undated items live inside each area.</span></div>';
+  return h;
+}
+function workAreaHtml(board, areaKey, today) {
+  var area = (board.areas || []).filter(function (a) { return a.area === areaKey; })[0];
+  var name = AREA_NAME[areaKey] || areaKey;
+  var h = '<div class="asec-lbl" style="color:' + areaColorVar(areaKey) + '">' + escapeHtml(name) + '</div>';
+  if (areaKey === 'teaching') {
+    h += gradingCourses().map(function (c) {
+      return '<div class="cn-grade" role="note" style="margin-bottom:8px"><b>' + escapeHtml(gradingCardHeadline(c)) + '</b><small>' + escapeHtml(gradingCardCounts(c)) + '</small></div>';
+    }).join('');
+    h += '<p><a class="acn-link" href="#class-notes">Open Class notes &rarr;</a></p>';
+  }
+  if (!area || !(area.rows || []).length) { return h + '<div class="aempty">Nothing open in <b>' + escapeHtml(name) + '</b> right now.</div>'; }
+  var rows = areaRowOrder(areaKey, area.rows, teachingRowOrder());
+  h += '<div class="aboard" style="--ac:' + areaColorVar(areaKey) + '"><table><thead><tr><th></th>';
+  AREA_ALL_COLS.forEach(function (c) {
+    var cls = c === 'overdue' ? ' class="late"' : c === 'this_week' ? ' class="now"' : '';
+    h += '<th' + cls + '>' + escapeHtml(AREA_BUCKET_LABEL[c]) + '</th>';
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function (row) {
+    h += '<tr style="--ac:' + areaColorVar(areaKey) + '"><th>' + escapeHtml(row.row) + '<small>' + row.count + ' open</small></th>';
+    AREA_ALL_COLS.forEach(function (c) {
+      h += '<td' + (c === 'overdue' ? ' class="late"' : '') + '><div class="acell">' + ((row.buckets[c] || []).map(function (it) { return pillHtml(it, today, areaKey, false); }).join('')) + '</div></td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '<div class="akey"><span><em>✉</em> email waiting (days waiting)</span><span><em>☐</em> to do</span><span><em>?</em> a decision</span><span><i></i>changed since you last looked</span></div>';
+  var cols = detailColumns({ rows: rows });
+  h += '<div class="acols">';
+  cols.forEach(function (col) {
+    var expanded = !!state.areaColExpand[col.label];
+    var sp = moreSplit(col.items, 3);
+    var shown = expanded ? col.items : sp.shown;
+    h += '<div class="acol"><h3><span>' + escapeHtml(col.label) + '</span><span>' + col.items.length + '</span></h3>';
+    shown.forEach(function (it) { h += detailCardHtml(it, areaKey, today); });
+    if (!expanded && sp.more > 0) h += '<button class="amore" data-pact="acolmore" data-col="' + escapeHtml(col.label) + '">' + sp.more + ' more</button>';
+    h += '</div>';
+  });
+  return h + '</div>';
+}
+function pillHtml(it, today, areaKey, master) {
+  if (optimistic[it.id]) return '';
+  var mark = pillKindMark(it.kind);
+  var date = pillDatePhrase(it, today);
+  var pact = master ? 'pillopen' : 'pillsel';
+  var sel = (!master && state.areaSel === it.id) ? ' sel' : '';
+  return '<button class="apill' + (it.updated ? ' up' : '') + sel + '" data-pact="' + pact + '" data-id="' + escapeHtml(it.id) + '" data-area="' + escapeHtml(areaKey || '') + '">' +
+    (mark ? '<em>' + mark + '</em>' : '') + '<b>' + escapeHtml(pillText(it)) + '</b>' + (date ? '<span>' + escapeHtml(date) + '</span>' : '') + '</button>';
+}
+function detailCardHtml(it, areaKey, today) {
+  if (optimistic[it.id]) return '';
+  var f = recordById(it.id);
+  var store = f ? f.store : 'task';
+  var rec = f ? f.rec : null;
+  var sel = (state.areaSel === it.id) ? ' sel' : '';
+  var h = '<div class="ait' + sel + '" id="acard-' + escapeHtml(it.id) + '" data-id="' + escapeHtml(it.id) + '" data-kind="' + escapeHtml(store) + '" style="--ac:' + areaColorVar(areaKey) + '">';
+  if (state.areaEditShort === it.id) {
+    h += '<div class="aedit"><input class="ashort-in" maxlength="' + AREA_SHORT_CAP + '" value="' + escapeHtml(pillText(it)) + '" aria-label="Short name (up to ' + AREA_SHORT_CAP + ' characters)">' +
+      '<button data-pact="ashortsave" data-id="' + escapeHtml(it.id) + '">Save</button><button data-pact="ashortcancel">Cancel</button></div>';
+    h += '<p>' + escapeHtml(it.title) + '</p>';
+  } else {
+    h += '<p><b class="ashort" data-pact="ashortedit" data-id="' + escapeHtml(it.id) + '" role="button" tabindex="0" title="Edit the short name (up to ' + AREA_SHORT_CAP + ' chars)">' + escapeHtml(pillText(it) || '(no short name)') + '</b> &middot; ' + escapeHtml(it.title) + '</p>';
+  }
+  var meta = [];
+  if (it.row) meta.push('<span class="arow-chip">' + escapeHtml(it.row) + '</span>');
+  var due = cardDueLine(it, today);
+  if (due) meta.push('<span>' + escapeHtml(due) + '</span>');
+  var chip = pillKindChip(it.kind);
+  if (chip) meta.push('<span class="achip">' + escapeHtml(chip) + '</span>');
+  h += '<div class="am">' + meta.join('') + '</div>';
+  if (rec && (rec.source === 'email' || /^message:/i.test(rec.url || ''))) {
+    h += '<div class="am"><a href="' + escapeHtml(safeUrl(rec.url || '')) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: rec.url || '', source: rec.source || '' })) + '</a></div>';
+  }
+  if (state.areaMoveOpen === it.id) h += areaMoveControlsHtml(it, areaKey);
+  h += areaCardActionsHtml(it, store);
+  return h + '</div>';
+}
+function areaMoveControlsHtml(it, areaKey) {
+  var h = '<div class="aedit"><span class="arow-chip">Area</span>';
+  AREA_PLACE_KEYS.forEach(function (k) {
+    h += '<button data-pact="acardarea" data-id="' + escapeHtml(it.id) + '" data-area="' + k.area + '"' + (k.area === areaKey ? ' class="on"' : '') + '>' + escapeHtml(k.label) + '</button>';
+  });
+  h += '</div><div class="aedit"><span class="arow-chip">Row</span>';
+  if (areaKey === 'teaching' || areaKey === 'research') {
+    h += '<select class="arow-sel" aria-label="Row">' + allowedRows(areaKey).map(function (rw) { return '<option value="' + escapeHtml(rw) + '"' + ((it.row || '') === rw ? ' selected' : '') + '>' + escapeHtml(rw) + '</option>'; }).join('') + '</select>';
+  } else {
+    h += '<input class="arow-in" value="' + escapeHtml(it.row || '') + '" aria-label="Row">';
+  }
+  return h + '<button data-pact="acardrowsave" data-id="' + escapeHtml(it.id) + '">Save row</button></div>';
+}
+function areaCardActionsHtml(it, store) {
+  var h = '<div class="aacts">';
+  h += '<button data-pact="acarddone" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Done</button>';
+  if (store !== 'deadline') {
+    h += '<button data-pact="acardsched" data-id="' + escapeHtml(it.id) + '">This week</button>';
+    h += '<button data-pact="acardmove" data-id="' + escapeHtml(it.id) + '">Someday</button>';
+  }
+  h += '<button data-pact="acardmoveopen" data-id="' + escapeHtml(it.id) + '">Area/row</button>';
+  h += '<button class="danger" data-pact="acarddel" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Delete</button>';
+  h += '<a class="amore-tasks" href="#tasks">Open in Tasks</a></div>';
+  if (state.areaSchedId === it.id && store !== 'deadline') {
+    h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + escapeHtml(it.id) + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
+  }
+  return h;
+}
+function notPlacedHtml(board) {
+  var np = (board.not_placed || []).filter(function (it) { return !optimistic[it.id]; });
+  if (!np.length) return '';
+  var open = state.notPlacedOpen;
+  var h = '<section class="anp"><button class="anp-head" data-pact="nptoggle" aria-expanded="' + open + '"><svg style="width:12px;height:12px;transform:rotate(' + (open ? 90 : 0) + 'deg)"><use href="#i-tri"/></svg>Not placed <span>' + np.length + '</span></button>';
+  if (open) {
+    h += '<p class="anp-hint">Tap a letter to file each one. <b>t</b> teaching &middot; <b>a</b> advising &middot; <b>f</b> referee &middot; <b>s</b> service &middot; <b>c</b> research. These are your calls (marked as set by you).</p>';
+    np.forEach(function (it) { h += npRowHtml(it); });
+  }
+  return h + '</section>';
+}
+function npRowHtml(it) {
+  var h = '<div class="anp-row" data-id="' + escapeHtml(it.id) + '" tabindex="0"><div class="anp-t">' + escapeHtml(it.title) + '</div><div class="anp-keys">';
+  AREA_PLACE_KEYS.forEach(function (k) {
+    h += '<button data-pact="npplace" data-id="' + escapeHtml(it.id) + '" data-area="' + k.area + '"><u>' + k.key + '</u> ' + escapeHtml(k.label) + '</button>';
+  });
+  h += '</div>';
+  if (state.areaPlaceOpen && state.areaPlaceOpen.id === it.id) h += npRowPicker(it, state.areaPlaceOpen.area);
+  return h + '</div>';
+}
+function npRowPicker(it, areaKey) {
+  var fixed = (areaKey === 'teaching' || areaKey === 'research');
+  var h = '<div class="anp-pick"><span class="arow-chip">' + escapeHtml(AREA_NAME[areaKey] || areaKey) + ' row:</span>';
+  allowedRows(areaKey).forEach(function (rw) {
+    h += '<button class="arow-opt" data-pact="npplacerow" data-id="' + escapeHtml(it.id) + '" data-area="' + escapeHtml(areaKey) + '" data-row="' + escapeHtml(rw) + '">' + escapeHtml(rw) + '</button>';
+  });
+  if (!fixed) {
+    h += '<input class="anp-newrow" placeholder="or type a new row" aria-label="New row">';
+    h += '<button class="anp-add" data-pact="npplacerownew" data-id="' + escapeHtml(it.id) + '" data-area="' + escapeHtml(areaKey) + '">Add row</button>';
+  }
+  return h + '<button class="anp-skip" data-pact="npplacerow" data-id="' + escapeHtml(it.id) + '" data-area="' + escapeHtml(areaKey) + '" data-row="">No row</button></div>';
+}
+// Stamp the open area's visible ids as "seen" AFTER render (clears the dots on the
+// NEXT visit). Once per area per board-load (state._areaSeen).
+function stampAreaSeen(areaKey) {
+  if (!LOCAL || !areaKey || state._areaSeen[areaKey]) return;
+  state._areaSeen[areaKey] = true;
+  var area = ((state.areaBoard && state.areaBoard.areas) || []).filter(function (a) { return a.area === areaKey; })[0];
+  var ids = boardVisibleIds(area);
+  if (ids.length) api('/api/areas/seen', { method: 'POST', body: { ids: ids } }).catch(function () {});
+}
+function scrollToCard(id) {
+  if (!id) return;
+  try { var c = document.getElementById('acard-' + id); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+}
+// Placement (Not placed) + card edits go through the existing edit endpoints, which
+// mark the field as set by John (area_by/short_by = "john"). Placement is wrapped in
+// the shared 5-second undo; the row is optimistically hidden until commit.
+function placeItemArea(id, area, row) {
+  var f = recordById(id); if (!f) { state.areaPlaceOpen = null; render(); return; }
+  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
+  var fields = { area: area };
+  if (row) fields.row = row;
+  state.areaPlaceOpen = null;
+  optimistic[id] = true; render();
+  undoable('Placed in ' + (AREA_NAME[area] || area), function () {
+    api(path, { method: 'POST', body: { id: id, fields: fields } }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function saveAreaShort(id) {
+  var el = document.querySelector('.ait[data-id="' + cssEsc(id) + '"] .ashort-in');
+  var v = el ? el.value.trim().slice(0, AREA_SHORT_CAP) : '';
+  var f = recordById(id); state.areaEditShort = null;
+  if (!f) { render(); return; }
+  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
+  api(path, { method: 'POST', body: { id: id, fields: { short: v } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+}
+function saveAreaRow(id) {
+  var root = document.querySelector('.ait[data-id="' + cssEsc(id) + '"]');
+  var el = root && (root.querySelector('.arow-sel') || root.querySelector('.arow-in'));
+  var v = el ? (el.value || '').trim() : '';
+  var f = recordById(id); state.areaMoveOpen = null;
+  if (!f) { render(); return; }
+  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
+  api(path, { method: 'POST', body: { id: id, fields: { row: v } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+}
+function changeCardArea(id, area) {
+  var f = recordById(id); state.areaMoveOpen = null;
+  if (!f) { render(); return; }
+  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
+  api(path, { method: 'POST', body: { id: id, fields: { area: area } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+}
+// Done / delete reuse the existing endpoints + the shared undo primitive, and also
+// refetch the board (areaBoard is separate lazy state). This week / Someday reuse
+// /api/schedule + /api/move exactly as the task rows do.
+function areaDone(id, store) {
+  var r = rowById(id);
+  optimistic[id] = true; render();
+  undoable('Done' + (r ? ': ' + displayText(r) : ''), function () {
+    var path = store === 'deadline' ? '/api/deadlines/update' : '/api/done';
+    var body = store === 'deadline' ? { id: id, fields: { status: 'done' } } : { id: id };
+    api(path, { method: 'POST', body: body }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function areaDelete(id, store) {
+  var r = rowById(id);
+  optimistic[id] = true; render();
+  undoable('Deleted' + (r ? ': ' + displayText(r) : ''), function () {
+    var path = store === 'deadline' ? '/api/deadlines/delete' : '/api/delete';
+    api(path, { method: 'POST', body: { id: id } }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function areaSchedule(id, day) { state.areaSchedId = null; flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
+function areaSomeday(id) { flushPending(); api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
 
 function classNotesHtml() {
   if (!LOCAL) return '<div class="cn-empty">Class notes live only on your Mac.</div>';
@@ -5473,6 +6104,15 @@ document.addEventListener('keydown', function (e) {
       if (Object.prototype.hasOwnProperty.call(map, k) && map[k]) { e.preventDefault(); handleSweepAction(map[k]); return; }
     }
   }
+  // Work view: a focused Not-placed row takes a single letter (t a f s c) to open
+  // that area's row picker — the same keys as the label page.
+  if (state.view === 'work') {
+    var npRow = e.target && e.target.closest && e.target.closest('.anp-row');
+    if (npRow && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      var am = { t: 'teaching', a: 'advising', f: 'referee', s: 'service', c: 'research' }[String(e.key).toLowerCase()];
+      if (am) { e.preventDefault(); var nid = npRow.getAttribute('data-id'); state.areaPlaceOpen = { id: nid, area: am }; render(); var rf = document.querySelector('.anp-row[data-id="' + cssEsc(nid) + '"]'); if (rf) rf.focus(); return; }
+    }
+  }
   // Enter in capture = Drop (the primary); Shift+Enter = Task.
   if (e.target && e.target.id === 'cap-input' && e.key === 'Enter') {
     e.preventDefault();
@@ -5569,11 +6209,12 @@ function applyHash() {
   var h = (location.hash || '').replace('#', '');
   if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
   var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen'];
-  if (LOCAL) views.push('class-notes');   // FERPA: never reachable on the hosted shell
+  if (LOCAL) views.push('class-notes', 'work');   // FERPA + LOCAL-only: never reachable on the hosted shell
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
   if (state.view === 'kitchen') ensureRecipes();
   if (state.view === 'class-notes') ensureClassNotes();
+  if (state.view === 'work') { state.areaOpen = readRememberedAreaTab(); ensureAreaBoard(); }
   if (state.view !== 'sweeps') {
     // leaving the Sweeps area: close any open queue and sync counts if changed.
     state.sweepQueue = null; state.sweepPick = null;
@@ -5594,7 +6235,7 @@ function maybeRefresh() { if (Date.now() - state.lastFetch < 4000) return; if (!
 state.lens = defaultLens();
 // FERPA: the Class notes page is LOCAL only (it can name students). Remove its nav
 // entries entirely on the hosted shell so the phone never links to it.
-if (!LOCAL) { try { document.querySelectorAll('.cn-nav').forEach(function (el) { el.parentNode.removeChild(el); }); } catch (e) {} }
+if (!LOCAL) { try { document.querySelectorAll('.cn-nav, .work-nav').forEach(function (el) { el.parentNode.removeChild(el); }); } catch (e) {} }
 applyHash();        // sets view + paints an empty shell immediately
 if (LOCAL) {
   fetchAll();
