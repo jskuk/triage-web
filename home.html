@@ -846,6 +846,17 @@
   .aacts button.danger { color: var(--red); }
   .aacts a.amore-tasks { font-size: 12px; color: var(--t-accent); align-self: center; }
   .aday { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  /* Keep for grading group (Teaching board, 2026-11-21) */
+  .akept-wrap { margin-top: 14px; display: grid; gap: 10px; }
+  .akept { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--card, var(--page)); display: grid; gap: 6px; }
+  .akept-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+  .akept-head b { color: var(--text); }
+  .akept-n { background: var(--t-soft, var(--hover)); border-radius: 10px; padding: 0 7px; font-size: 12px; }
+  .akept-clear { margin-left: auto; font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; min-height: 28px; background: var(--page); }
+  .akept-card { border-top: 1px solid var(--line); padding-top: 6px; display: grid; gap: 4px; }
+  .akept-title { text-align: left; background: none; border: 0; padding: 4px 0; min-height: 40px; display: grid; gap: 2px; cursor: pointer; }
+  .akept-title b { font-size: 14px; color: var(--text); }
+  .akept-meta { font-size: 12px; color: var(--text-2); }
   .aday button { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
   .aedit { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
   .aedit input { font: inherit; font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; }
@@ -1009,7 +1020,8 @@ function normTaskRow(t, linkedDeadline, today) {
     id: t.id, kind: 'task', text: t.text || '', who: t.who || '', lane: laneOf(t),
     url: t.url || '', source: t.source || '', nextStep: cleanNext(t.nextStep), memo: t.memo || '',
     list: t.list, proposed: isProposedTask(t), suggested: false, target: target,
-    tier: t.tier || '', area: t.area || '', project_id: t.project_id || null,
+    tier: t.tier || '', area: t.area || '', row: t.row || '', kept: t.kept || '',
+    project_id: t.project_id || null,
     est_minutes: (typeof t.est_minutes === 'number' && t.est_minutes > 0) ? t.est_minutes : null,
     dateStr: dateStr, days: dateStr ? dayDelta(dateStr, today) : null,
     askDays: askDays(t, today), createdMs: Date.parse(t.created || '') || 0,
@@ -1177,7 +1189,7 @@ function sweepStuckTasks(items, today) {
   var out = [];
   for (var i = 0; i < items.length; i++) {
     var t = items[i];
-    if (!t || t.list !== 'thisweek' || isProposedTask(t)) continue;
+    if (!t || t.list !== 'thisweek' || isProposedTask(t) || t.kept === 'grading') continue;
     if (t.scheduled && dayDelta(t.scheduled, today) < 0) out.push(normTaskRow(t, null, today));
   }
   out.sort(rowCompare);
@@ -1192,7 +1204,7 @@ function sweepOldReplies(items, today) {
   var out = [];
   for (var i = 0; i < items.length; i++) {
     var t = items[i];
-    if (!t || t.source !== 'email' || isProposedTask(t)) continue;
+    if (!t || t.source !== 'email' || isProposedTask(t) || t.kept === 'grading') continue;
     if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
     if (askDays(t, today) < OLD_REPLY_DAYS) continue;
     if (t.swept && daysPast(t.swept, today) < SWEPT_QUIET_DAYS) continue;
@@ -1808,10 +1820,12 @@ function workBuckets(items, deadlines, opps, memo, today, portionIds) {
   }
   var reply = [], doRows = [], notToday = [], seen = {};
   var i, t, d, o;
-  // Reply: every open, non-proposed reply item in inbox/thisweek.
+  // Reply: every open, non-proposed reply item in inbox/thisweek. A task KEPT for
+  // grading (kept === 'grading', 2026-11-21) is out of the daily lists — it lives in
+  // the Teaching board's kept group, not here.
   for (i = 0; i < items.length; i++) {
     t = items[i];
-    if (!t || !t.id || isProposedTask(t)) continue;
+    if (!t || !t.id || isProposedTask(t) || t.kept === 'grading') continue;
     if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
     var rr = normTaskRow(t, idx.byTask[t.id], today); rr.candKind = 'task';
     if (isReplyRow(rr)) { if (seen[t.id]) continue; seen[t.id] = true; reply.push(rr); }
@@ -1822,7 +1836,7 @@ function workBuckets(items, deadlines, opps, memo, today, portionIds) {
   // dread never scales with the backlog.
   for (i = 0; i < items.length; i++) {
     t = items[i];
-    if (!t || !t.id || seen[t.id] || isProposedTask(t)) continue;
+    if (!t || !t.id || seen[t.id] || isProposedTask(t) || t.kept === 'grading') continue;
     if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
     var sched = t.scheduled || null;
     var pinned = !!portionIds[t.id];
@@ -1917,8 +1931,9 @@ function emailSortQueue(notPlaced) {
 // Key → the action the sort box commits. Area keys (t a f s c) via AREA_PLACE_KEYS
 // set the area; r/d set the item's KIND through its `tier` (reply_needed = reply,
 // action_needed = task — the field the Today Reply/Do split reads); e opens the
-// Schedule form (a time to put on the calendar); n marks it done (the existing done
-// path). null for any other key. No parallel field is invented.
+// Schedule form (a time to put on the calendar); g keeps a teaching email for
+// grading (handled only when Teaching is lit — see emailThenChoices); n marks it
+// done (the existing done path). null for any other key. No parallel field is invented.
 function emailSortAction(key) {
   if (!key) return null;
   key = String(key).toLowerCase();
@@ -1928,8 +1943,42 @@ function emailSortAction(key) {
   if (key === 'r') return { type: 'kind', tier: 'reply_needed' };
   if (key === 'd') return { type: 'kind', tier: 'action_needed' };
   if (key === 'e') return { type: 'schedule' };
+  if (key === 'g') return { type: 'keep' };
   if (key === 'n') return { type: 'done' };
   return null;
+}
+// The "Then" row choices, in order: Reply r · Task d · Schedule e · (Keep for
+// grading g, ONLY when Teaching is the lit area) · No need n. Pure (so the key map
+// and the rendered buttons agree). `litArea` = the area pre-lit for this email.
+function emailThenChoices(litArea) {
+  var out = [['r', 'Reply'], ['d', 'Task'], ['e', 'Schedule']];
+  if (litArea === 'teaching') out.push(['g', 'Keep for grading']);
+  out.push(['n', 'No need']);
+  return out;
+}
+// The course a keep-for-grading email should file under, or null (then show the
+// one-line course picker). Known when the task already carries a teaching row, else
+// when its text names one of `courseKeys` as a whole-word token (General excluded).
+function keptCourseGuess(task, courseKeys) {
+  if (task && (task.area === 'teaching')) {
+    var r = (task.row || '').trim();
+    if (r && r !== 'General') return r;
+  }
+  var text = (task && task.text) || '';
+  var keys = courseKeys || [];
+  for (var i = 0; i < keys.length; i++) {
+    var k = (keys[i] || '').trim();
+    if (!k || k === 'General') continue;
+    if (new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(text)) return k;
+  }
+  return null;
+}
+// The ids of every kept-for-grading item in a teaching course row, for the "Clear
+// all N" one-undo batch. [] when the row has no kept items. Pure over the board.
+function keptClearIds(board, row) {
+  var area = ((board && board.areas) || []).filter(function (a) { return a.area === 'teaching'; })[0];
+  var rowObj = area && (area.rows || []).filter(function (r) { return r.row === row; })[0];
+  return ((rowObj && rowObj.kept) || []).map(function (it) { return it.id; });
 }
 // The Length choices (minutes) the Schedule form offers. 30 is the default when no
 // proposed meeting prefills a duration.
@@ -2219,6 +2268,8 @@ function gradingCardCounts(c) {
   var s = gradingNotesPhrase(c.notes_count) + ' for ' + String(c.label || c.course || '');
   var att = (c.tag_counts && c.tag_counts.attendance) || 0;
   if (att > 0) s += ', ' + att + ' mention attendance';
+  var kept = c.kept_emails || 0;   // open emails kept for grading in this course (2026-11-21)
+  if (kept > 0) s += ', ' + kept + ' email' + (kept === 1 ? '' : 's') + ' kept for grading';
   return s + '.';
 }
 // Per-obligation dismiss key (localStorage, per-viewer convenience only).
@@ -2373,14 +2424,14 @@ function masterBoardRows(board, today, teachingOrder) {
           pb[pcol] = ((pr.buckets && pr.buckets[pcol]) || []).slice().sort(areaCardSort);
           if (pb[pcol].length) anyP = true;
         }
-        if (anyP) out.push({ kind: 'project', area: 'research', label: pr.row, count: pr.count, buckets: pb });
+        if (anyP) out.push({ kind: 'project', area: 'research', label: pr.row, count: pr.count, keptCount: 0, buckets: pb });
       }
     } else {
       var merged = {}, anyA = false, arows = a.rows || [], k;
       for (c = 0; c < AREA_MASTER_COLS.length; c++) merged[AREA_MASTER_COLS[c]] = [];
       for (k = 0; k < arows.length; k++) for (c = 0; c < AREA_MASTER_COLS.length; c++) { var mc = AREA_MASTER_COLS[c]; merged[mc] = merged[mc].concat((arows[k].buckets && arows[k].buckets[mc]) || []); }
       for (c = 0; c < AREA_MASTER_COLS.length; c++) { merged[AREA_MASTER_COLS[c]].sort(areaCardSort); if (merged[AREA_MASTER_COLS[c]].length) anyA = true; }
-      if (anyA) out.push({ kind: 'area', area: a.area, label: a.name, count: a.count, buckets: merged });
+      if (anyA) out.push({ kind: 'area', area: a.area, label: a.name, count: a.count, keptCount: a.kept_count || 0, buckets: merged });
     }
   }
   return out;
@@ -2567,7 +2618,10 @@ var state = {
   // POST /api/areas/seen fires once per open).
   areaBoard: null, areaBoardLoaded: false, areaOpen: null, areaSel: null,
   areaColExpand: {}, areaEditShort: null, areaMoveOpen: null, areaSchedId: null,
-  areaPlaceOpen: null, notPlacedOpen: false, _areaSeen: {}
+  areaPlaceOpen: null, notPlacedOpen: false, _areaSeen: {},
+  // Keep-for-grading (2026-11-21): the sort box course picker, the Teaching board
+  // kept-group expand state + open bodies, and the Not-placed keep picker.
+  emailKeepOpen: null, keptOpen: {}, keptRowOpen: {}, npKeepOpen: null
 };
 
 // The ONE fetch seam (Phase 6): LOCAL (the Mac at localhost) → fetch the Python
@@ -3251,13 +3305,15 @@ function emailSortBoxHtml() {
       escapeHtml(cur.id) + '" data-area="' + escapeHtml(p.area) + '"><kbd>' + p.key + '</kbd>' + escapeHtml(p.label) + '</button>';
   });
   h += '</div><div class="esort-keys"><span class="esort-grp">Then</span>';
-  [['r', 'Reply'], ['d', 'Task'], ['e', 'Schedule'], ['n', 'No need']].forEach(function (p) {
-    var on = (p[0] === 'e' && state.emailScheduleOpen === cur.id) ? ' on' : '';
+  emailThenChoices(litArea).forEach(function (p) {
+    var on = ((p[0] === 'e' && state.emailScheduleOpen === cur.id) ||
+              (p[0] === 'g' && state.emailKeepOpen === cur.id)) ? ' on' : '';
     h += '<button class="ekey' + on + '" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
-      '" data-key="' + p[0] + '"><kbd>' + p[0] + '</kbd>' + p[1] + '</button>';
+      '" data-key="' + p[0] + '"><kbd>' + p[0] + '</kbd>' + escapeHtml(p[1]) + '</button>';
   });
   h += '</div>';
   if (state.emailScheduleOpen === cur.id) h += emailScheduleFormHtml(cur);
+  if (state.emailKeepOpen === cur.id) h += emailKeepPickerHtml(cur);
   var sres = state.emailScheduleResult && state.emailScheduleResult[cur.id];
   if (sres) {
     h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(sres.msg) +
@@ -3363,6 +3419,17 @@ function esortThen(id, key) {
   var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
   state.emailSortDone = state.emailSortDone || {};
   if (act.type === 'schedule') { esortScheduleOpen(id); return; }
+  if (act.type === 'keep') {
+    // g: keep for grading — ONLY when Teaching is the lit area (else the button is not
+    // shown and the key does nothing). If the course is known, save at once; else open
+    // a one-line course picker.
+    var la = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+    if (la !== 'teaching') return;
+    var course = keptCourseGuess(t, keptCourseList());
+    if (course) esortKeepSave(id, course);
+    else { state.emailKeepOpen = id; render(); }
+    return;
+  }
   if (act.type === 'done') {
     state.emailSortDone[id] = true;
     optimistic[id] = true;
@@ -3397,6 +3464,48 @@ function esortScheduleOpen(id) {
   state.emailScheduleOpen = id;
   render();
 }
+// The teaching courses offered when keeping an email for grading: the board's
+// existing teaching rows, the class-notes course registry (LOCAL), then General —
+// deduped, General last. Works LOCAL + hosted (hosted has only the board rows).
+function keptCourseList() {
+  var out = [];
+  teachingRowOrder().forEach(function (k) { if (k && out.indexOf(k) < 0) out.push(k); });
+  var tarea = ((state.areaBoard && state.areaBoard.areas) || []).filter(function (a) { return a.area === 'teaching'; })[0];
+  ((tarea && tarea.rows) || []).forEach(function (r) { if (r.row && r.row !== 'General' && out.indexOf(r.row) < 0) out.push(r.row); });
+  out.push('General');
+  return out;
+}
+// The one-line course picker inside the sort box (shown when the course is unknown).
+// Tap a course to file; number keys 1..n pick while it is open; Esc cancels.
+function emailKeepPickerHtml(cur) {
+  var courses = keptCourseList();
+  var h = '<div class="esch" id="ekeep"><span class="esort-grp">Keep for grading in</span>';
+  courses.forEach(function (c, i) {
+    h += '<button class="ekey" data-pact="esortkeepcourse" data-id="' + escapeHtml(cur.id) + '" data-course="' + escapeHtml(c) + '">' +
+      (i < 9 ? '<kbd>' + (i + 1) + '</kbd>' : '') + escapeHtml(c) + '</button>';
+  });
+  h += '<button class="esch-cancel" data-pact="esortkeepcancel">Cancel</button></div>';
+  return h;
+}
+// Save a keep-for-grading: file the email into Teaching + that course row + kept, and
+// advance the queue. The deferred-commit 5s undo means a quick Undo persists NOTHING
+// (the email stays unsorted); after the commit, the kept task is saved.
+function esortKeepSave(id, course) {
+  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  state.emailSortDone = state.emailSortDone || {};
+  state.emailKeepOpen = null;
+  state.emailSortDone[id] = true;
+  optimistic[id] = true;
+  render();
+  undoable('Kept for grading: ' + course, function () {
+    if (t) {
+      api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: 'teaching', row: course, kept: 'grading' } })
+        .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
+        .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    } else { delete optimistic[id]; ensureAreaBoard(true); }
+  }, function () { delete state.emailSortDone[id]; delete optimistic[id]; render(); });
+}
+function esortKeepCancel() { state.emailKeepOpen = null; render(); }
 function esortScheduleCancel() {
   state.emailScheduleOpen = null;
   state.emailScheduleForm = null;
@@ -5397,6 +5506,8 @@ function handlePageAction(act, el) {
   if (act === 'eschadd') { esortScheduleAdd(el.getAttribute('data-id')); return true; }
   if (act === 'eschcancel') { esortScheduleCancel(); return true; }
   if (act === 'eschundo') { esortScheduleUndo(el.getAttribute('data-id')); return true; }
+  if (act === 'esortkeepcourse') { esortKeepSave(el.getAttribute('data-id'), el.getAttribute('data-course')); return true; }
+  if (act === 'esortkeepcancel') { esortKeepCancel(); return true; }
   if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
   if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
   if (act === 'editwait') {
@@ -5495,6 +5606,16 @@ function handlePageAction(act, el) {
     placeItemArea(el.getAttribute('data-id'), el.getAttribute('data-area'), ni ? ni.value.trim() : '');
     return true;
   }
+  // Keep for grading (2026-11-21): card action, kept-group cards, Not-placed picker.
+  if (act === 'cardkeep') { keptSetForGrading(el.getAttribute('data-id'), null); return true; }
+  if (act === 'keptdone') { areaDone(el.getAttribute('data-id'), 'task'); return true; }
+  if (act === 'keptnotgrading') { keptNotGrading(el.getAttribute('data-id')); return true; }
+  if (act === 'keptclearall') { keptClearAll(el.getAttribute('data-row')); return true; }
+  if (act === 'keptmore') { state.keptRowOpen[el.getAttribute('data-row')] = true; render(); return true; }
+  if (act === 'keptopen') { var koid = el.getAttribute('data-id'); state.keptOpen[koid] = !state.keptOpen[koid]; render(); return true; }
+  if (act === 'npkeep') { var nkid = el.getAttribute('data-id'); state.npKeepOpen = (state.npKeepOpen === nkid) ? null : nkid; render(); return true; }
+  if (act === 'npkeepcourse') { keptSetForGrading(el.getAttribute('data-id'), el.getAttribute('data-course')); return true; }
+  if (act === 'npkeepcancel') { state.npKeepOpen = null; render(); return true; }
   var oc = el.closest('[data-opp]'); if (oc) { handleOpenCallAction(act, oc.getAttribute('data-opp')); return true; }
   var rl = el.closest('[data-rl]'); if (rl) { handleLibraryAction(act, rl.getAttribute('data-rl')); return true; }
   var rc = el.closest('[data-rec]'); if (rc) { handleRecipeAction(act, rc.getAttribute('data-rec')); return true; }
@@ -5819,7 +5940,8 @@ function workMasterHtml(board, today) {
   });
   h += '</tr></thead><tbody>';
   rows.forEach(function (r) {
-    h += '<tr style="--ac:' + areaColorVar(r.area) + '"><th><button data-pact="areaopen" data-area="' + escapeHtml(r.area) + '">' + escapeHtml(r.label) + '<small>' + r.count + ' open</small></button></th>';
+    var keptBadge = (r.keptCount > 0) ? (' &middot; ' + r.keptCount + ' kept') : '';
+    h += '<tr style="--ac:' + areaColorVar(r.area) + '"><th><button data-pact="areaopen" data-area="' + escapeHtml(r.area) + '">' + escapeHtml(r.label) + '<small>' + r.count + ' open' + keptBadge + '</small></button></th>';
     AREA_MASTER_COLS.forEach(function (c) {
       h += '<td' + (c === 'overdue' ? ' class="late"' : '') + '><div class="acell">' + r.buckets[c].map(function (it) { return pillHtml(it, today, r.area, true); }).join('') + '</div></td>';
     });
@@ -5869,6 +5991,50 @@ function workAreaHtml(board, areaKey, today) {
     if (!expanded && sp.more > 0) h += '<button class="amore" data-pact="acolmore" data-col="' + escapeHtml(col.label) + '">' + sp.more + ' more</button>';
     h += '</div>';
   });
+  h += '</div>';
+  // Teaching: the quiet "Kept for grading (N)" group per course row (2026-11-21).
+  if (areaKey === 'teaching') h += keptGroupsHtml({ rows: rows }, today);
+  return h;
+}
+// The per-course "Kept for grading (N)" groups under a Teaching area board. Each
+// kept card opens the saved email body (reuse loadEmailBody) and offers Done /
+// Not for grading; a row-level "Clear all N" marks them all done behind one undo.
+// Collapsed by default when N > 3 (the existing "more" pattern).
+function keptGroupsHtml(area, today) {
+  var rows = ((area && area.rows) || []).filter(function (r) { return (r.kept || []).length; });
+  if (!rows.length) return '';
+  var h = '<div class="akept-wrap">';
+  rows.forEach(function (row) {
+    var kept = row.kept || [];
+    var openK = !!state.keptRowOpen[row.row];
+    var collapsed = kept.length > 3 && !openK;
+    h += '<section class="akept"><div class="akept-head"><b>Kept for grading</b> <span class="akept-n">' + kept.length + '</span>' +
+      '<span class="arow-chip">' + escapeHtml(row.row) + '</span>' +
+      '<button class="akept-clear" data-pact="keptclearall" data-row="' + escapeHtml(row.row) + '">Clear all ' + kept.length + '</button></div>';
+    var shown = collapsed ? kept.slice(0, 3) : kept;
+    shown.forEach(function (it) { h += keptCardHtml(it); });
+    if (collapsed) h += '<button class="amore" data-pact="keptmore" data-row="' + escapeHtml(row.row) + '">' + (kept.length - 3) + ' more</button>';
+    h += '</section>';
+  });
+  return h + '</div>';
+}
+function keptCardHtml(it) {
+  if (optimistic[it.id]) return '';
+  var open = !!state.keptOpen[it.id];
+  var rec = state.emailBodies ? state.emailBodies[it.id] : undefined;
+  var who = (rec && rec.from) ? String(rec.from) : '';
+  var when = (rec && rec.date) ? emailWhen(rec.date) : (it.days_waiting ? (it.days_waiting + 'd waiting') : '');
+  var metaK = [who, when].filter(Boolean).join(' · ');
+  var h = '<div class="akept-card" id="acard-' + escapeHtml(it.id) + '" data-id="' + escapeHtml(it.id) + '">';
+  h += '<button class="akept-title" data-pact="keptopen" data-id="' + escapeHtml(it.id) + '"><b>' + escapeHtml(pillText(it) || it.title || '(kept email)') + '</b>' +
+    (metaK ? '<span class="akept-meta">' + escapeHtml(metaK) + '</span>' : '') + '</button>';
+  if (open) {
+    if (rec === undefined) { loadEmailBody(it.id); h += '<div class="esort-body none" tabindex="0">Loading the message…</div>'; }
+    else if (rec && rec.body) h += '<div class="esort-body" tabindex="0">' + escapeHtml(rec.body) + '</div>';
+    else { var link = emailMailLink(it.id); h += '<div class="esort-body none" tabindex="0">Body not saved for this one.' + (link ? ' <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">✉ open in Mail</a>' : '') + '</div>'; }
+  }
+  h += '<div class="aacts"><button data-pact="keptdone" data-id="' + escapeHtml(it.id) + '">Done</button>' +
+    '<button data-pact="keptnotgrading" data-id="' + escapeHtml(it.id) + '">Not for grading</button></div>';
   return h + '</div>';
 }
 function pillHtml(it, today, areaKey, master) {
@@ -5905,7 +6071,7 @@ function detailCardHtml(it, areaKey, today) {
     h += '<div class="am"><a href="' + escapeHtml(safeUrl(rec.url || '')) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: rec.url || '', source: rec.source || '' })) + '</a></div>';
   }
   if (state.areaMoveOpen === it.id) h += areaMoveControlsHtml(it, areaKey);
-  h += areaCardActionsHtml(it, store);
+  h += areaCardActionsHtml(it, store, areaKey);
   return h + '</div>';
 }
 function areaMoveControlsHtml(it, areaKey) {
@@ -5921,12 +6087,17 @@ function areaMoveControlsHtml(it, areaKey) {
   }
   return h + '<button data-pact="acardrowsave" data-id="' + escapeHtml(it.id) + '">Save row</button></div>';
 }
-function areaCardActionsHtml(it, store) {
+function areaCardActionsHtml(it, store, areaKey) {
   var h = '<div class="aacts">';
   h += '<button data-pact="acarddone" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Done</button>';
   if (store !== 'deadline') {
     h += '<button data-pact="acardsched" data-id="' + escapeHtml(it.id) + '">This week</button>';
     h += '<button data-pact="acardmove" data-id="' + escapeHtml(it.id) + '">Someday</button>';
+  }
+  // Teaching task cards gain "Keep for grading" (2026-11-21): files it into the
+  // course's kept group, out of the daily lists, still open.
+  if (store === 'task' && areaKey === 'teaching') {
+    h += '<button data-pact="cardkeep" data-id="' + escapeHtml(it.id) + '">Keep for grading</button>';
   }
   h += '<button data-pact="acardmoveopen" data-id="' + escapeHtml(it.id) + '">Area/row</button>';
   h += '<button class="danger" data-pact="acarddel" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Delete</button>';
@@ -5952,8 +6123,19 @@ function npRowHtml(it) {
   AREA_PLACE_KEYS.forEach(function (k) {
     h += '<button data-pact="npplace" data-id="' + escapeHtml(it.id) + '" data-area="' + k.area + '"><u>' + k.key + '</u> ' + escapeHtml(k.label) + '</button>';
   });
+  // When the rules suggest Teaching, offer "Keep for grading" right here (2026-11-21).
+  if (it.suggested_area === 'teaching') {
+    h += '<button data-pact="npkeep" data-id="' + escapeHtml(it.id) + '">Keep for grading</button>';
+  }
   h += '</div>';
   if (state.areaPlaceOpen && state.areaPlaceOpen.id === it.id) h += npRowPicker(it, state.areaPlaceOpen.area);
+  if (state.npKeepOpen === it.id) {
+    h += '<div class="anp-pick"><span class="arow-chip">Keep for grading in:</span>';
+    keptCourseList().forEach(function (rw) {
+      h += '<button class="arow-opt" data-pact="npkeepcourse" data-id="' + escapeHtml(it.id) + '" data-course="' + escapeHtml(rw) + '">' + escapeHtml(rw) + '</button>';
+    });
+    h += '<button class="anp-skip" data-pact="npkeepcancel">Cancel</button></div>';
+  }
   return h + '</div>';
 }
 function npRowPicker(it, areaKey) {
@@ -6036,6 +6218,50 @@ function areaDelete(id, store) {
 }
 function areaSchedule(id, day) { state.areaSchedId = null; flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
 function areaSomeday(id) { flushPending(); api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
+
+// ── Keep for grading (Teaching board + card actions, 2026-11-21) ──
+// Save a kept-for-grading item (from a card or the Not-placed picker): file it into
+// teaching + the course row + kept, with the shared 5-second undo. `course` falls
+// back to the task's own course guess (else General) when not given.
+function keptSetForGrading(id, course) {
+  var f = recordById(id); if (!f || f.store !== 'task') return;
+  var t = f.rec;
+  var row = course || keptCourseGuess(t, keptCourseList()) || 'General';
+  state.npKeepOpen = null;
+  optimistic[id] = true; render();
+  undoable('Kept for grading: ' + row, function () {
+    api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: 'teaching', row: row, kept: 'grading' } })
+      .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
+      .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+// "Not for grading" on a kept card: clear kept so the item returns to the normal
+// lists. Keeps its teaching placement (John put it there on purpose).
+function keptNotGrading(id) {
+  var f = recordById(id); if (!f || f.store !== 'task') return;
+  var t = f.rec;
+  optimistic[id] = true; render();
+  undoable('No longer kept for grading', function () {
+    api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', kept: '' } })
+      .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
+      .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+  }, function () { delete optimistic[id]; render(); });
+}
+// "Clear all N" on a course row after grading: mark every kept item in that row done
+// through the existing done endpoint, one by one, behind ONE 5-second undo (each
+// /api/done writes its own change-log receipt).
+function keptClearAll(row) {
+  var ids = keptClearIds(state.areaBoard, row);
+  if (!ids.length) return;
+  ids.forEach(function (id) { optimistic[id] = true; });
+  render();
+  undoable('Cleared ' + ids.length + ' kept for grading', function () {
+    var chain = Promise.resolve();
+    ids.forEach(function (id) { chain = chain.then(function () { return api('/api/done', { method: 'POST', body: { id: id } }); }); });
+    chain.then(function () { ids.forEach(function (id) { delete optimistic[id]; }); ensureAreaBoard(true); fetchAll(); })
+      .catch(function () { ids.forEach(function (id) { delete optimistic[id]; }); ensureAreaBoard(true); });
+  }, function () { ids.forEach(function (id) { delete optimistic[id]; }); render(); });
+}
 
 function classNotesHtml() {
   if (!LOCAL) return '<div class="cn-empty">Class notes live only on your Mac.</div>';
@@ -6565,6 +6791,22 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && state.openProjectMenu) { e.preventDefault(); state.openProjectMenu = null; render(); return; }
   // Escape closes the Today sort box's Schedule form (Cancel).
   if (e.key === 'Escape' && state.emailScheduleOpen) { e.preventDefault(); esortScheduleCancel(); return; }
+  // Escape closes the keep-for-grading course picker.
+  if (e.key === 'Escape' && state.emailKeepOpen) { e.preventDefault(); esortKeepCancel(); return; }
+  // Keep-for-grading course picker open: digits 1..n pick a course; any other
+  // single letter is swallowed so it cannot fire an area/then sort key.
+  if (state.view === 'home' && state.emailKeepOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    var aeK = document.activeElement;
+    var typingK = aeK && (aeK.tagName === 'INPUT' || aeK.tagName === 'TEXTAREA' || aeK.tagName === 'SELECT' || aeK.isContentEditable);
+    if (!typingK) {
+      if (/^[1-9]$/.test(e.key)) {
+        var kcL = keptCourseList(), kiL = parseInt(e.key, 10) - 1;
+        if (kiL >= 0 && kiL < kcL.length) { e.preventDefault(); esortKeepSave(state.emailKeepOpen, kcL[kiL]); }
+        return;
+      }
+      if (/^[a-z]$/i.test(e.key)) { e.preventDefault(); return; }
+    }
+  }
   // sweep flashcard shortcuts (digits/letters/Space/Esc) — never while typing in
   // the date input or another field.
   if (state.view === 'sweeps' && state.sweepQueue) {
@@ -6594,7 +6836,7 @@ document.addEventListener('keydown', function (e) {
   // While the Schedule form is open, the single-letter sort keys must NOT fire (so
   // typing "r" in a field types an r, even with focus on a form button inside the
   // box). Esc is handled above.
-  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen) {
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen && !state.emailKeepOpen) {
     var aeE = document.activeElement;
     var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
     var inBoxE = aeE && aeE.closest && aeE.closest('#esort');

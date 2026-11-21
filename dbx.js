@@ -708,6 +708,11 @@
     out.no_date.sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
     return out;
   }
+  // Kept-for-grading items, OLDEST first (longest-waiting), then title (mirror
+  // areas._sort_kept).
+  function aSortKept(items) {
+    return items.slice().sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
+  }
   function aBuildBoard(tasks, deadlines, projects, seen, changeTimes, todayYmd, hasBodyIds) {
     var today = aYmdParts(todayYmd) || aYmdParts((new Date()).toLocaleDateString('en-CA'));
     seen = seen || {}; changeTimes = changeTimes || {};
@@ -733,12 +738,14 @@
     openDeadlines.forEach(function (d) { if (!consumed[d.id]) units.push([d, true, d.due_date, d.id, [d.id], null]); });
     var byArea = {}, notPlaced = [];
     units.forEach(function (u) {
-      var placement = u[0], item = aBoardItem(placement, u[1], u[2], u[3], u[4], u[5], today, seen, changeTimes, hasBodyIds);
+      var placement = u[0], isDl = u[1], item = aBoardItem(placement, isDl, u[2], u[3], u[4], u[5], today, seen, changeTimes, hasBodyIds);
       var area = placement.area;
       if (AREA_VALID.indexOf(area) >= 0) {
         var row = aCollapse(placement.row) || AREA_DEFAULT_ROW;
-        if (!byArea[area]) byArea[area] = {}; if (!byArea[area][row]) byArea[area][row] = [];
-        byArea[area][row].push(item);
+        if (!byArea[area]) byArea[area] = {}; if (!byArea[area][row]) byArea[area][row] = { active: [], kept: [] };
+        // A kept-for-grading TASK is set aside from the buckets (mirror areas.build_board).
+        if (!isDl && placement.kept === 'grading') byArea[area][row].kept.push(item);
+        else byArea[area][row].active.push(item);
       } else {
         item.suggested_area = aSuggestArea(placement, projects);
         notPlaced.push(item);
@@ -747,12 +754,15 @@
     var outAreas = [];
     AREA_EMAIL_AREAS.forEach(function (a) {
       var rowsMap = byArea[a.key]; if (!rowsMap) return;
-      var rows = [], total = 0;
+      var rows = [], total = 0, keptTotal = 0;
       aSortedRows(Object.keys(rowsMap)).forEach(function (row) {
-        var items = rowsMap[row]; total += items.length;
-        rows.push({ row: row, count: items.length, buckets: aBucketize(items) });
+        var slot = rowsMap[row], active = slot.active, kept = slot.kept;
+        if (!active.length && !kept.length) return;
+        total += active.length; keptTotal += kept.length;
+        rows.push({ row: row, count: active.length, buckets: aBucketize(active), kept: aSortKept(kept) });
       });
-      outAreas.push({ area: a.key, name: a.name, count: total, rows: rows });
+      if (!rows.length) return;
+      outAreas.push({ area: a.key, name: a.name, count: total, kept_count: keptTotal, rows: rows });
     });
     notPlaced.sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
     return { areas: outAreas, not_placed: notPlaced };
@@ -1094,10 +1104,24 @@
       const ae = aAreaEdits(body, 'john');
       if (ae.error) return resp({ error: ae.error }, 400);
       const newTier = (body.tier || '').trim().toLowerCase();
+      // Optional kept-for-grading (2026-11-21): "grading" forces teaching + a course
+      // row + a kept_at stamp; "" clears it; any other value leaves it untouched.
+      const keptRaw = (typeof body.kept === 'string') ? body.kept.trim().toLowerCase() : null;
+      const keptOp = keptRaw === 'grading' ? 'set' : (keptRaw === '' ? 'clear' : null);
       let found = null;
       await updateJson('data.json', a => {
         const it = a.find(i => i.id === itemId);
-        if (it) { it.text = text; aApplyOps(it, ae.ops); if (newTier === 'reply_needed' || newTier === 'action_needed') it.tier = newTier; found = it; }
+        if (it) {
+          it.text = text; aApplyOps(it, ae.ops);
+          if (newTier === 'reply_needed' || newTier === 'action_needed') it.tier = newTier;
+          if (keptOp === 'set') {
+            it.kept = 'grading';
+            it.kept_at = nowIso();
+            it.area = 'teaching'; it.area_by = 'john';
+            it.row = aCourseInTitle(it.row || '') || aCourseInTitle(it.text || '') || AREA_DEFAULT_ROW;
+          } else if (keptOp === 'clear') { delete it.kept; delete it.kept_at; }
+          found = it;
+        }
         return a;
       }, []);
       if (!found) return resp({ error: 'not found' }, 404);
