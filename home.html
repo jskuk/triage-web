@@ -664,6 +664,24 @@
   .t2-fold .t2-fold-sum .tri { transform: rotate(-90deg); }
   .t2-fold-body { padding: 6px 0 2px; }
   .t2-fold-h { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); font-weight: 600; margin: 10px 0 4px; }
+  /* 2b. Email section on Today (reply area tags + sort box; LOCAL only; mockups/today-email.html) */
+  .atag { display: inline-block; font-size: 11px; letter-spacing: .02em; text-transform: uppercase; font-weight: 600; padding: 1px 7px; border-radius: 9px; background: var(--t-accent-soft); color: var(--t-accent); margin-left: 6px; vertical-align: 1px; white-space: nowrap; }
+  .t2-showall { font-size: 13px; color: var(--t-accent); padding: 6px 0 2px; }
+  .t2-showall:hover { text-decoration: underline; }
+  .esort { background: var(--page); border: 1px solid var(--t-accent); border-radius: 10px; padding: 10px 14px; margin-top: 14px; display: grid; gap: 8px; }
+  .esort-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .esort-sub { font-weight: 600; }
+  .esort-who { font-size: 13px; color: var(--text-2); }
+  .esort-left { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .esort-body { font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 8px 0; max-height: 19em; overflow-y: auto; max-width: 68ch; }
+  .esort-body.none { color: var(--text-3); white-space: normal; }
+  .esort-body a { color: var(--t-accent); }
+  .esort-keys { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .esort-grp { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); font-weight: 600; margin-right: 2px; }
+  .ekey { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 14px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; }
+  .ekey kbd { font: inherit; font-weight: 700; color: var(--t-accent); margin-right: 4px; }
+  .ekey.on { background: var(--t-mark); border-color: var(--t-mark); color: #fff; }
+  .ekey.on kbd { color: #fff; }
   /* 3. Research whiteboard */
   .t2-boardwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--t-board); -webkit-overflow-scrolling: touch; }
   .t2-board { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
@@ -962,7 +980,7 @@ function normTaskRow(t, linkedDeadline, today) {
     id: t.id, kind: 'task', text: t.text || '', who: t.who || '', lane: laneOf(t),
     url: t.url || '', source: t.source || '', nextStep: cleanNext(t.nextStep), memo: t.memo || '',
     list: t.list, proposed: isProposedTask(t), suggested: false, target: target,
-    tier: t.tier || '', project_id: t.project_id || null,
+    tier: t.tier || '', area: t.area || '', project_id: t.project_id || null,
     est_minutes: (typeof t.est_minutes === 'number' && t.est_minutes > 0) ? t.est_minutes : null,
     dateStr: dateStr, days: dateStr ? dayDelta(dateStr, today) : null,
     askDays: askDays(t, today), createdMs: Date.parse(t.created || '') || 0,
@@ -1836,6 +1854,60 @@ function oneThingDefault(reply, doRows, today) {
   return first.length ? first[0] : pool[0];
 }
 
+// ── Today email section (LOCAL only; mockups/today-email.html) ──
+// The area tag after a reply title + in the sort box. Reuses the existing
+// AREA_PLACE_KEYS map (so `service` shows as "Admin"); "" for no/unknown area.
+function emailAreaTag(area) {
+  if (!area) return '';
+  for (var i = 0; i < AREA_PLACE_KEYS.length; i++) {
+    if (AREA_PLACE_KEYS[i].area === area) return AREA_PLACE_KEYS[i].label;
+  }
+  return '';
+}
+// An item is email-sourced when it carries source 'email' OR a Mail message:// url
+// (the same test areas.item_kind + isReplyRow use). Pure.
+function isEmailItem(it) {
+  if (!it) return false;
+  if ((it.source || '').toLowerCase() === 'email') return true;
+  var u = it.url || '';
+  return typeof u === 'string' && u.indexOf('message:') === 0;
+}
+// The sort-box queue: the board's not-placed EMAIL items (no area, kind any),
+// OLDEST first (board days_waiting descending, then title). `notPlaced` is
+// board.not_placed; non-email not-placed items are left for the Work view's placer.
+function emailSortQueue(notPlaced) {
+  var out = (notPlaced || []).filter(function (it) { return it && it.id && isEmailItem(it); });
+  out.sort(function (a, b) {
+    var dw = (b.days_waiting || 0) - (a.days_waiting || 0);
+    if (dw !== 0) return dw;
+    var ta = String(a.title || '').toLowerCase(), tb = String(b.title || '').toLowerCase();
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
+  return out;
+}
+// Key → the action the sort box commits. Area keys (t a f s c) via AREA_PLACE_KEYS
+// set the area; r/d set the item's KIND through its `tier` (reply_needed = reply,
+// action_needed = task — the field the Today Reply/Do split reads); n marks it done
+// (the existing done path). null for any other key. No parallel field is invented.
+function emailSortAction(key) {
+  if (!key) return null;
+  key = String(key).toLowerCase();
+  for (var i = 0; i < AREA_PLACE_KEYS.length; i++) {
+    if (AREA_PLACE_KEYS[i].key === key) return { type: 'area', area: AREA_PLACE_KEYS[i].area };
+  }
+  if (key === 'r') return { type: 'kind', tier: 'reply_needed' };
+  if (key === 'd') return { type: 'kind', tier: 'action_needed' };
+  if (key === 'n') return { type: 'done' };
+  return null;
+}
+// Split a ranked reply list into the head shown by default + the hidden remainder,
+// for the "Show all N replies" control. n = head size. Pure.
+function replySplit(rows, n, expanded) {
+  rows = rows || [];
+  var shown = expanded ? rows.slice() : rows.slice(0, n);
+  return { shown: shown, total: rows.length, hidden: Math.max(0, rows.length - n) };
+}
+
 // The whiteboard groups: Alive and Finish-and-send (from projectDashboardGroups),
 // then Waiting-on-someone-else = any board project whose waiting_on is non-empty
 // (those rows LEAVE their original group). Parked + areas are not on the board;
@@ -2243,6 +2315,16 @@ function detailColumns(area) {
   return [{ label: AREA_DETAIL_COLS[0], items: c1 }, { label: AREA_DETAIL_COLS[1], items: c2 }, { label: AREA_DETAIL_COLS[2], items: c3 }];
 }
 // Show the first `cap` cards; fold the rest behind "N more".
+// The edit call for a Work-view card. The two edit endpoints take different shapes:
+// /api/task/update reads area/row/short at the TOP level and requires `text`;
+// /api/deadlines/update takes them nested under `fields`. (2026-11-20: tasks were
+// sent the nested shape, so every Work-view edit of a task 400'd.)
+function areaEditCall(f, id, fields) {
+  if (f.store === 'deadline') return { path: '/api/deadlines/update', body: { id: id, fields: fields } };
+  var body = { id: id, text: (f.rec && f.rec.text) || '' };
+  Object.keys(fields).forEach(function (k) { body[k] = fields[k]; });
+  return { path: '/api/task/update', body: body };
+}
 function moreSplit(cards, cap) {
   cards = cards || []; cap = cap || 3;
   return { shown: cards.slice(0, cap), more: Math.max(0, cards.length - cap) };
@@ -3034,9 +3116,143 @@ function workTodayHtml() {
   h += workColumnHtml('Reply', b.reply, 'reply', today);
   h += workColumnHtml('Do', b.do, 'do', today);
   h += '</div>';
+  try { h += emailSortBoxHtml(); } catch (e) { reportUiError('esort: ' + e.stack); }
   h += notTodayFoldHtml(b, today);
   h += '</section>';
   return h;
+}
+// ── The email sort box (LOCAL only; mockups/today-email.html) ──────────────────
+// One unsorted email at a time, in FULL (subject, sender+date, the body as written —
+// NO AI summary). The queue is the areas board's not-placed EMAIL items (oldest
+// first, pure emailSortQueue). Area keys (t a f s c) place it; r/d set the kind
+// (reply/task via `tier`); n marks it done. Rendered only on the LOCAL Today page —
+// the hosted shell never gets it (student mail stays on the Mac) and dbx.js has no
+// board/email-body route. The box is absent when the queue is empty.
+function emailSortBoxHtml() {
+  if (!LOCAL) return '';
+  if (!state.areaBoardLoaded || !state.areaBoard) return '';
+  var done = state.emailSortDone || {};
+  var queue = emailSortQueue(state.areaBoard.not_placed).filter(function (it) { return !done[it.id]; });
+  if (!queue.length) return '';
+  var cur = queue[0];
+  var rec = state.emailBodies ? state.emailBodies[cur.id] : undefined;
+  if (rec === undefined) loadEmailBody(cur.id);           // async; re-renders when done
+  var litArea = (state.emailSortArea && state.emailSortArea[cur.id]) || cur.suggested_area || null;
+  var who = (rec && rec.from) ? String(rec.from) : '';
+  var when = (rec && rec.date) ? emailWhen(rec.date) : '';
+  var whoLine = [who, when].filter(Boolean).join(' · ');
+
+  var h = '<div class="esort" id="esort" aria-live="polite">';
+  h += '<div class="esort-top"><div><span class="esort-sub">' + escapeHtml(cur.title || '(no subject)') + '</span>' +
+    (whoLine ? '<div class="esort-who">' + escapeHtml(whoLine) + '</div>' : '') + '</div>' +
+    '<span class="esort-left">' + queue.length + ' to sort</span></div>';
+  if (rec === undefined) {
+    h += '<div class="esort-body none" tabindex="0">Loading the message…</div>';
+  } else if (rec && rec.body) {
+    h += '<div class="esort-body" tabindex="0">' + escapeHtml(rec.body) + '</div>';
+  } else {
+    var link = emailMailLink(cur.id);
+    h += '<div class="esort-body none" tabindex="0">Body not saved for this one.' +
+      (link ? ' <a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">✉ open in Mail</a>' : '') + '</div>';
+  }
+  h += '<div class="esort-keys"><span class="esort-grp">Area</span>';
+  AREA_PLACE_KEYS.forEach(function (p) {
+    h += '<button class="ekey' + (litArea === p.area ? ' on' : '') + '" data-pact="esortarea" data-id="' +
+      escapeHtml(cur.id) + '" data-area="' + escapeHtml(p.area) + '"><kbd>' + p.key + '</kbd>' + escapeHtml(p.label) + '</button>';
+  });
+  h += '</div><div class="esort-keys"><span class="esort-grp">Then</span>';
+  [['r', 'Reply'], ['d', 'Task'], ['n', 'Nothing']].forEach(function (p) {
+    h += '<button class="ekey" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
+      '" data-key="' + p[0] + '"><kbd>' + p[0] + '</kbd>' + p[1] + '</button>';
+  });
+  h += '</div></div>';
+  return h;
+}
+// A short "Nov 10, 9:00 AM" from the stored email date; falls back to the raw string.
+function emailWhen(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  try { return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  catch (e) { return String(iso); }
+}
+// The current item's "open in Mail" link (from the task's own url, through safeUrl).
+function emailMailLink(id) {
+  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  return t && t.url ? safeUrl(t.url) : '';
+}
+function esortSuggestedArea(id) {
+  var np = (state.areaBoard && state.areaBoard.not_placed) || [];
+  var it = np.filter(function (x) { return x.id === id; })[0];
+  return it ? (it.suggested_area || null) : null;
+}
+// The id of the email currently shown in the sort box (the oldest unsorted one), or
+// null. Drives the keyboard shortcuts so a key always acts on what is on screen.
+function currentSortId() {
+  if (!LOCAL || !state.areaBoardLoaded || !state.areaBoard) return null;
+  var done = state.emailSortDone || {};
+  var q = emailSortQueue(state.areaBoard.not_placed).filter(function (it) { return !done[it.id]; });
+  return q.length ? q[0].id : null;
+}
+// Fetch ONE email body (LOCAL only). Caches the record (or null on 404) and
+// re-renders. Never blocks the page; a failure just shows "Body not saved".
+function loadEmailBody(id) {
+  if (!LOCAL || !id) return;
+  state.emailBodies = state.emailBodies || {};
+  state.emailBodyLoading = state.emailBodyLoading || {};
+  if (state.emailBodyLoading[id] || state.emailBodies[id] !== undefined) return;
+  state.emailBodyLoading[id] = true;
+  apiJson('/api/email-body?id=' + encodeURIComponent(id)).then(function (r) {
+    state.emailBodies[id] = (r.ok && r.data && typeof r.data === 'object' && typeof r.data.body === 'string') ? r.data : null;
+    delete state.emailBodyLoading[id];
+    if (state.view === 'home') render();
+  }).catch(function () {
+    state.emailBodies[id] = null; delete state.emailBodyLoading[id];
+    if (state.view === 'home') render();
+  });
+}
+// Area key: save the area immediately through the existing edit endpoint (marks it
+// John's), light it, and invalidate the board cache so the Work view reflects it.
+// Does NOT advance (John can still pick reply/task/nothing on the same item).
+function esortSetArea(id, area) {
+  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  if (!t) return;
+  state.emailSortArea = state.emailSortArea || {};
+  state.emailSortArea[id] = area;
+  render();
+  api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: area } })
+    .then(function () { ensureAreaBoard(true); }).catch(function () {});
+}
+// r/d/n: commit the "then" choice and advance to the next unsorted email. r/d set
+// the KIND through `tier` (and commit the lit/suggested area so the item lands in
+// its area board row); n marks it done through the existing done path + 5s undo.
+function esortThen(id, key) {
+  var act = emailSortAction(key);
+  if (!act || key === undefined) return;
+  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  state.emailSortDone = state.emailSortDone || {};
+  if (act.type === 'done') {
+    state.emailSortDone[id] = true;
+    optimistic[id] = true;
+    render();
+    undoable('Sorted: nothing', function () {
+      api('/api/done', { method: 'POST', body: { id: id } })
+        .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
+        .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    }, function () { delete state.emailSortDone[id]; delete optimistic[id]; render(); });
+    return;
+  }
+  // kind: reply / task — set tier, and commit the lit/suggested area alongside.
+  var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+  state.emailSortDone[id] = true;
+  render();
+  if (t) {
+    var body = { id: id, text: t.text || '', tier: act.tier };
+    if (litArea) { body.area = litArea; state.emailSortArea = state.emailSortArea || {}; state.emailSortArea[id] = litArea; }
+    api('/api/task/update', { method: 'POST', body: body })
+      .then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  } else {
+    ensureAreaBoard(true);
+  }
 }
 // The currently-shown one thing: an explicit per-day override when it still resolves
 // to a Reply/Do row, else the computed default (pure oneThingDefault). null → omit.
@@ -3059,8 +3275,14 @@ function workColumnHtml(label, rows, key, today) {
   } else {
     h += '<div class="t2-wlist">' + shown.map(function (r) { return workRowHtml(r, key, today); }).join('') + '</div>';
     if (rows.length > 6) {
+      // The Reply column names the full count ("Show all 11 replies", John's ask);
+      // the Do column keeps the compact "N more". Both toggle the same remembered
+      // (collapsed-by-default) workExpanded flag.
+      var moreLabel = (key === 'reply')
+        ? (expanded ? 'Show fewer' : ('Show all ' + rows.length + ' replies'))
+        : (expanded ? 'Show fewer' : ((rows.length - 6) + ' more'));
       h += '<button class="t2-more" data-pact="workmore" data-col="' + escapeHtml(key) + '">' +
-        (expanded ? 'Show fewer' : ((rows.length - 6) + ' more')) + '</button>';
+        moreLabel + '</button>';
     }
   }
   return h + '</div>';
@@ -3078,6 +3300,10 @@ function workColTotal(rows) {
 function workRowHtml(r, key, today) {
   var isOne = (state._oneThingId === r.id);
   var titleInner = (key === 'reply') ? replyTitle(r) : doTitle(r);
+  if (key === 'reply') {
+    var atag = emailAreaTag(r.area);
+    if (atag) titleInner += '<span class="atag">' + escapeHtml(atag) + '</span>';
+  }
   var meta = (key === 'reply') ? replyMeta(r) : doMeta(r, today);
   var est = (typeof r.est_minutes === 'number' && r.est_minutes > 0) ? (' · ' + escapeHtml(fmtHM(r.est_minutes))) : '';
   var open = (state.openRow === r.id) ? ' open' : '';
@@ -4925,6 +5151,8 @@ function handlePageAction(act, el) {
   if (act === 'plateset') { setPlate(el.getAttribute('data-pid')); return true; }
   if (act === 'onething') { setOneThing(el.getAttribute('data-id'), el.getAttribute('data-kind')); return true; }
   if (act === 'workmore') { var wc = el.getAttribute('data-col'); state.workExpanded[wc] = !state.workExpanded[wc]; render(); return true; }
+  if (act === 'esortarea') { esortSetArea(el.getAttribute('data-id'), el.getAttribute('data-area')); return true; }
+  if (act === 'esortthen') { esortThen(el.getAttribute('data-id'), el.getAttribute('data-key')); return true; }
   if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
   if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
   if (act === 'editwait') {
@@ -5279,14 +5507,14 @@ function gradingCardHtml(courseKey) {
    after any placement/edit. No AI anywhere; all inserted text escaped. ---- */
 function ensureAreaBoard(force) {
   if (!LOCAL) return;
-  if (state.areaBoardLoaded && !force) { if (state.view === 'work') render(); return; }
+  if (state.areaBoardLoaded && !force) { if (state.view === 'work' || state.view === 'home') render(); return; }
   apiJson('/api/areas/board').then(function (r) {
     var d = r.data;
     state.areaBoard = (d && typeof d === 'object' && Array.isArray(d.areas)) ? d : { areas: [], not_placed: [] };
     state.areaBoardLoaded = true;
     state._areaSeen = {};   // a fresh board → re-stamp "seen" on the next area open
-    if (state.view === 'work') render();
-  }).catch(function () { state.areaBoardLoaded = true; state.areaBoard = { areas: [], not_placed: [] }; if (state.view === 'work') render(); });
+    if (state.view === 'work' || state.view === 'home') render();
+  }).catch(function () { state.areaBoardLoaded = true; state.areaBoard = { areas: [], not_placed: [] }; if (state.view === 'work' || state.view === 'home') render(); });
 }
 // localStorage only for the remembered area tab (per-viewer convenience; try/catch).
 function readRememberedAreaTab() {
@@ -5513,13 +5741,12 @@ function scrollToCard(id) {
 // the shared 5-second undo; the row is optimistically hidden until commit.
 function placeItemArea(id, area, row) {
   var f = recordById(id); if (!f) { state.areaPlaceOpen = null; render(); return; }
-  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
   var fields = { area: area };
   if (row) fields.row = row;
   state.areaPlaceOpen = null;
   optimistic[id] = true; render();
   undoable('Placed in ' + (AREA_NAME[area] || area), function () {
-    api(path, { method: 'POST', body: { id: id, fields: fields } }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, fields)).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
   }, function () { delete optimistic[id]; render(); });
 }
 function saveAreaShort(id) {
@@ -5527,8 +5754,7 @@ function saveAreaShort(id) {
   var v = el ? el.value.trim().slice(0, AREA_SHORT_CAP) : '';
   var f = recordById(id); state.areaEditShort = null;
   if (!f) { render(); return; }
-  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
-  api(path, { method: 'POST', body: { id: id, fields: { short: v } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { short: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
 }
 function saveAreaRow(id) {
   var root = document.querySelector('.ait[data-id="' + cssEsc(id) + '"]');
@@ -5536,14 +5762,12 @@ function saveAreaRow(id) {
   var v = el ? (el.value || '').trim() : '';
   var f = recordById(id); state.areaMoveOpen = null;
   if (!f) { render(); return; }
-  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
-  api(path, { method: 'POST', body: { id: id, fields: { row: v } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { row: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
 }
 function changeCardArea(id, area) {
   var f = recordById(id); state.areaMoveOpen = null;
   if (!f) { render(); return; }
-  var path = f.store === 'deadline' ? '/api/deadlines/update' : '/api/task/update';
-  api(path, { method: 'POST', body: { id: id, fields: { area: area } } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { area: area })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
 }
 // Done / delete reuse the existing endpoints + the shared undo primitive, and also
 // refetch the board (areaBoard is separate lazy state). This week / Someday reuse
@@ -6115,6 +6339,26 @@ document.addEventListener('keydown', function (e) {
       if (am) { e.preventDefault(); var nid = npRow.getAttribute('data-id'); state.areaPlaceOpen = { id: nid, area: am }; render(); var rf = document.querySelector('.anp-row[data-id="' + cssEsc(nid) + '"]'); if (rf) rf.focus(); return; }
     }
   }
+  // Today email sort box (LOCAL only): one letter sorts the on-screen email —
+  // t a f s c set the area, r/d/n the kind/done. Only when NOT typing and focus is
+  // inside the box OR on the bare page (no input/textarea/contenteditable focused).
+  // No collision: the Today page binds no other single-letter shortcut here.
+  if (LOCAL && state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    var aeE = document.activeElement;
+    var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
+    var inBoxE = aeE && aeE.closest && aeE.closest('#esort');
+    var onBodyE = !aeE || aeE === document.body;
+    if (!typingE && (inBoxE || onBodyE)) {
+      var curE = currentSortId();
+      var actE = curE ? emailSortAction(String(e.key).toLowerCase()) : null;
+      if (actE) {
+        e.preventDefault();
+        if (actE.type === 'area') esortSetArea(curE, actE.area);
+        else esortThen(curE, String(e.key).toLowerCase());
+        return;
+      }
+    }
+  }
   // Enter in capture = Drop (the primary); Shift+Enter = Task.
   if (e.target && e.target.id === 'cap-input' && e.key === 'Enter') {
     e.preventDefault();
@@ -6217,6 +6461,8 @@ function applyHash() {
   if (state.view === 'kitchen') ensureRecipes();
   if (state.view === 'class-notes') ensureClassNotes();
   if (state.view === 'work') { state.areaOpen = readRememberedAreaTab(); ensureAreaBoard(); }
+  // The Today (home) page's email sort box reads the same board (LOCAL only).
+  if (state.view === 'home') ensureAreaBoard();
   if (state.view !== 'sweeps') {
     // leaving the Sweeps area: close any open queue and sync counts if changed.
     state.sweepQueue = null; state.sweepPick = null;
