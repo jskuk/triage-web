@@ -5522,7 +5522,7 @@
           ${badge}
           <div class="deadline-main">
             <div class="deadline-title">${escapeHtml(d.title)}${d.proposed ? ' <span class="unsorted-flag">proposed</span>' : ''}${domainChip(d)}</div>
-            <div class="deadline-meta clamp-2">due ${d.due_date} · ${d.type} · runway ${d.lead_time_days}d${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
+            <div class="deadline-meta clamp-2">due ${d.due_date} · ${d.type} · start ${d.lead_time_days}d ahead${d.notes ? ' · ' + escapeHtml(d.notes) : ''}</div>
           </div>
           ${actions}
         </div>`;
