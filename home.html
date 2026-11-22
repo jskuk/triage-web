@@ -1949,13 +1949,50 @@ function emailSortAction(key) {
   return null;
 }
 // The "Then" row choices, in order: Reply r · Task d · Schedule e · (Keep for
-// grading g, ONLY when Teaching is the lit area) · No need n. Pure (so the key map
-// and the rendered buttons agree). `litArea` = the area pre-lit for this email.
-function emailThenChoices(litArea) {
+// grading g, ONLY when Teaching is the lit area AND the item is a TASK) · No need n.
+// Pure (so the key map and the rendered buttons agree). `litArea` = the area pre-lit
+// for this email; `store` = the item's store ('task'|'deadline', optional). A deadline
+// has no grading row, so Keep is never offered for one (2026-11-22).
+function emailThenChoices(litArea, store) {
   var out = [['r', 'Reply'], ['d', 'Task'], ['e', 'Schedule']];
-  if (litArea === 'teaching') out.push(['g', 'Keep for grading']);
+  if (litArea === 'teaching' && store !== 'deadline') out.push(['g', 'Keep for grading']);
   out.push(['n', 'No need']);
   return out;
+}
+// The operation the sort box's "Then" key commits for an item, given its store, the
+// pressed key, the lit/suggested area, and its record (recordById's {store, rec}, or
+// null). PURE: esortThen EXECUTES exactly this, so the store-aware routing is testable
+// without a DOM (the 2026-11-22 bug: the sort box assumed every queue item was a task,
+// so a deadline silently hid-then-resurfaced). Shapes:
+//   {type:'schedule'}                        — open the Schedule form
+//   {type:'keep'}                            — keep for grading (teaching TASK only)
+//   {type:'noop'}                            — the key does nothing here
+//   {type:'needArea'}                        — deadline Reply/Task with no area lit
+//   {type:'fail'}                            — no record loaded; do NOT hide, show retry
+//   {type:'done', call:{path,body}}          — No need (store's own done path)
+//   {type:'kind', call:{path,body}}          — task Reply/Task (sets tier [+ area])
+//   {type:'area', call:{path,body}}          — deadline Reply/Task (sets area only)
+function esortThenPlan(f, id, key, litArea) {
+  var act = emailSortAction(key);
+  if (!act) return { type: 'noop' };
+  var store = f ? f.store : null;
+  if (act.type === 'schedule') return { type: 'schedule' };
+  if (act.type === 'keep') return (store === 'task' && litArea === 'teaching') ? { type: 'keep' } : { type: 'noop' };
+  if (act.type === 'done') {
+    if (store === 'deadline') return { type: 'done', call: { path: '/api/deadlines/update', body: { id: id, fields: { status: 'done' } } } };
+    return { type: 'done', call: { path: '/api/done', body: { id: id } } };
+  }
+  if (act.type !== 'kind') return { type: 'noop' };
+  // Reply / Task. A deadline has no `tier` (it is already a dated "do" item): commit
+  // the lit/suggested area only, and NEVER hide it with no area to land in.
+  if (store === 'deadline') {
+    if (!litArea) return { type: 'needArea' };
+    return { type: 'area', call: areaEditCall(f, id, { area: litArea }) };
+  }
+  if (!f) return { type: 'fail' };
+  var body = { id: id, text: (f.rec && f.rec.text) || '', tier: act.tier };
+  if (litArea) body.area = litArea;
+  return { type: 'kind', call: { path: '/api/task/update', body: body } };
 }
 // The course a keep-for-grading email should file under, or null (then show the
 // one-line course picker). Known when the task already carries a teaching row, else
@@ -2079,7 +2116,10 @@ function scheduleFormView(id, form) {
 // UPDATE + CONFIRM a linked proposed meeting (no duplicate), else ADD a new already-
 // confirmed one tagged source "today-schedule" + linked_task_id. Pure, so the sort
 // box and the board card build byte-identical requests from the same source.
-function scheduleAddPlan(id, fields, meeting) {
+// `linkedTaskId` defaults to `id` (a task card / task sort-box item); pass "" for a
+// DEADLINE, which has no task to link (2026-11-22) — the add then carries no
+// linked_task_id (no invented field). Pure.
+function scheduleAddPlan(id, fields, meeting, linkedTaskId) {
   if (meeting) {
     return {
       kind: 'confirm',
@@ -2087,10 +2127,10 @@ function scheduleAddPlan(id, fields, meeting) {
       confirm: { path: '/api/meetings/confirm', body: { id: meeting.id } }
     };
   }
-  return {
-    kind: 'add',
-    add: { path: '/api/meetings/add', body: { title: fields.title, start: fields.start, minutes: fields.minutes, location: fields.where, proposed: false, source: 'today-schedule', linked_task_id: id, domain: 'work' } }
-  };
+  var lt = (linkedTaskId === undefined) ? id : linkedTaskId;
+  var body = { title: fields.title, start: fields.start, minutes: fields.minutes, location: fields.where, proposed: false, source: 'today-schedule', domain: 'work' };
+  if (lt) body.linked_task_id = lt;
+  return { kind: 'add', add: { path: '/api/meetings/add', body: body } };
 }
 // The action keys a board card offers, in order, given its store + area. Task cards
 // get Schedule (deadline-store cards do NOT); teaching task cards also get Keep-for-
@@ -3373,7 +3413,8 @@ function emailSortBoxHtml() {
       escapeHtml(cur.id) + '" data-area="' + escapeHtml(p.area) + '"><kbd>' + p.key + '</kbd>' + escapeHtml(p.label) + '</button>';
   });
   h += '</div><div class="esort-keys"><span class="esort-grp">Then</span>';
-  emailThenChoices(litArea).forEach(function (p) {
+  var curStore = (recordById(cur.id) || {}).store;     // Keep is a teaching-TASK choice
+  emailThenChoices(litArea, curStore).forEach(function (p) {
     var on = ((p[0] === 'e' && state.emailScheduleOpen === cur.id) ||
               (p[0] === 'g' && state.emailKeepOpen === cur.id)) ? ' on' : '';
     h += '<button class="ekey' + on + '" data-pact="esortthen" data-id="' + escapeHtml(cur.id) +
@@ -3383,6 +3424,11 @@ function emailSortBoxHtml() {
   if (state.emailScheduleOpen === cur.id) h += emailScheduleFormHtml(cur);
   if (state.emailKeepOpen === cur.id) h += emailKeepPickerHtml(cur);
   h += scheduleResultLineHtml(cur.id);
+  // A plain one-line note for this item: "Pick an area first." or a failed-save retry
+  // line, so a write that did not land never disappears-then-returns silently.
+  if (state.emailSortNote && state.emailSortNote[cur.id]) {
+    h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(state.emailSortNote[cur.id]) + '</div>';
+  }
   h += '</div>';
   return h;
 }
@@ -3473,69 +3519,95 @@ function loadEmailBody(id) {
     if (state.view === 'home') render();
   });
 }
+// Show a plain one-line note under the sort box for `id` (a "Pick an area first." or a
+// failed-save retry line). Keyed by id so it rides with the item if it is un-hidden
+// back into the box. render() so it shows at once.
+function esortNote(id, msg) {
+  state.emailSortNote = state.emailSortNote || {};
+  state.emailSortNote[id] = msg;
+  render();
+}
+// Clear a pending note for `id` (a fresh attempt on the same item).
+function esortClearNote(id) { if (state.emailSortNote) delete state.emailSortNote[id]; }
+// A sort-box write FAILED (non-ok response or network error): un-hide the item (clear
+// the optimistic/done flags that hid it) and show the retry line, so nothing
+// disappears-then-returns silently (the 2026-11-22 bug).
+function esortFail(id) {
+  delete optimistic[id];
+  if (state.emailSortDone) delete state.emailSortDone[id];
+  esortNote(id, 'That did not save. Try again.');
+}
 // Area key: save the area immediately through the existing edit endpoint (marks it
 // John's), light it, and invalidate the board cache so the Work view reflects it.
+// Store-aware (task → top-level fields, deadline → nested fields, via areaEditCall).
 // Does NOT advance (John can still pick reply/task/nothing on the same item).
 function esortSetArea(id, area) {
-  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
-  if (!t) return;
+  var f = recordById(id);
+  if (!f) return;
+  esortClearNote(id);
   state.emailSortArea = state.emailSortArea || {};
   state.emailSortArea[id] = area;
   render();
-  api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: area } })
-    .then(function () { ensureAreaBoard(true); }).catch(function () {});
+  var c = areaEditCall(f, id, { area: area });
+  api(c.path, { method: 'POST', body: c.body })
+    .then(function () { ensureAreaBoard(true); }).catch(function () { esortFail(id); });
 }
-// r/d/n: commit the "then" choice and advance to the next unsorted email. r/d set
-// the KIND through `tier` (and commit the lit/suggested area so the item lands in
-// its area board row); n marks it done through the existing done path + 5s undo.
+// r/d/e/g/n: commit the "then" choice and (for r/d/n) advance to the next unsorted
+// email. Store-aware via the pure esortThenPlan: a TASK's r/d set the KIND through
+// `tier` (committing the lit/suggested area); a DEADLINE has no tier, so r/d commit
+// the area only (and need an area first, never a silent hide); n marks it done through
+// the STORE's own done path + 5s undo. A failed write un-hides and shows a retry line.
 function esortThen(id, key) {
-  var act = emailSortAction(key);
-  if (!act || key === undefined) return;
-  var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
+  if (!key) return;
+  esortClearNote(id);
+  var f = recordById(id);
+  var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+  var plan = esortThenPlan(f, id, key, litArea);
   state.emailSortDone = state.emailSortDone || {};
-  if (act.type === 'schedule') { esortScheduleOpen(id); return; }
-  if (act.type === 'keep') {
-    // g: keep for grading — ONLY when Teaching is the lit area (else the button is not
-    // shown and the key does nothing). If the course is known, save at once; else open
-    // a one-line course picker.
-    var la = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
-    if (la !== 'teaching') return;
-    var course = keptCourseGuess(t, keptCourseList());
+  if (plan.type === 'noop') return;
+  if (plan.type === 'schedule') { esortScheduleOpen(id); return; }
+  if (plan.type === 'keep') {
+    // g: keep for grading — teaching TASK only (gated in esortThenPlan). Known course →
+    // save at once; else open the one-line course picker.
+    var course = keptCourseGuess(f.rec, keptCourseList());
     if (course) esortKeepSave(id, course);
     else { state.emailKeepOpen = id; render(); }
     return;
   }
-  if (act.type === 'done') {
+  if (plan.type === 'needArea') { esortNote(id, 'Pick an area first.'); return; }
+  if (plan.type === 'fail') { esortNote(id, 'That did not save. Try again.'); return; }
+  if (plan.type === 'done') {
     state.emailSortDone[id] = true;
     optimistic[id] = true;
     render();
     undoable('Sorted: no need', function () {
-      api('/api/done', { method: 'POST', body: { id: id } })
+      api(plan.call.path, { method: 'POST', body: plan.call.body })
         .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
-        .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+        .catch(function () { esortFail(id); ensureAreaBoard(true); });
     }, function () { delete state.emailSortDone[id]; delete optimistic[id]; render(); });
     return;
   }
-  // kind: reply / task — set tier, and commit the lit/suggested area alongside.
-  var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+  // kind (task: tier [+ area]) or area (deadline: area only): commit + advance. Remember
+  // the lit area so a re-render keeps it on screen. A failed write un-hides the item.
+  if (litArea) { state.emailSortArea = state.emailSortArea || {}; state.emailSortArea[id] = litArea; }
   state.emailSortDone[id] = true;
   render();
-  if (t) {
-    var body = { id: id, text: t.text || '', tier: act.tier };
-    if (litArea) { body.area = litArea; state.emailSortArea = state.emailSortArea || {}; state.emailSortArea[id] = litArea; }
-    api('/api/task/update', { method: 'POST', body: body })
-      .then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
-  } else {
-    ensureAreaBoard(true);
-  }
+  api(plan.call.path, { method: 'POST', body: plan.call.body })
+    .then(function () { ensureAreaBoard(true); fetchAll(); })
+    .catch(function () { esortFail(id); ensureAreaBoard(true); });
 }
 // Schedule (key e): open the inline calendar form, prefilled from a linked proposed
 // meeting when one exists (else Day/Time empty, Length 30). Does NOT advance the
 // queue — the email stays put so John can still Reply/Task/No-need afterward.
 function esortScheduleOpen(id) {
   var item = (state.areaBoard && state.areaBoard.not_placed || []).filter(function (x) { return x.id === id; })[0] || { id: id };
-  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
-  state.emailScheduleForm = schedulePrefill(task, item, state.meetings);
+  var f = recordById(id);
+  var task = (f && f.store === 'task') ? f.rec : null;
+  // A DEADLINE has no task row: prefill What from its title (lead prefix stripped) and
+  // Day from its due_date, via cardSchedulePrefill. A task keeps the full-subject prefill.
+  state.emailScheduleForm = (f && f.store === 'deadline')
+    ? cardSchedulePrefill(null, item, state.meetings)
+    : schedulePrefill(task, item, state.meetings);
   state.emailScheduleOpen = id;
   state.cardScheduleId = null; state.cardScheduleForm = null;   // never both forms open
   render();
@@ -3577,8 +3649,8 @@ function esortKeepSave(id, course) {
     if (t) {
       api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: 'teaching', row: course, kept: 'grading' } })
         .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
-        .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
-    } else { delete optimistic[id]; ensureAreaBoard(true); }
+        .catch(function () { esortFail(id); ensureAreaBoard(true); });
+    } else { esortFail(id); ensureAreaBoard(true); }
   }, function () { delete state.emailSortDone[id]; delete optimistic[id]; render(); });
 }
 function esortKeepCancel() { state.emailKeepOpen = null; render(); }
@@ -3600,20 +3672,23 @@ function esortScheduleAdd(id) {
   if (!start) return;                                    // Add is disabled; belt + braces
   var minutes = parseInt(f.length, 10) || 30;
   var item = (state.areaBoard && state.areaBoard.not_placed || []).filter(function (x) { return x.id === id; })[0] || { id: id };
-  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
+  var rec = recordById(id);
+  var task = (rec && rec.store === 'task') ? rec.rec : null;
   var title = (f.what || '').trim() || item.title || (task && task.text) || 'Meeting';
   var where = (f.where || '').trim();
   var m = linkedProposedMeeting(id, state.meetings, task);
-  // Commit the lit/suggested area alongside (like r/d), so the task also lands in its
-  // area board row — best-effort, never blocks the calendar write.
+  // Commit the lit/suggested area alongside (like r/d), so the item also lands in its
+  // area board row — best-effort (store-aware), never blocks the calendar write.
   var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
-  if (litArea && task) {
-    api('/api/task/update', { method: 'POST', body: { id: id, text: task.text || '', area: litArea } })
-      .then(function () { ensureAreaBoard(true); }).catch(function () {});
+  if (litArea && rec) {
+    var c = areaEditCall(rec, id, { area: litArea });
+    api(c.path, { method: 'POST', body: c.body }).then(function () { ensureAreaBoard(true); }).catch(function () {});
   }
   state.emailScheduleOpen = null;        // close the form; the email stays in the box
   render();
-  runSchedulePlan(scheduleAddPlan(id, { title: title, start: start, minutes: minutes, where: where }, m), scheduleResultHandler(id, start), function () { scheduleShowSaveFailed(id); });
+  // A deadline has no task to link, so the meetings add carries no linked_task_id for it.
+  var linkedTaskId = (rec && rec.store === 'deadline') ? '' : id;
+  runSchedulePlan(scheduleAddPlan(id, { title: title, start: start, minutes: minutes, where: where }, m, linkedTaskId), scheduleResultHandler(id, start), function () { scheduleShowSaveFailed(id); });
 }
 // Execute a scheduleAddPlan: UPDATE then CONFIRM a proposal, else ADD a confirmed
 // meeting. Shared by the sort box and the board card so both make the exact same
@@ -6269,8 +6344,9 @@ function npRowHtml(it) {
   AREA_PLACE_KEYS.forEach(function (k) {
     h += '<button data-pact="npplace" data-id="' + escapeHtml(it.id) + '" data-area="' + k.area + '"><u>' + k.key + '</u> ' + escapeHtml(k.label) + '</button>';
   });
-  // When the rules suggest Teaching, offer "Keep for grading" right here (2026-11-21).
-  if (it.suggested_area === 'teaching') {
+  // When the rules suggest Teaching, offer "Keep for grading" right here (2026-11-21) —
+  // TASKS only (a deadline has no grading row; keptSetForGrading is a task-only write).
+  if (it.suggested_area === 'teaching' && (recordById(it.id) || {}).store === 'task') {
     h += '<button data-pact="npkeep" data-id="' + escapeHtml(it.id) + '">Keep for grading</button>';
   }
   h += '</div>';
