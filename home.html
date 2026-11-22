@@ -840,6 +840,7 @@
   .ait .am a { color: var(--t-accent); }
   .arow-chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--gray-bg); color: var(--text-2); font-weight: 600; }
   .achip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--t-accent-soft); color: var(--t-accent); font-weight: 600; }
+  .achip.aoncal { background: var(--gray-bg); color: var(--text-2); }
   .aacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
   .aacts button { font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; background: var(--page); }
   .aacts button:hover { background: var(--hover); }
@@ -2038,6 +2039,70 @@ function schedulePrefill(task, item, meetings) {
   }
   return { what: what, day: '', time: '', length: '30', where: '' };
 }
+// Strip leading engine/reply prefixes from a title, repeatedly. Mirrors
+// areas._LEAD_PREFIX_RE EXACTLY (re|fwd|fw|start|runway open|action, a colon
+// required) so "Action: Attend …" loses the "Action:" but "Action plan for X"
+// (no colon) is untouched. Pure; defaults the Schedule form's What on a card.
+var LEAD_PREFIX_RE = /^\s*(?:re|fwd|fw|start|runway\s+open|action)\s*:\s*/i;
+function stripLeadPrefix(title) {
+  var t = String(title == null ? '' : title);
+  while (true) { var t2 = t.replace(LEAD_PREFIX_RE, ''); if (t2 === t) break; t = t2; }
+  return t.trim();
+}
+// The Schedule form's initial values for a BOARD CARD. A linked proposed meeting
+// still wins (existing behavior, via schedulePrefill); else What = the title with
+// any leading "Action:"/"Re:"/"Start:" prefix stripped, Day = the card's linked
+// deadline/due date when it carries one (else empty), Time ALWAYS empty (never
+// invented), Length 30. Pure (no AI, no fetch). `task` may be null.
+function cardSchedulePrefill(task, item, meetings) {
+  var m = linkedProposedMeeting(item && item.id, meetings, task);
+  if (m) return schedulePrefill(task, item, meetings);
+  var what = stripLeadPrefix((item && item.title) || (task && (task.text || '')) || '');
+  var due = String((item && item.due_date) || '').slice(0, 10);
+  var day = /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : '';
+  return { what: what, day: day, time: '', length: '30', where: '' };
+}
+// The values a Schedule form renders for (id, form) — a pure projection of the form
+// state, so a re-render (e.g. a board refresh while the form is open) rebuilds the
+// SAME typed values and never loses them. scheduleFormHtml draws from this.
+function scheduleFormView(id, form) {
+  var f = form || {};
+  return {
+    id: id,
+    what: f.what || '', day: f.day || '', time: f.time || '',
+    length: f.length != null ? String(f.length) : '30',
+    where: f.where || '',
+    canAdd: scheduleCanAdd(f.day, f.time)
+  };
+}
+// The meetings API call(s) a Schedule "Add" makes, as a plan the caller executes:
+// UPDATE + CONFIRM a linked proposed meeting (no duplicate), else ADD a new already-
+// confirmed one tagged source "today-schedule" + linked_task_id. Pure, so the sort
+// box and the board card build byte-identical requests from the same source.
+function scheduleAddPlan(id, fields, meeting) {
+  if (meeting) {
+    return {
+      kind: 'confirm',
+      update: { path: '/api/meetings/update', body: { id: meeting.id, fields: { title: fields.title, start: fields.start, minutes: fields.minutes, location: fields.where } } },
+      confirm: { path: '/api/meetings/confirm', body: { id: meeting.id } }
+    };
+  }
+  return {
+    kind: 'add',
+    add: { path: '/api/meetings/add', body: { title: fields.title, start: fields.start, minutes: fields.minutes, location: fields.where, proposed: false, source: 'today-schedule', linked_task_id: id, domain: 'work' } }
+  };
+}
+// The action keys a board card offers, in order, given its store + area. Task cards
+// get Schedule (deadline-store cards do NOT); teaching task cards also get Keep-for-
+// grading. Pure; areaCardActionsHtml renders one button per key.
+function cardActions(store, areaKey) {
+  var a = ['done'];
+  if (store !== 'deadline') { a.push('thisweek', 'someday'); }
+  if (store === 'task') { a.push('schedule'); }
+  if (store === 'task' && areaKey === 'teaching') { a.push('keep'); }
+  a.push('arearow', 'delete', 'tasks');
+  return a;
+}
 // Split a ranked reply list into the head shown by default + the hidden remainder,
 // for the "Show all N replies" control. n = head size. Pure.
 function replySplit(rows, n, expanded) {
@@ -2619,6 +2684,9 @@ var state = {
   areaBoard: null, areaBoardLoaded: false, areaOpen: null, areaSel: null,
   areaColExpand: {}, areaEditShort: null, areaMoveOpen: null, areaSchedId: null,
   areaPlaceOpen: null, notPlacedOpen: false, _areaSeen: {},
+  // cardScheduleId = the board card whose inline Schedule form is open (one at a
+  // time); cardScheduleForm = that form's typed values (survive a re-render).
+  cardScheduleId: null, cardScheduleForm: null,
   // Keep-for-grading (2026-11-21): the sort box course picker, the Teaching board
   // kept-group expand state + open bodies, and the Not-placed keep picker.
   emailKeepOpen: null, keptOpen: {}, keptRowOpen: {}, npKeepOpen: null
@@ -3314,39 +3382,46 @@ function emailSortBoxHtml() {
   h += '</div>';
   if (state.emailScheduleOpen === cur.id) h += emailScheduleFormHtml(cur);
   if (state.emailKeepOpen === cur.id) h += emailKeepPickerHtml(cur);
-  var sres = state.emailScheduleResult && state.emailScheduleResult[cur.id];
-  if (sres) {
-    h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(sres.msg) +
-      (sres.meetingId ? ' <button class="esch-undo" data-pact="eschundo" data-id="' + escapeHtml(cur.id) + '">Undo</button>' : '') +
-      '</div>';
-  }
+  h += scheduleResultLineHtml(cur.id);
   h += '</div>';
   return h;
 }
-// The inline Schedule form inside the sort box (key e). Native date/time inputs
+// The inline Schedule form inside the sort box (key e). Delegates to the shared
+// scheduleFormHtml (the SAME form the board card opens) so the two never drift.
+function emailScheduleFormHtml(cur) { return scheduleFormHtml(cur.id, state.emailScheduleForm); }
+// The shared Schedule form markup (sort box + board card). Native date/time inputs
 // (good on a phone); a small Length select; Add is disabled until Day + Time are
-// set. Prefilled once on open into state.emailScheduleForm (no re-render per
-// keystroke — the input handler updates state + toggles Add in place, so focus is
-// kept across the fields). Esc / Cancel closes it; while it is open the single-letter
-// sort keys are suppressed so typing "r" in a field types an r.
-function emailScheduleFormHtml(cur) {
-  var f = state.emailScheduleForm || {};
-  var canAdd = scheduleCanAdd(f.day, f.time);
+// set. Rendered purely from (id, form) via scheduleFormView, so a re-render never
+// loses typed values. The input handler updates state + toggles Add in place (focus
+// is kept across the fields). Esc / Cancel closes it; while it is open the single-
+// letter keys are suppressed so typing "r" in a field types an r. The eschadd /
+// eschcancel pacts route to the card or the sort box by state.cardScheduleId.
+function scheduleFormHtml(id, form) {
+  var v = scheduleFormView(id, form);
   var h = '<div class="esch" id="esch">';
-  h += '<label class="esch-wide">What<input class="esch-in" data-f="what" value="' + escapeHtml(f.what || '') + '"></label>';
-  h += '<label>Day<input class="esch-in" type="date" data-f="day" value="' + escapeHtml(f.day || '') + '"></label>';
-  h += '<label>Time<input class="esch-in" type="time" data-f="time" value="' + escapeHtml(f.time || '') + '"></label>';
+  h += '<label class="esch-wide">What<input class="esch-in" data-f="what" value="' + escapeHtml(v.what) + '"></label>';
+  h += '<label>Day<input class="esch-in" type="date" data-f="day" value="' + escapeHtml(v.day) + '"></label>';
+  h += '<label>Time<input class="esch-in" type="time" data-f="time" value="' + escapeHtml(v.time) + '"></label>';
   h += '<label>Length<select class="esch-in" data-f="length">';
   SCHEDULE_LENGTHS.forEach(function (mn) {
-    h += '<option value="' + mn + '"' + (String(f.length) === String(mn) ? ' selected' : '') + '>' + scheduleLengthLabel(mn) + '</option>';
+    h += '<option value="' + mn + '"' + (String(v.length) === String(mn) ? ' selected' : '') + '>' + scheduleLengthLabel(mn) + '</option>';
   });
   h += '</select></label>';
-  h += '<label class="esch-wide">Where<input class="esch-in" data-f="where" value="' + escapeHtml(f.where || '') + '"></label>';
+  h += '<label class="esch-wide">Where<input class="esch-in" data-f="where" value="' + escapeHtml(v.where) + '"></label>';
   h += '<div class="esch-acts">' +
-    '<button class="esch-add" id="esch-add" data-pact="eschadd" data-id="' + escapeHtml(cur.id) + '"' + (canAdd ? '' : ' disabled') + '>Add to calendar</button>' +
+    '<button class="esch-add" id="esch-add" data-pact="eschadd" data-id="' + escapeHtml(id) + '"' + (v.canAdd ? '' : ' disabled') + '>Add to calendar</button>' +
     '<button class="esch-cancel" data-pact="eschcancel">Cancel</button></div>';
   h += '</div>';
   return h;
+}
+// The one-line Schedule result + 5s Undo, keyed by id (shared by the sort box and the
+// board card). "" when there is no pending result. Reads the shared result map.
+function scheduleResultLineHtml(id) {
+  var res = state.emailScheduleResult && state.emailScheduleResult[id];
+  if (!res) return '';
+  return '<div class="esort-ok" aria-live="polite">' + escapeHtml(res.msg) +
+    (res.meetingId ? ' <button class="esch-undo" data-pact="eschundo" data-id="' + escapeHtml(id) + '">Undo</button>' : '') +
+    '</div>';
 }
 function scheduleLengthLabel(mn) {
   if (mn < 60) return mn + ' min';
@@ -3462,6 +3537,7 @@ function esortScheduleOpen(id) {
   var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
   state.emailScheduleForm = schedulePrefill(task, item, state.meetings);
   state.emailScheduleOpen = id;
+  state.cardScheduleId = null; state.cardScheduleForm = null;   // never both forms open
   render();
 }
 // The teaching courses offered when keeping an email for grading: the board's
@@ -3537,24 +3613,28 @@ function esortScheduleAdd(id) {
   }
   state.emailScheduleOpen = null;        // close the form; the email stays in the box
   render();
-  var done = function (res) {
+  runSchedulePlan(scheduleAddPlan(id, { title: title, start: start, minutes: minutes, where: where }, m), scheduleResultHandler(id, start), function () { scheduleShowSaveFailed(id); });
+}
+// Execute a scheduleAddPlan: UPDATE then CONFIRM a proposal, else ADD a confirmed
+// meeting. Shared by the sort box and the board card so both make the exact same
+// calls. `done`/`fail` are the plan's callbacks.
+function runSchedulePlan(plan, done, fail) {
+  if (plan.kind === 'confirm') {
+    apiJson(plan.update.path, { method: 'POST', body: plan.update.body })
+      .then(function () { return apiJson(plan.confirm.path, { method: 'POST', body: plan.confirm.body }); })
+      .then(done).catch(fail);
+  } else {
+    apiJson(plan.add.path, { method: 'POST', body: plan.add.body }).then(done).catch(fail);
+  }
+}
+// The shared "done" callback: a non-2xx (e.g. the proposed meeting vanished → 404) is
+// a save failure, not a false success; else show the result line + 5s Undo.
+function scheduleResultHandler(id, start) {
+  return function (res) {
     var rec = (res && res.data && typeof res.data === 'object') ? res.data : null;
-    // A non-2xx (e.g. the proposed meeting vanished → 404) is a save failure, not a
-    // false success.
     if (!res || !res.ok || !rec || rec.error || !rec.id) { scheduleShowSaveFailed(id); return; }
     scheduleShowResult(id, rec, start);
   };
-  var fail = function () { scheduleShowSaveFailed(id); };
-  if (m) {
-    apiJson('/api/meetings/update', { method: 'POST', body: { id: m.id, fields: { title: title, start: start, minutes: minutes, location: where } } })
-      .then(function () { return apiJson('/api/meetings/confirm', { method: 'POST', body: { id: m.id } }); })
-      .then(done).catch(fail);
-  } else {
-    apiJson('/api/meetings/add', { method: 'POST', body: {
-      title: title, start: start, minutes: minutes, location: where,
-      proposed: false, source: 'today-schedule', linked_task_id: id, domain: 'work'
-    } }).then(done).catch(fail);
-  }
 }
 // Render the one-line result in the box + a 5-second Undo. Distinguishes a real
 // Google event (gcal_event_id present) from "saved only" (hosted, or a Mac calendar
@@ -3568,6 +3648,7 @@ function scheduleShowResult(id, rec, start) {
   else msg = 'Saved here, but not on Google calendar yet.';
   state.emailScheduleResult[id] = { msg: msg, meetingId: mid };
   state.emailScheduleForm = null;
+  state.cardScheduleForm = null;         // the board card's form buffer (if this was a card)
   render();
   fetchAll();                            // refresh meetings so the board/week reflect it
   scheduleClearResultLater(id);
@@ -3581,12 +3662,12 @@ function scheduleShowSaveFailed(id) {
 function scheduleClearResultLater(id) {
   setTimeout(function () {
     if (state.emailScheduleResult) delete state.emailScheduleResult[id];
-    if (state.view === 'home') render();
+    if (state.view === 'home' || state.view === 'work') render();
   }, 5000);
 }
 // Undo within 5s: delete the just-created meeting (and its calendar event via the
 // existing server delete path). Hosted removes the record; the Mac never minted an
-// event for it yet, so there is nothing to clean there.
+// event for it yet, so there is nothing to clean there. Shared by sort box + card.
 function esortScheduleUndo(id) {
   var res = state.emailScheduleResult && state.emailScheduleResult[id];
   if (!res || !res.meetingId) return;
@@ -3595,6 +3676,58 @@ function esortScheduleUndo(id) {
   render();
   apiJson('/api/meetings/delete', { method: 'POST', body: { id: mid } })
     .then(function () { fetchAll(); }).catch(function () { fetchAll(); });
+}
+// ── Board card Schedule form (Work view, 2026-11-21) ──
+// The same inline Schedule form the sort box uses, opened INSIDE an open board card.
+// Only one card form at a time (state.cardScheduleId holds the one id). A board
+// refresh while it is open never loses typed values or closes it: the values live in
+// state.cardScheduleForm and the open id in state.cardScheduleId, both pure state
+// that a re-render rebuilds from. The card STAYS on the board after Add (John taps
+// Done himself). No AI; nothing touches the calendar without the Add tap.
+function cardBoardItem(id) {
+  var b = state.areaBoard; if (!b) return null;
+  var found = null;
+  (b.areas || []).forEach(function (a) {
+    (a.rows || []).forEach(function (r) {
+      AREA_ALL_COLS.forEach(function (k) {
+        ((r.buckets && r.buckets[k]) || []).forEach(function (it) { if (it.id === id) found = it; });
+      });
+      (r.kept || []).forEach(function (it) { if (it.id === id) found = it; });
+    });
+  });
+  (b.not_placed || []).forEach(function (it) { if (it.id === id) found = it; });
+  return found;
+}
+// The CONFIRMED meeting linked to this task (non-proposed, linked_task_id match), or
+// null — for the quiet "On calendar" mark. Cheap: reads the already-loaded meetings.
+function confirmedMeetingFor(id) {
+  return (state.meetings || []).filter(function (m) { return m && !m.proposed && m.linked_task_id === id; })[0] || null;
+}
+function cardScheduleOpen(id) {
+  var item = cardBoardItem(id) || { id: id };
+  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
+  state.cardScheduleForm = cardSchedulePrefill(task, item, state.meetings);
+  state.cardScheduleId = id;
+  state.emailScheduleOpen = null; state.emailScheduleForm = null;   // never both forms open
+  render();
+}
+function cardScheduleCancel() { state.cardScheduleId = null; state.cardScheduleForm = null; render(); }
+// Add from a card: builds the SAME meetings call as the sort box (scheduleAddPlan).
+// The card is already placed, so it does NOT touch the task's area. Closes the form
+// first (the result line + 5s Undo then show in the card); the card stays on the board.
+function cardScheduleAdd(id) {
+  var f = state.cardScheduleForm || {};
+  var start = scheduleStart(f.day, f.time);
+  if (!start) return;                                    // Add is disabled; belt + braces
+  var minutes = parseInt(f.length, 10) || 30;
+  var item = cardBoardItem(id) || { id: id };
+  var task = (state.items || []).filter(function (x) { return x.id === id; })[0] || null;
+  var title = (f.what || '').trim() || item.title || (task && task.text) || 'Meeting';
+  var where = (f.where || '').trim();
+  var m = linkedProposedMeeting(id, state.meetings, task);
+  state.cardScheduleId = null;           // close the form; the card stays on the board
+  render();
+  runSchedulePlan(scheduleAddPlan(id, { title: title, start: start, minutes: minutes, where: where }, m), scheduleResultHandler(id, start), function () { scheduleShowSaveFailed(id); });
 }
 // A short "Thu Dec 3, 12:15 PM" from a naive-local start, built from LOCAL parts.
 function scheduleWhenLabel(start) {
@@ -5503,8 +5636,10 @@ function handlePageAction(act, el) {
   if (act === 'workmore') { var wc = el.getAttribute('data-col'); state.workExpanded[wc] = !state.workExpanded[wc]; render(); return true; }
   if (act === 'esortarea') { esortSetArea(el.getAttribute('data-id'), el.getAttribute('data-area')); return true; }
   if (act === 'esortthen') { esortThen(el.getAttribute('data-id'), el.getAttribute('data-key')); return true; }
-  if (act === 'eschadd') { esortScheduleAdd(el.getAttribute('data-id')); return true; }
-  if (act === 'eschcancel') { esortScheduleCancel(); return true; }
+  // eschadd / eschcancel / eschundo are SHARED by the sort box and the board card;
+  // state.cardScheduleId tells which form owns the tap.
+  if (act === 'eschadd') { var eaid = el.getAttribute('data-id'); if (state.cardScheduleId === eaid) cardScheduleAdd(eaid); else esortScheduleAdd(eaid); return true; }
+  if (act === 'eschcancel') { if (state.cardScheduleId) cardScheduleCancel(); else esortScheduleCancel(); return true; }
   if (act === 'eschundo') { esortScheduleUndo(el.getAttribute('data-id')); return true; }
   if (act === 'esortkeepcourse') { esortKeepSave(el.getAttribute('data-id'), el.getAttribute('data-course')); return true; }
   if (act === 'esortkeepcancel') { esortKeepCancel(); return true; }
@@ -5571,6 +5706,7 @@ function handlePageAction(act, el) {
     var ak = el.getAttribute('data-area') || '';
     state.areaOpen = ak || null; state.areaSel = null; state.areaColExpand = {};
     state.areaEditShort = null; state.areaMoveOpen = null; state.areaSchedId = null; state.areaPlaceOpen = null;
+    state.cardScheduleId = null; state.cardScheduleForm = null;
     rememberAreaTab(state.areaOpen); render();
     if (state.areaOpen) stampAreaSeen(state.areaOpen);
     return true;
@@ -5592,6 +5728,8 @@ function handlePageAction(act, el) {
   if (act === 'acarddone') { areaDone(el.getAttribute('data-id'), el.getAttribute('data-store')); return true; }
   if (act === 'acarddel') { areaDelete(el.getAttribute('data-id'), el.getAttribute('data-store')); return true; }
   if (act === 'acardsched') { var scid = el.getAttribute('data-id'); state.areaSchedId = (state.areaSchedId === scid) ? null : scid; render(); return true; }
+  // Schedule (Work card): open/close the inline Schedule form (one card form at a time).
+  if (act === 'cardschedule') { var csid = el.getAttribute('data-id'); if (state.cardScheduleId === csid) cardScheduleCancel(); else cardScheduleOpen(csid); return true; }
   if (act === 'acardday') { areaSchedule(el.getAttribute('data-id'), el.getAttribute('data-day')); return true; }
   if (act === 'acardmove') { areaSomeday(el.getAttribute('data-id')); return true; }
   if (act === 'nptoggle') { state.notPlacedOpen = !state.notPlacedOpen; render(); return true; }
@@ -6066,12 +6204,18 @@ function detailCardHtml(it, areaKey, today) {
   if (due) meta.push('<span>' + escapeHtml(due) + '</span>');
   var chip = pillKindChip(it.kind);
   if (chip) meta.push('<span class="achip">' + escapeHtml(chip) + '</span>');
+  // A quiet "On calendar" mark when this task already carries a confirmed linked
+  // meeting (cheap — reads the already-loaded meetings; no new fetch).
+  if (store === 'task' && confirmedMeetingFor(it.id)) meta.push('<span class="achip aoncal">On calendar</span>');
   h += '<div class="am">' + meta.join('') + '</div>';
   if (rec && (rec.source === 'email' || /^message:/i.test(rec.url || ''))) {
     h += '<div class="am"><a href="' + escapeHtml(safeUrl(rec.url || '')) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: rec.url || '', source: rec.source || '' })) + '</a></div>';
   }
   if (state.areaMoveOpen === it.id) h += areaMoveControlsHtml(it, areaKey);
   h += areaCardActionsHtml(it, store, areaKey);
+  // The inline Schedule form (same form the sort box uses) + the shared result line.
+  if (state.cardScheduleId === it.id) h += scheduleFormHtml(it.id, state.cardScheduleForm);
+  h += scheduleResultLineHtml(it.id);
   return h + '</div>';
 }
 function areaMoveControlsHtml(it, areaKey) {
@@ -6088,22 +6232,24 @@ function areaMoveControlsHtml(it, areaKey) {
   return h + '<button data-pact="acardrowsave" data-id="' + escapeHtml(it.id) + '">Save row</button></div>';
 }
 function areaCardActionsHtml(it, store, areaKey) {
+  var id = escapeHtml(it.id), st = escapeHtml(store);
   var h = '<div class="aacts">';
-  h += '<button data-pact="acarddone" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Done</button>';
-  if (store !== 'deadline') {
-    h += '<button data-pact="acardsched" data-id="' + escapeHtml(it.id) + '">This week</button>';
-    h += '<button data-pact="acardmove" data-id="' + escapeHtml(it.id) + '">Someday</button>';
-  }
-  // Teaching task cards gain "Keep for grading" (2026-11-21): files it into the
-  // course's kept group, out of the daily lists, still open.
-  if (store === 'task' && areaKey === 'teaching') {
-    h += '<button data-pact="cardkeep" data-id="' + escapeHtml(it.id) + '">Keep for grading</button>';
-  }
-  h += '<button data-pact="acardmoveopen" data-id="' + escapeHtml(it.id) + '">Area/row</button>';
-  h += '<button class="danger" data-pact="acarddel" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Delete</button>';
-  h += '<a class="amore-tasks" href="#tasks">Open in Tasks</a></div>';
+  // The set + order of buttons is the pure `cardActions` (unit-tested): Done,
+  // This week, Someday, Schedule (task only), Keep (teaching task only), Area/row,
+  // Delete, Open in Tasks.
+  cardActions(store, areaKey).forEach(function (k) {
+    if (k === 'done') h += '<button data-pact="acarddone" data-id="' + id + '" data-store="' + st + '">Done</button>';
+    else if (k === 'thisweek') h += '<button data-pact="acardsched" data-id="' + id + '">This week</button>';
+    else if (k === 'someday') h += '<button data-pact="acardmove" data-id="' + id + '">Someday</button>';
+    else if (k === 'schedule') h += '<button data-pact="cardschedule" data-id="' + id + '">Schedule</button>';
+    else if (k === 'keep') h += '<button data-pact="cardkeep" data-id="' + id + '">Keep for grading</button>';
+    else if (k === 'arearow') h += '<button data-pact="acardmoveopen" data-id="' + id + '">Area/row</button>';
+    else if (k === 'delete') h += '<button class="danger" data-pact="acarddel" data-id="' + id + '" data-store="' + st + '">Delete</button>';
+    else if (k === 'tasks') h += '<a class="amore-tasks" href="#tasks">Open in Tasks</a>';
+  });
+  h += '</div>';
   if (state.areaSchedId === it.id && store !== 'deadline') {
-    h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + escapeHtml(it.id) + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
+    h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + id + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
   }
   return h;
 }
@@ -6791,6 +6937,8 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && state.openProjectMenu) { e.preventDefault(); state.openProjectMenu = null; render(); return; }
   // Escape closes the Today sort box's Schedule form (Cancel).
   if (e.key === 'Escape' && state.emailScheduleOpen) { e.preventDefault(); esortScheduleCancel(); return; }
+  // Escape closes the Work view board card's Schedule form (Cancel).
+  if (e.key === 'Escape' && state.cardScheduleId) { e.preventDefault(); cardScheduleCancel(); return; }
   // Escape closes the keep-for-grading course picker.
   if (e.key === 'Escape' && state.emailKeepOpen) { e.preventDefault(); esortKeepCancel(); return; }
   // Keep-for-grading course picker open: digits 1..n pick a course; any other
@@ -6915,12 +7063,16 @@ document.addEventListener('input', function (e) {
   if (t && t.id === 'lib-search') { state.libSearch = t.value; rerenderKeepFocus('lib-search'); }
   else if (t && t.id === 'kitchen-search') { state.kitchenSearch = t.value; rerenderKeepFocus('kitchen-search'); }
   // Schedule form fields: update state WITHOUT re-rendering (so focus/caret stay put
-  // across the fields); just toggle the Add button in place as Day/Time fill in.
+  // across the fields); just toggle the Add button in place as Day/Time fill in. The
+  // card and the sort box share one form markup; state.cardScheduleId tells which
+  // buffer the keystroke belongs to (they are never both open).
   else if (t && t.classList && t.classList.contains('esch-in')) {
-    state.emailScheduleForm = state.emailScheduleForm || {};
-    state.emailScheduleForm[t.getAttribute('data-f')] = t.value;
+    var buf = state.cardScheduleId
+      ? (state.cardScheduleForm = state.cardScheduleForm || {})
+      : (state.emailScheduleForm = state.emailScheduleForm || {});
+    buf[t.getAttribute('data-f')] = t.value;
     var add = document.getElementById('esch-add');
-    if (add) add.disabled = !scheduleCanAdd(state.emailScheduleForm.day, state.emailScheduleForm.time);
+    if (add) add.disabled = !scheduleCanAdd(buf.day, buf.time);
   }
 });
 function rerenderKeepFocus(id) {

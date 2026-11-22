@@ -492,7 +492,7 @@
 
   // short_name_rule — strip reply/engine prefixes + lead filler, keep first 1-2
   // content words, title-case (acronyms kept), cap at AREA_SHORT_CAP. Unicode-safe.
-  var AREA_LEAD_PREFIX_RE = /^\s*(?:re|fwd|fw|start|runway\s+open)\s*:\s*/i;
+  var AREA_LEAD_PREFIX_RE = /^\s*(?:re|fwd|fw|start|runway\s+open|action)\s*:\s*/i;
   var AREA_FILLER = {
     a: 1, an: 1, the: 1, to: 1, for: 1, of: 1, on: 1, in: 1, about: 1, with: 1,
     and: 1, or: 1, re: 1, fwd: 1, fw: 1, please: 1, pls: 1, my: 1, your: 1, our: 1,
