@@ -841,6 +841,7 @@
   .arow-chip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--gray-bg); color: var(--text-2); font-weight: 600; }
   .achip { font-size: 11px; padding: 1px 7px; border-radius: 9px; background: var(--t-accent-soft); color: var(--t-accent); font-weight: 600; }
   .achip.aoncal { background: var(--gray-bg); color: var(--text-2); }
+  .achip.asched { background: var(--t-board, var(--t-accent-soft)); color: var(--t-accent); }
   .aacts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
   .aacts button { font-size: 12px; color: var(--text-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 9px; background: var(--page); }
   .aacts button:hover { background: var(--hover); }
@@ -859,6 +860,7 @@
   .akept-title b { font-size: 14px; color: var(--text); }
   .akept-meta { font-size: 12px; color: var(--text-2); }
   .aday button { font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+  .aday button.on { background: var(--t-accent); border-color: var(--t-accent); color: #fff; font-weight: 600; }
   .aedit { display: flex; gap: 6px; align-items: center; margin-top: 2px; flex-wrap: wrap; }
   .aedit input { font: inherit; font-size: 13px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; }
   .aedit select { font: inherit; font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; }
@@ -2580,6 +2582,26 @@ function boardVisibleIds(area) {
   for (r = 0; r < rows.length; r++) { var items = _areaItems(rows[r], AREA_ALL_COLS); for (i = 0; i < items.length; i++) if (items[i].id) ids.push(items[i].id); }
   return ids;
 }
+// ── Allocating a day to a task (board card "This week" picker) ──
+// A day on a task is NOT a calendar event (John, 2026-11-22: "just allocating the
+// task to a date"). The quiet chip that shows a task HAS a day: "Mon Nov 23" for a
+// date today or later, "" for a past date (a stale allocation never nags) or none.
+// Local date parts via the board's own areaWeekday/areaMonthDay (never toISOString).
+function scheduledChipLabel(iso, today) {
+  var d = dayDelta(iso, today);
+  if (d == null || d < 0) return '';
+  return areaWeekday(iso) + ' ' + areaMonthDay(iso);
+}
+// The one-line confirmation after a day is allocated: "Scheduled for Mon, Nov 23."
+// It names only the day — no calendar sentence, because this no longer writes a
+// calendar event (the Schedule form is the one path that does).
+function scheduleOkMsg(iso) {
+  var w = areaWeekday(iso), md = areaMonthDay(iso);
+  return 'Scheduled for ' + (w ? w + ', ' : '') + md + '.';
+}
+// The shared "a write failed" line for every Work-view card action, so nothing
+// disappears-then-returns silently (2026-11-22 bug: a save gave no sign either way).
+var AREA_SAVE_FAIL = 'That did not save. Try again.';
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -4994,8 +5016,8 @@ function handleSweepAction(act, payload) {
       : displayText(row);
 
   if (key === 'stuck') {
-    if (act === 'today') return sweepStep('Scheduled today: ' + name, 'rescheduled', id, function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: todayISO() } }); });
-    if (act === 'schedpick') return sweepStep('Rescheduled: ' + name, 'rescheduled', id, function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: payload } }).then(function () { return api('/api/skip', { method: 'POST', body: { id: id } }); }); });
+    if (act === 'today') return sweepStep('Scheduled today: ' + name, 'rescheduled', id, function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: todayISO(), calendar: false } }); });
+    if (act === 'schedpick') return sweepStep('Rescheduled: ' + name, 'rescheduled', id, function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: payload, calendar: false } }).then(function () { return api('/api/skip', { method: 'POST', body: { id: id } }); }); });
     if (act === 'someday') return sweepStep('To Someday: ' + name, 'someday', id, function () { return api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }); });
     if (act === 'done') return sweepStep('Done: ' + name, 'done', id, function () { return api('/api/done', { method: 'POST', body: { id: id } }); });
     if (act === 'drop') return sweepStep('Dropped: ' + name, 'dropped', id, function () { return api('/api/delete', { method: 'POST', body: { id: id } }); });
@@ -6282,6 +6304,11 @@ function detailCardHtml(it, areaKey, today) {
   // A quiet "On calendar" mark when this task already carries a confirmed linked
   // meeting (cheap — reads the already-loaded meetings; no new fetch).
   if (store === 'task' && confirmedMeetingFor(it.id)) meta.push('<span class="achip aoncal">On calendar</span>');
+  // A quiet "Mon Nov 23" chip when this task carries a day today-or-later — the
+  // persistent sign the board card got scheduled (the board groups by DUE date,
+  // not by the allocated day, so without this the card looks unchanged). Past days
+  // show nothing. Cheap: reads the already-loaded record (like confirmedMeetingFor).
+  if (store === 'task') { var schLbl = scheduledChipLabel(rec && rec.scheduled, todayISO()); if (schLbl) meta.push('<span class="achip asched">' + escapeHtml(schLbl) + '</span>'); }
   h += '<div class="am">' + meta.join('') + '</div>';
   if (rec && (rec.source === 'email' || /^message:/i.test(rec.url || ''))) {
     h += '<div class="am"><a href="' + escapeHtml(safeUrl(rec.url || '')) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: rec.url || '', source: rec.source || '' })) + '</a></div>';
@@ -6324,7 +6351,10 @@ function areaCardActionsHtml(it, store, areaKey) {
   });
   h += '</div>';
   if (state.areaSchedId === it.id && store !== 'deadline') {
-    h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + id + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
+    // Highlight the day this task is already allocated to (if any), so re-opening
+    // the picker shows the current choice instead of a blank row.
+    var schIso = ((recordById(it.id) || {}).rec || {}).scheduled || '';
+    h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + id + '" data-day="' + d.iso + '"' + (d.iso === schIso ? ' class="on"' : '') + '>' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
   }
   return h;
 }
@@ -6385,6 +6415,15 @@ function scrollToCard(id) {
   if (!id) return;
   try { var c = document.getElementById('acard-' + id); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
 }
+// A Work-view card write FAILED: un-hide any optimistically-hidden row(s) and show
+// the shared one-line "That did not save. Try again." toast, so nothing
+// disappears-then-returns with no sign either way (the 2026-11-22 bug). Takes one id
+// or an array (keptClearAll hides several).
+function areaSaveFailed(ids) {
+  (Array.isArray(ids) ? ids : [ids]).forEach(function (x) { if (x) delete optimistic[x]; });
+  showToast(AREA_SAVE_FAIL, null);
+  render();
+}
 // Placement (Not placed) + card edits go through the existing edit endpoints, which
 // mark the field as set by John (area_by/short_by = "john"). Placement is wrapped in
 // the shared 5-second undo; the row is optimistically hidden until commit.
@@ -6395,7 +6434,7 @@ function placeItemArea(id, area, row) {
   state.areaPlaceOpen = null;
   optimistic[id] = true; render();
   undoable('Placed in ' + (AREA_NAME[area] || area), function () {
-    (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, fields)).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, fields)).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
   }, function () { delete optimistic[id]; render(); });
 }
 function saveAreaShort(id) {
@@ -6403,7 +6442,7 @@ function saveAreaShort(id) {
   var v = el ? el.value.trim().slice(0, AREA_SHORT_CAP) : '';
   var f = recordById(id); state.areaEditShort = null;
   if (!f) { render(); return; }
-  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { short: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { short: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
 }
 function saveAreaRow(id) {
   var root = document.querySelector('.ait[data-id="' + cssEsc(id) + '"]');
@@ -6411,12 +6450,14 @@ function saveAreaRow(id) {
   var v = el ? (el.value || '').trim() : '';
   var f = recordById(id); state.areaMoveOpen = null;
   if (!f) { render(); return; }
-  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { row: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { row: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
 }
+// Changing a card's area moves it to another area's section, which can scroll off
+// screen, so confirm the move with a quiet toast (and the shared failure line).
 function changeCardArea(id, area) {
   var f = recordById(id); state.areaMoveOpen = null;
   if (!f) { render(); return; }
-  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { area: area })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { ensureAreaBoard(true); });
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { area: area })).then(function () { showToast('Moved to ' + (AREA_NAME[area] || area), null); ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
 }
 // Done / delete reuse the existing endpoints + the shared undo primitive, and also
 // refetch the board (areaBoard is separate lazy state). This week / Someday reuse
@@ -6427,7 +6468,7 @@ function areaDone(id, store) {
   undoable('Done' + (r ? ': ' + displayText(r) : ''), function () {
     var path = store === 'deadline' ? '/api/deadlines/update' : '/api/done';
     var body = store === 'deadline' ? { id: id, fields: { status: 'done' } } : { id: id };
-    api(path, { method: 'POST', body: body }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    api(path, { method: 'POST', body: body }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
   }, function () { delete optimistic[id]; render(); });
 }
 function areaDelete(id, store) {
@@ -6435,11 +6476,30 @@ function areaDelete(id, store) {
   optimistic[id] = true; render();
   undoable('Deleted' + (r ? ': ' + displayText(r) : ''), function () {
     var path = store === 'deadline' ? '/api/deadlines/delete' : '/api/delete';
-    api(path, { method: 'POST', body: { id: id } }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+    api(path, { method: 'POST', body: { id: id } }).then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
   }, function () { delete optimistic[id]; render(); });
 }
-function areaSchedule(id, day) { state.areaSchedId = null; flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
-function areaSomeday(id) { flushPending(); api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }).then(function () { ensureAreaBoard(true); fetchAll(); }); }
+// "This week" day picker: allocate the task to a day. A day is NOT a calendar event
+// (calendar:false; the Schedule form is the only path that writes the calendar), so
+// the confirmation names just the day. The board groups by DUE date, so the card
+// does not move by itself — the scheduled chip (added on refetch) is the lasting
+// sign. Deferred-commit 5s Undo (the same inverse the Sweeps reschedule uses); a
+// failed write shows the shared retry line.
+function areaSchedule(id, day) {
+  state.areaSchedId = null;
+  undoable(scheduleOkMsg(day), function () {
+    api('/api/schedule', { method: 'POST', body: { id: id, day: day, calendar: false } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
+  }, function () { render(); });
+}
+// Someday: the task STAYS on the area board (someday is an open list there), and the
+// card does not visibly change, so confirm it with a toast + 5s Undo; a failed write
+// shows the shared retry line. No optimistic hide (the item is not leaving).
+function areaSomeday(id) {
+  var r = rowById(id);
+  undoable('Moved to Someday' + (r ? ': ' + displayText(r) : ''), function () {
+    api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
+  }, function () { render(); });
+}
 
 // ── Keep for grading (Teaching board + card actions, 2026-11-21) ──
 // Save a kept-for-grading item (from a card or the Not-placed picker): file it into
@@ -6454,7 +6514,7 @@ function keptSetForGrading(id, course) {
   undoable('Kept for grading: ' + row, function () {
     api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', area: 'teaching', row: row, kept: 'grading' } })
       .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
-      .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+      .catch(function () { areaSaveFailed(id); });
   }, function () { delete optimistic[id]; render(); });
 }
 // "Not for grading" on a kept card: clear kept so the item returns to the normal
@@ -6466,7 +6526,7 @@ function keptNotGrading(id) {
   undoable('No longer kept for grading', function () {
     api('/api/task/update', { method: 'POST', body: { id: id, text: t.text || '', kept: '' } })
       .then(function () { delete optimistic[id]; ensureAreaBoard(true); fetchAll(); })
-      .catch(function () { delete optimistic[id]; ensureAreaBoard(true); });
+      .catch(function () { areaSaveFailed(id); });
   }, function () { delete optimistic[id]; render(); });
 }
 // "Clear all N" on a course row after grading: mark every kept item in that row done
@@ -6481,7 +6541,7 @@ function keptClearAll(row) {
     var chain = Promise.resolve();
     ids.forEach(function (id) { chain = chain.then(function () { return api('/api/done', { method: 'POST', body: { id: id } }); }); });
     chain.then(function () { ids.forEach(function (id) { delete optimistic[id]; }); ensureAreaBoard(true); fetchAll(); })
-      .catch(function () { ids.forEach(function (id) { delete optimistic[id]; }); ensureAreaBoard(true); });
+      .catch(function () { areaSaveFailed(ids); });
   }, function () { ids.forEach(function (id) { delete optimistic[id]; }); render(); });
 }
 
@@ -6895,7 +6955,7 @@ function dismissProposal(id) {
   }, function () { delete optimistic[id]; render(); });
 }
 function confirmProposal(id) { api('/api/task/confirm', { method: 'POST', body: { id: id } }).then(fetchAll); }
-function scheduleDay(id, day) { flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day } }).then(fetchAll); }
+function scheduleDay(id, day) { flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day, calendar: false } }).then(fetchAll); }
 function moveList(id, list) { flushPending(); api('/api/move', { method: 'POST', body: { id: id, list: list } }).then(fetchAll); }
 function setLane(id, lane) { flushPending(); api('/api/set-lane', { method: 'POST', body: { id: id, lane: lane } }).then(fetchAll); }
 function saveNextStep(id, text) { api('/api/update-nextstep', { method: 'POST', body: { id: id, nextStep: text } }).then(fetchAll); }
