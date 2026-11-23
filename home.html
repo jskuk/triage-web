@@ -45,6 +45,13 @@
     --area-referee:  #b0672a;
     --area-service:  #4c7a5a;
     --area-research: #b23f5e;
+    /* Life card tokens (2026-11-22, mockups/life-card.html — the look John approved).
+       A calm green, distinct from the cool-blue Today accent, so the one Life card
+       reads as its own thing ("about which weekend, not which list"). Light only,
+       matching this page (home.html has no dark theme across its views, exactly as
+       the --t-* and --area-* tokens were added light-only). */
+    --life: #2f7d5b;
+    --life-soft: #e6f3ec;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -722,6 +729,45 @@
   .anew-head { margin-bottom: 4px; }
   .anp-day { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -3px 0 7px; }
   .anp-day > button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--text-2); cursor: pointer; }
+  /* Life card (2026-11-22, mockups/life-card.html). One calm card below Research:
+     which weekend, not which list. No board, no rows, no areas. */
+  .lc-sec { margin-bottom: 20px; }
+  .lc-quiet { background: var(--life-soft); border-radius: 8px; padding: 10px 14px; font-size: 15px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .lc-quiet b { color: var(--life); }
+  .lc-open { font: inherit; font-size: 13px; min-height: 36px; padding: 5px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; }
+  .lc-card { background: var(--page); border: 1px solid var(--life); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .lc-card.lc-left { border-color: var(--line); }
+  .lc-tag { font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--life); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+  .lc-tag span { color: var(--text-2); font-weight: 400; letter-spacing: 0; text-transform: none; font-size: 13px; }
+  .lc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .lc-li .row { display: flex; gap: 9px; align-items: flex-start; }
+  .lc-li .check { margin-top: 2px; }
+  .lc-row .lc-title { font-size: 15px; }
+  .lc-m { display: block; font-size: 13px; color: var(--text-2); }
+  .lc-empty { color: var(--text-2); font-size: 14px; margin: 0; }
+  .lc-add { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .lc-in { font: inherit; width: 100%; box-sizing: border-box; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--page); color: var(--text); }
+  .lc-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .lc-chip { font: inherit; font-size: 13px; min-height: 40px; padding: 6px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; }
+  .lc-chip.on { background: var(--life-soft); border-color: var(--life); color: var(--life); font-weight: 600; }
+  .lc-chip kbd { font: inherit; font-weight: 700; color: var(--life); }
+  .lc-date { font: inherit; min-height: 40px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: var(--page); color: var(--text); }
+  .lc-save { font: inherit; font-weight: 600; min-height: 40px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--life); background: var(--life); color: #fff; cursor: pointer; justify-self: start; }
+  .lc-sortbtn { font: inherit; font-size: 13px; min-height: 40px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--life); background: var(--life-soft); color: var(--life); cursor: pointer; justify-self: start; }
+  .lc-fold { display: grid; gap: 8px; }
+  .lc-foldhead { font: inherit; font-size: 13px; color: var(--text-2); background: none; border: 0; padding: 4px 0; cursor: pointer; text-align: left; min-height: 32px; }
+  .lc-foldbody { display: grid; gap: 10px; }
+  .lc-nyrow, .lc-leftrow { display: grid; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .lc-nyrow:last-child, .lc-leftrow:last-child { border-bottom: 0; padding-bottom: 0; }
+  .lc-nytext { font-size: 15px; }
+  .lc-note { font-size: 13px; color: var(--text-2); margin: 0; }
+  .lc-sort .lc-sorttext { font-size: 17px; }
+  .lc-sortage { font-size: 13px; color: var(--text-2); }
+  .lc-sortclose { font: inherit; font-size: 13px; color: var(--text-2); background: none; border: 0; padding: 6px 0; cursor: pointer; text-align: left; justify-self: start; }
+  /* Work columns folded below the Life card on a weekend */
+  .lc-workfold > summary { cursor: pointer; font-size: 14px; color: var(--text-2); padding: 8px 0; min-height: 40px; list-style: none; }
+  .lc-workfold > summary::-webkit-details-marker { display: none; }
+  .lc-workfold[open] > summary { margin-bottom: 8px; }
   /* 3. Research whiteboard */
   .t2-boardwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--t-board); -webkit-overflow-scrolling: touch; }
   .t2-board { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
@@ -1863,6 +1909,7 @@ function workBuckets(items, deadlines, opps, memo, today, portionIds) {
   for (i = 0; i < items.length; i++) {
     t = items[i];
     if (!t || !t.id || isProposedTask(t) || t.kept === 'grading') continue;
+    if (isLifeItem(t)) continue;                 // life items have the Life card, never Reply/Do
     if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
     var rr = normTaskRow(t, idx.byTask[t.id], today); rr.candKind = 'task';
     if (isReplyRow(rr)) { if (seen[t.id]) continue; seen[t.id] = true; reply.push(rr); }
@@ -1874,6 +1921,7 @@ function workBuckets(items, deadlines, opps, memo, today, portionIds) {
   for (i = 0; i < items.length; i++) {
     t = items[i];
     if (!t || !t.id || seen[t.id] || isProposedTask(t) || t.kept === 'grading') continue;
+    if (isLifeItem(t)) continue;                 // life items have the Life card, never Reply/Do
     if (t.list !== 'inbox' && t.list !== 'thisweek') continue;
     var sched = t.scheduled || null;
     var pinned = !!portionIds[t.id];
@@ -2315,6 +2363,187 @@ function replySplit(rows, n, expanded) {
   rows = rows || [];
   var shown = expanded ? rows.slice() : rows.slice(0, n);
   return { shown: shown, total: rows.length, hidden: Math.max(0, rows.length - n) };
+}
+
+// ── Life items (2026-11-22, John "capture goes to Work or a Project"; Life has ONE
+// question: when). A life item is an OPEN task record (list not done) whose domain is
+// "life" and that carries NO work area (an area makes it work, whatever its domain —
+// one live record is domain life + area service and must NOT show in Life). No Life
+// board, no rows, no areas. Pure predicates + the weekend math (LOCAL date parts only,
+// never toISOString — the CLAUDE.md evening-roll gotcha). Unit-tested in
+// scripts/test-home-logic.mjs.
+function isLifeItem(it) {
+  if (!it) return false;
+  if (it.list === 'done' || it.list === 'tabs') return false;
+  if ((it.domain || '') !== 'life') return false;
+  if (String(it.area || '').trim()) return false;   // an area set = work
+  return true;
+}
+function _lifeParse(s) {
+  var p = String(s || '').slice(0, 10).split('-');
+  if (p.length !== 3) return null;
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return isNaN(d.getTime()) ? null : d;
+}
+function _lifeFmt(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+    '-' + String(d.getDate()).padStart(2, '0');
+}
+// The Saturday (YYYY-MM-DD) of the weekend a Sat/Sun date belongs to; '' for any
+// weekday (only Sat/Sun belong to a weekend list). A Saturday returns itself; a
+// Sunday returns the day before.
+function weekendOf(dateStr) {
+  var d = _lifeParse(dateStr);
+  if (!d) return '';
+  var dow = d.getDay();                 // 0 Sun … 6 Sat
+  if (dow === 6) return _lifeFmt(d);
+  if (dow === 0) { d.setDate(d.getDate() - 1); return _lifeFmt(d); }
+  return '';
+}
+// THIS weekend's Saturday relative to today (Sat → today, Sun → yesterday, a
+// weekday → the coming Saturday). '' when today is unparseable.
+function thisWeekendSaturday(today) {
+  var d = _lifeParse(today);
+  if (!d) return '';
+  var dow = d.getDay();
+  if (dow === 6) return _lifeFmt(d);
+  if (dow === 0) { d.setDate(d.getDate() - 1); return _lifeFmt(d); }
+  d.setDate(d.getDate() + (6 - dow));   // Mon..Fri → the coming Saturday
+  return _lifeFmt(d);
+}
+// NEXT weekend's Saturday = this weekend's Saturday + 7 days.
+function nextWeekendSaturday(today) {
+  var sat = thisWeekendSaturday(today);
+  if (!sat) return '';
+  var d = _lifeParse(sat); d.setDate(d.getDate() + 7); return _lifeFmt(d);
+}
+function isWeekendDay(today) {
+  var d = _lifeParse(today);
+  if (!d) return false;
+  var dow = d.getDay();
+  return dow === 0 || dow === 6;
+}
+// The scheduled date a "when" choice stores: This weekend / Next weekend → that
+// weekend's Saturday; A date → the chosen day verbatim; Not yet → '' (no day).
+function lifeWhenDate(when, today, dateVal) {
+  if (when === 'this') return thisWeekendSaturday(today);
+  if (when === 'next') return nextWeekendSaturday(today);
+  if (when === 'date') return /^\d{4}-\d{2}-\d{2}$/.test(String(dateVal || '')) ? dateVal : '';
+  return '';   // 'notyet' (someday, no day)
+}
+var LIFE_WHEN_CHIPS = [
+  { key: 'this', label: 'This weekend' },
+  { key: 'next', label: 'Next weekend' },
+  { key: 'date', label: 'A date' },
+  { key: 'notyet', label: 'Not yet' }
+];
+// The Life card's state + lists, chosen by today's date (+ the LOCAL hour, for the
+// Sunday-evening handoff). Pure. `hour` defaults to a weekday-safe 12 so a caller that
+// omits it still works; only the Sunday 17:00 rule reads it.
+//   state 'weekend' — today is Sat or Sun: the full "This weekend" card.
+//   state 'weekday' — a quiet one-line summary + Open.
+// Lists:
+//   thisWeekend — open life items scheduled on THIS weekend's Sat/Sun (empty on
+//                 Sunday ≥17:00: they move to leftOver so John re-homes them).
+//   today       — life items on a WEEKDAY date today-or-earlier (shown in the card + line).
+//   leftOver {title, items} — past-weekend items (+ this weekend's unfinished on
+//                 Sunday evening), with the four re-home chips. NEVER counted in a
+//                 weekend list until answered.
+//   notYet      — list:"someday" life items.
+//   forWeekend  — the count for "Life: N for this weekend." (pre-handoff).
+function lifeCardView(items, today, hour) {
+  items = items || [];
+  var h = (typeof hour === 'number') ? hour : 12;
+  var sat = thisWeekendSaturday(today);
+  var weekend = isWeekendDay(today);
+  var td = _lifeParse(today);
+  var sundayEve = !!td && td.getDay() === 0 && h >= 17;
+  var thisWk = [], todayList = [], leftPast = [], notYet = [];
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    if (!isLifeItem(it)) continue;
+    if (it.list === 'someday') { notYet.push(it); continue; }   // someday FIRST (a stale scheduled never resurfaces it)
+    var s = it.scheduled || null;
+    if (s) {
+      var wk = weekendOf(s);
+      if (wk) {
+        if (wk === sat) thisWk.push(it);
+        else if (wk < sat) leftPast.push(it);
+        // wk > sat: a FUTURE weekend — waits, shown nowhere until its weekend arrives.
+      } else {
+        var dd = dayDelta(s, today);
+        if (dd != null && dd <= 0) todayList.push(it);
+        // a future weekday date waits for its day.
+      }
+    }
+    // no scheduled, not someday → "unanswered": the clean-out only (lifeSortQueue).
+  }
+  var leftItems = leftPast.slice();
+  var title = 'Left from last weekend';
+  if (sundayEve && thisWk.length) { leftItems = leftItems.concat(thisWk); title = 'Left from this weekend'; }
+  var shownThisWeek = sundayEve ? [] : thisWk;
+  function ascC(a, b) { return (Date.parse(a.created || '') || 0) - (Date.parse(b.created || '') || 0); }
+  function descC(a, b) { return (Date.parse(b.created || '') || 0) - (Date.parse(a.created || '') || 0); }
+  return {
+    state: weekend ? 'weekend' : 'weekday',
+    sundayEvening: sundayEve,
+    weekendSaturday: sat,
+    thisWeekend: shownThisWeek.slice().sort(ascC),
+    today: todayList.slice().sort(ascC),
+    leftOver: { title: title, items: leftItems.slice().sort(descC) },
+    notYet: notYet.slice().sort(descC),
+    forWeekend: thisWk.length
+  };
+}
+// The one-time clean-out queue: unanswered life items (no day, not "Not yet") and
+// life items on a WEEKDAY date strictly before today (an answer that aged out).
+// Newest first. Pure.
+function lifeSortQueue(items, today) {
+  var out = (items || []).filter(function (it) {
+    if (!isLifeItem(it) || it.list === 'someday') return false;
+    var s = it.scheduled || null;
+    if (!s) return true;                 // no day → unanswered
+    if (weekendOf(s)) return false;      // a weekend day = answered
+    var dd = dayDelta(s, today);
+    return dd != null && dd < 0;         // a past weekday date → re-answer
+  });
+  out.sort(function (a, b) { return (Date.parse(b.created || '') || 0) - (Date.parse(a.created || '') || 0); });
+  return out;
+}
+// "added today" / "added 3 days ago" / "added 2 months ago" — a calm age for the
+// clean-out, from LOCAL date parts (never toISOString). Pure.
+function lifeAge(created, today) {
+  var c = _lifeParse(created), t = _lifeParse(today);
+  if (!c || !t) return 'added recently';
+  var days = Math.round((t.getTime() - c.getTime()) / 86400000);
+  if (days <= 0) return 'added today';
+  if (days === 1) return 'added yesterday';
+  if (days < 30) return 'added ' + days + ' days ago';
+  var months = Math.round(days / 30);
+  if (months < 12) return 'added ' + months + ' month' + (months === 1 ? '' : 's') + ' ago';
+  var years = Math.round(days / 365);
+  return 'added ' + years + ' year' + (years === 1 ? '' : 's') + ' ago';
+}
+// Adding a Life item: capture (domain life) then, per the "when", schedule a weekend
+// Saturday / a date (/api/schedule calendar:false — never a calendar event), or move
+// to someday ("Not yet"). `when` ∈ this|next|date|notyet. Pure plan; the runner
+// threads the new id through.
+function lifeAddPlan(text, when, dateVal, today) {
+  var plan = { capture: { path: '/api/capture', body: { text: text, list: 'inbox', domain: 'life', filed_by: 'today-add' } }, when: when };
+  if (when === 'notyet') { plan.someday = true; return plan; }
+  var day = lifeWhenDate(when, today, dateVal);
+  if (day) plan.schedule = { day: day };
+  return plan;
+}
+// The visible result line after a Life add. Never names the retired Tasks view.
+function lifeAddResultLine(when, dateVal, today, labelFor) {
+  if (when === 'next') return 'Added to Life, next weekend.';
+  if (when === 'notyet') return 'Added to Life, not yet.';
+  if (when === 'date') {
+    var day = /^\d{4}-\d{2}-\d{2}$/.test(String(dateVal || '')) ? dateVal : '';
+    return day ? ('Added to Life, ' + (labelFor ? labelFor(day) : day) + '.') : 'Added to Life, no day yet.';
+  }
+  return 'Added to Life, this weekend.';   // 'this' (default)
 }
 
 // The whiteboard groups: Alive and Finish-and-send (from projectDashboardGroups),
@@ -3219,6 +3448,7 @@ function homeHtml() {
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
   if (sub) h += '<p class="sub">' + escapeHtml(sub) + '</p>';
   try { h += researchMealHtml(); } catch (e) { reportUiError('research: ' + e.stack); }
+  try { h += lifeCardHtml(); } catch (e) { reportUiError('life: ' + e.stack); }
   try { h += gradingReminderTodayHtml(); } catch (e) { reportUiError('grading: ' + e.stack); }
   try { h += workTodayHtml(); } catch (e) { reportUiError('work: ' + e.stack); }
   try { h += whiteboardHtml(); } catch (e) { reportUiError('whiteboard: ' + e.stack); }
@@ -3543,18 +3773,27 @@ function workTodayHtml() {
   var one = resolveOneThing(b, today);
   state._oneThingId = one ? one.id : null;
 
-  var h = '<section class="t2-sec t2-work-sec" aria-label="Work today"><h2 class="t2-h2">Work today</h2>';
+  var inner = '';
   if (one) {
     var why = whyLine(one);
-    h += '<div class="t2-one"><b>The one thing today:</b> ' + escapeHtml(displayText(one)) +
+    inner += '<div class="t2-one"><b>The one thing today:</b> ' + escapeHtml(displayText(one)) +
       (why ? ' <span class="t2-one-why">' + escapeHtml(why) + '</span>' : '') + '</div>';
   }
-  h += '<div class="t2-two">';
-  h += workColumnHtml('Reply', b.reply, 'reply', today);
-  h += workColumnHtml('Do', b.do, 'do', today);
-  h += '</div>';
-  try { h += emailSortBoxHtml(); } catch (e) { reportUiError('esort: ' + e.stack); }
-  h += notTodayFoldHtml(b, today);
+  inner += '<div class="t2-two">';
+  inner += workColumnHtml('Reply', b.reply, 'reply', today);
+  inner += workColumnHtml('Do', b.do, 'do', today);
+  inner += '</div>';
+  try { inner += emailSortBoxHtml(); } catch (e) { reportUiError('esort: ' + e.stack); }
+  inner += notTodayFoldHtml(b, today);
+
+  var h = '<section class="t2-sec t2-work-sec" aria-label="Work today"><h2 class="t2-h2">Work today</h2>';
+  // On a weekend the Life card leads; the work columns sit below it, folded closed
+  // (2026-11-22, mockups/life-card.html). The summary names the two counts.
+  if (isWeekendDay(today)) {
+    h += '<details class="lc-workfold"><summary>Work: ' + b.reply.length + ' to reply, ' + b.do.length + ' to do</summary>' + inner + '</details>';
+  } else {
+    h += inner;
+  }
   h += '</section>';
   return h;
 }
@@ -4042,14 +4281,27 @@ function addTaskLineHtml() {
   var h = '<div class="addt" id="addt">';
   h += '<div class="addt-row"><input class="addt-in" id="addt-in" placeholder="Add something to do" value="' + escapeHtml(state.addTaskText || '') + '" aria-label="Add something to do">' +
     '<button class="addt-save" data-pact="addtsave">Add</button></div>';
-  h += '<div class="mtf-day"><label>Day<input class="addt-day" type="date" value="' + escapeHtml(state.addTaskDay || '') + '" aria-label="Day"></label>' +
-    '<button class="mtf-chip' + (state.addTaskDay === chipTomorrow(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipTomorrow(today) + '">Tomorrow</button>' +
-    '<button class="mtf-chip' + (state.addTaskDay === chipNextMonday(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipNextMonday(today) + '">Mon</button></div>';
+  // When Life is the destination the Day choice becomes the four Life when-chips
+  // (This weekend default); otherwise the ordinary Tomorrow/Mon + native date.
+  if (dest !== 'life') {
+    h += '<div class="mtf-day"><label>Day<input class="addt-day" type="date" value="' + escapeHtml(state.addTaskDay || '') + '" aria-label="Day"></label>' +
+      '<button class="mtf-chip' + (state.addTaskDay === chipTomorrow(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipTomorrow(today) + '">Tomorrow</button>' +
+      '<button class="mtf-chip' + (state.addTaskDay === chipNextMonday(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipNextMonday(today) + '">Mon</button></div>';
+  }
   h += '<div class="addt-chips">';
   addTaskAreaChips().forEach(function (c) {
     h += '<button class="achipbtn' + (dest === c.key ? ' on' : '') + '" data-pact="addtdest" data-dest="' + escapeHtml(c.key) + '">' + escapeHtml(c.label) + '</button>';
   });
   h += '</div>';
+  if (dest === 'life') {
+    var lw = state.addTaskLifeWhen || 'this';
+    h += '<div class="lc-chips" role="group" aria-label="When for life">';
+    LIFE_WHEN_CHIPS.forEach(function (c) {
+      h += '<button class="lc-chip' + (lw === c.key ? ' on' : '') + '" data-pact="addtlifewhen" data-when="' + c.key + '">' + escapeHtml(c.label) + '</button>';
+    });
+    h += '</div>';
+    if (lw === 'date') h += '<input class="lc-date" id="addt-lifedate" type="date" value="' + escapeHtml(state.addTaskLifeDate || '') + '" aria-label="Pick a date">';
+  }
   if (dest === 'project') {
     var projs = addTaskProjects(state.projects);
     if (projs.length) {
@@ -4096,6 +4348,9 @@ function addTaskSave() {
   var inp = document.getElementById('addt-in');
   var text = ((inp ? inp.value : state.addTaskText) || '').trim();
   if (!text) return;
+  // Life uses the four when-chips (This weekend / Next weekend / A date / Not yet),
+  // not the Tomorrow/Mon day choice — a separate save path (the shared life plan).
+  if ((state.addTaskDest || '') === 'life') { addTaskSaveLife(text); return; }
   var dayInp = document.querySelector('.addt-day');
   var day = state.addTaskDay || (dayInp ? dayInp.value : '') || '';
   var dest = state.addTaskDest || '';
@@ -4115,6 +4370,249 @@ function addTaskSave() {
     state.addTaskNote = 'That did not save. Try again.';
     render();
     var el = document.getElementById('addt-in'); if (el) { el.focus(); try { var n = el.value.length; el.setSelectionRange(n, n); } catch (e) {} }
+  });
+}
+
+// ── Life card (Today, below Research; 2026-11-22, mockups/life-card.html) ──
+// One calm card: which weekend, not which list. Reads state.items directly (life is
+// its own thing, independent of the Work/Life/All lens) and the pure lifeCardView /
+// lifeSortQueue. Dual-mode: every write uses an existing dbx.js route
+// (/api/capture, /api/schedule calendar:false, /api/move, /api/done, /api/delete).
+function lifeText(it) { return (it && it.text || '').trim(); }
+function lifeCardHtml() {
+  var today = todayISO();
+  var hour = new Date().getHours();
+  var items = (state.items || []).filter(function (it) { return !optimistic[it.id]; });
+  if (state.lifeSortOpen) return lifeSortBoxHtml(lifeSortQueue(items, today), today);
+  var v = lifeCardView(items, today, hour);
+  var queue = lifeSortQueue(items, today);
+  var h = '<section class="t2-sec lc-sec" aria-label="Life">';
+  if (v.state === 'weekday' && !state.lifeOpen) h += lifeQuietLineHtml(v);
+  else h += lifeFullCardHtml(v, today, queue);
+  if (v.leftOver.items.length) h += lifeLeftOverHtml(v);
+  h += '</section>';
+  return h;
+}
+// The weekday quiet line (mockup): "Life: 3 for this weekend. 1 today: <text>" + Open.
+function lifeQuietLineHtml(v) {
+  var inner;
+  if (v.forWeekend || v.today.length) {
+    inner = '<b>Life:</b> ' + v.forWeekend + ' for this weekend.';
+    if (v.today.length) {
+      var names = v.today.slice(0, 2).map(function (it) { return escapeHtml(lifeText(it)); });
+      var more = v.today.length - names.length;
+      inner += ' ' + v.today.length + ' today: ' + names.join(', ') + (more > 0 ? ' and ' + more + ' more' : '');
+    }
+  } else {
+    inner = '<b>Life:</b> nothing set.';
+  }
+  return '<div class="lc-quiet"><span>' + inner + '</span>' +
+    '<button class="lc-open" data-pact="lifeopen">Open</button></div>';
+}
+// The full card: this weekend's items (+ any weekday item due today/overdue) with a
+// Done checkbox, then the add line, the clean-out button, and the "Not yet" fold.
+function lifeFullCardHtml(v, today, queue) {
+  var list = v.thisWeekend.concat(v.today);
+  var n = list.length;
+  var h = '<div class="lc-card">';
+  h += '<div class="lc-tag">This weekend <span>' + n + (n === 1 ? ' thing' : ' things') + '</span></div>';
+  if (list.length) {
+    h += '<ul class="lc-list">' + list.map(function (it) { return lifeRowHtml(it, today); }).join('') + '</ul>';
+  } else {
+    h += '<p class="lc-empty">Nothing set for this weekend yet.</p>';
+  }
+  h += lifeAddLineHtml();
+  if (queue.length) h += '<button class="lc-sortbtn" data-pact="lifesortopen">Sort your life items (' + queue.length + ')</button>';
+  if (v.notYet.length) h += lifeNotYetFoldHtml(v);
+  return h + '</div>';
+}
+// A weekend item row — a real .row so the existing check completes it (markDone + the
+// 5s Undo). The title is a plain span (life has one question, no expand/actions).
+function lifeRowHtml(it, today) {
+  var meta = lifeRowMeta(it, today);
+  var h = '<li class="lc-li"><div class="row lc-row" data-id="' + escapeHtml(it.id) + '" data-kind="task">';
+  h += '<button class="check" aria-label="' + escapeHtml('Done: ' + lifeText(it)) + '"></button>';
+  h += '<div class="rmid"><span class="lc-title">' + escapeHtml(lifeText(it)) + '</span>';
+  if (meta) h += '<span class="lc-m">' + escapeHtml(meta) + '</span>';
+  h += '</div></div></li>';
+  return h;
+}
+function lifeRowMeta(it, today) {
+  var s = it.scheduled || '';
+  if (s && !weekendOf(s)) {              // a weekday-dated item shown in the card
+    var dd = dayDelta(s, today);
+    if (dd === 0) return 'today';
+    if (dd != null && dd < 0) return 'was ' + areaMonthDay(s);
+  }
+  return it.memo ? String(it.memo) : '';
+}
+// The add line: "Add something for life" + the four when-chips (This weekend default).
+function lifeAddLineHtml() {
+  var when = state.lifeAddWhen || 'this';
+  var h = '<div class="lc-add">';
+  h += '<input class="lc-in" id="lc-in" placeholder="Add something for life" aria-label="Add something for life" value="' + escapeHtml(state.lifeAddText || '') + '">';
+  h += '<div class="lc-chips" role="group" aria-label="When">';
+  LIFE_WHEN_CHIPS.forEach(function (c) {
+    h += '<button class="lc-chip' + (when === c.key ? ' on' : '') + '" data-pact="lifewhen" data-when="' + c.key + '">' + escapeHtml(c.label) + '</button>';
+  });
+  h += '</div>';
+  if (when === 'date') h += '<input class="lc-date" id="lc-date" type="date" aria-label="Pick a date" value="' + escapeHtml(state.lifeAddDate || '') + '">';
+  h += '<button class="lc-save" data-pact="lifeadd">Add</button>';
+  if (state.lifeAddNote) h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(state.lifeAddNote) + '</div>';
+  return h + '</div>';
+}
+// The closed "Not yet (N)" fold: each row offers This weekend / A date / Drop.
+function lifeNotYetFoldHtml(v) {
+  var open = !!state.lifeNotYetOpen;
+  var h = '<div class="lc-fold"><button class="lc-foldhead" data-pact="lifenotyetfold" aria-expanded="' + (open ? 'true' : 'false') + '">Not yet (' + v.notYet.length + ')</button>';
+  if (open) {
+    h += '<div class="lc-foldbody">';
+    v.notYet.forEach(function (it) {
+      h += '<div class="lc-nyrow" data-id="' + escapeHtml(it.id) + '"><span class="lc-nytext">' + escapeHtml(lifeText(it)) + '</span><div class="lc-chips">';
+      h += '<button class="lc-chip" data-pact="lifethis" data-id="' + escapeHtml(it.id) + '">This weekend</button>';
+      h += '<button class="lc-chip" data-pact="lifefdate" data-id="' + escapeHtml(it.id) + '">A date</button>';
+      h += '<button class="lc-chip" data-pact="lifedrop" data-id="' + escapeHtml(it.id) + '">Drop</button>';
+      h += '</div>';
+      if (state.lifeDateOpen === it.id) h += '<input class="lc-date" type="date" data-lifedate="' + escapeHtml(it.id) + '" aria-label="Pick a date">';
+      h += '</div>';
+    });
+    h += '</div>';
+  }
+  return h + '</div>';
+}
+// Left-over items (past weekend, or this weekend on Sunday evening): four chips each.
+// Nothing rolls over by itself — these wait until John answers.
+function lifeLeftOverHtml(v) {
+  var h = '<div class="lc-card lc-left"><div class="lc-tag">' + escapeHtml(v.leftOver.title) + ' <span>' + v.leftOver.items.length + '</span></div>';
+  v.leftOver.items.forEach(function (it) {
+    h += '<div class="lc-leftrow" data-id="' + escapeHtml(it.id) + '"><span class="lc-nytext">' + escapeHtml(lifeText(it)) + '</span><div class="lc-chips">';
+    h += '<button class="lc-chip" data-pact="lifenext" data-id="' + escapeHtml(it.id) + '">Next weekend</button>';
+    h += '<button class="lc-chip" data-pact="lifefdate" data-id="' + escapeHtml(it.id) + '">A weekday</button>';
+    h += '<button class="lc-chip" data-pact="lifenotyet" data-id="' + escapeHtml(it.id) + '">Not yet</button>';
+    h += '<button class="lc-chip" data-pact="lifedrop" data-id="' + escapeHtml(it.id) + '">Drop</button>';
+    h += '</div>';
+    if (state.lifeDateOpen === it.id) h += '<input class="lc-date" type="date" data-lifedate="' + escapeHtml(it.id) + '" aria-label="Pick a weekday">';
+    h += '</div>';
+  });
+  h += '<p class="lc-note">Nothing rolls over by itself. These wait here until you answer; they do not join a weekend list.</p>';
+  return h + '</div>';
+}
+// The one-time clean-out box: one item at a time, like the email sort box. Derived
+// from data (no stored cursor) — the current item is the first still-unanswered in
+// lifeSortQueue; answered items hide optimistically and the next appears. The total
+// shown is the count captured at open, so progress reads "3 of 31".
+function lifeSortBoxHtml(queue, today) {
+  var q = queue.filter(function (it) { return !optimistic[it.id]; });
+  var h = '<section class="t2-sec lc-sec" aria-label="Sort your life items"><div class="lc-card lc-sort">';
+  if (!q.length) {
+    h += '<div class="lc-tag">Life sorted <span>all clear</span></div>';
+    h += '<p class="lc-empty">Nothing left to sort.</p>';
+    h += '<button class="lc-save" data-pact="lifesortclose">Done</button>';
+    return h + '</div></section>';
+  }
+  var total = state.lifeSortTotal || q.length;
+  var cur = q[0];
+  var pos = Math.max(1, (total - q.length) + 1);
+  h += '<div class="lc-tag">Sort your life items <span>' + pos + ' of ' + total + '</span></div>';
+  h += '<div class="lc-sorttext">' + escapeHtml(lifeText(cur)) + '</div>';
+  h += '<div class="lc-sortage">' + escapeHtml(lifeAge(cur.created, today)) + '</div>';
+  h += '<div class="lc-chips">';
+  h += '<button class="lc-chip" data-pact="lifesortthis" data-id="' + escapeHtml(cur.id) + '"><kbd>w</kbd> This weekend</button>';
+  h += '<button class="lc-chip" data-pact="lifesortweekday" data-id="' + escapeHtml(cur.id) + '"><kbd>d</kbd> A weekday</button>';
+  h += '<button class="lc-chip" data-pact="lifesortnotyet" data-id="' + escapeHtml(cur.id) + '"><kbd>n</kbd> Not yet</button>';
+  h += '<button class="lc-chip" data-pact="lifesortdone" data-id="' + escapeHtml(cur.id) + '"><kbd>x</kbd> Done</button>';
+  h += '<button class="lc-chip" data-pact="lifesortdrop" data-id="' + escapeHtml(cur.id) + '">⌫ Drop</button>';
+  h += '</div>';
+  if (state.lifeSortDateOpen === cur.id) h += '<input class="lc-date" type="date" data-lifesortdate="' + escapeHtml(cur.id) + '" aria-label="Pick a weekday">';
+  h += '<button class="lc-sortclose" data-pact="lifesortclose">Close</button>';
+  return h + '</div></section>';
+}
+// ── Life writes (all dual-mode; a day is NEVER a calendar event: calendar:false) ──
+function lifeSchedule(id, day) {
+  if (!id || !day) return;
+  state.lifeDateOpen = null; state.lifeSortDateOpen = null;
+  optimistic[id] = true; render();
+  undoable(scheduleOkMsg(day), function () {
+    api('/api/schedule', { method: 'POST', body: { id: id, day: day, calendar: false } })
+      .then(function () { delete optimistic[id]; fetchAll(); })
+      .catch(function () { delete optimistic[id]; showToast(AREA_SAVE_FAIL, null); render(); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function lifeMoveSomeday(id) {
+  if (!id) return;
+  // "Not yet" = list:"someday". /api/move does NOT clear a stale `scheduled`, but the
+  // view checks list==="someday" BEFORE scheduled, so a parked item never resurfaces
+  // in a weekend list (documented in docs/home.md).
+  state.lifeDateOpen = null;
+  optimistic[id] = true; render();
+  undoable('Moved to Not yet', function () {
+    api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } })
+      .then(function () { delete optimistic[id]; fetchAll(); })
+      .catch(function () { delete optimistic[id]; showToast(AREA_SAVE_FAIL, null); render(); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function lifeDrop(id) {
+  if (!id) return;
+  var r = rowById(id);
+  optimistic[id] = true; render();
+  undoable('Dropped' + (r ? ': ' + displayText(r) : ''), function () {
+    api('/api/delete', { method: 'POST', body: { id: id } })
+      .then(function () { delete optimistic[id]; fetchAll(); })
+      .catch(function () { delete optimistic[id]; showToast(AREA_SAVE_FAIL, null); render(); });
+  }, function () { delete optimistic[id]; render(); });
+}
+function runLifeAddPlan(plan) {
+  return apiJson(plan.capture.path, { method: 'POST', body: plan.capture.body }).then(function (res) {
+    if (!res || !(res.ok || res.status === 201) || !res.data || !res.data.id) throw new Error('capture');
+    var id = res.data.id;
+    if (plan.someday) return api('/api/move', { method: 'POST', body: { id: id, list: 'someday' } }).then(function (r) { if (!r || !r.ok) throw new Error('someday'); });
+    if (plan.schedule) return api('/api/schedule', { method: 'POST', body: { id: id, day: plan.schedule.day, calendar: false } }).then(function (r) { if (!r || !r.ok) throw new Error('day'); });
+  });
+}
+function lifeAdd() {
+  var inp = document.getElementById('lc-in');
+  var text = ((inp ? inp.value : state.lifeAddText) || '').trim();
+  if (!text) return;
+  var when = state.lifeAddWhen || 'this';
+  var dateEl = document.getElementById('lc-date');
+  var dateVal = (when === 'date') ? ((dateEl ? dateEl.value : state.lifeAddDate) || '') : '';
+  if (when === 'date' && !dateVal) { state.lifeAddNote = 'Pick a date first.'; render(); return; }
+  var today = todayISO();
+  var plan = lifeAddPlan(text, when, dateVal, today);
+  state.lifeAddNote = '';
+  runLifeAddPlan(plan).then(function () {
+    state.lifeAddText = ''; state.lifeAddDate = '';
+    showToast(lifeAddResultLine(when, dateVal, today, addTaskDayLabel), null);
+    fetchAll().then(function () { var e2 = document.getElementById('lc-in'); if (e2) e2.focus(); });
+  }).catch(function () {
+    state.lifeAddText = text;
+    state.lifeAddNote = 'That did not save. Try again.';
+    render();
+    var el = document.getElementById('lc-in'); if (el) el.focus();
+  });
+}
+
+// Add a Life item from the "Add something to do" line (Life chip chosen): the same
+// four when-chips and shared life plan the Life card's own add line uses.
+function addTaskSaveLife(text) {
+  var when = state.addTaskLifeWhen || 'this';
+  var dateEl = document.getElementById('addt-lifedate');
+  var dateVal = (when === 'date') ? ((dateEl ? dateEl.value : state.addTaskLifeDate) || '') : '';
+  if (when === 'date' && !dateVal) { state.addTaskNote = 'Pick a date first.'; render(); return; }
+  var today = todayISO();
+  var plan = lifeAddPlan(text, when, dateVal, today);
+  state.addTaskNote = '';
+  runLifeAddPlan(plan).then(function () {
+    state.addTaskText = ''; state.addTaskLifeDate = ''; state.addTaskDest = ''; state.addTaskLifeWhen = 'this';
+    state.addTaskNote = lifeAddResultLine(when, dateVal, today, addTaskDayLabel);
+    render();
+    var el = document.getElementById('addt-in'); if (el) el.focus();
+    fetchAll().then(function () { var e2 = document.getElementById('addt-in'); if (e2) e2.focus(); });
+  }).catch(function () {
+    state.addTaskText = text;
+    state.addTaskNote = 'That did not save. Try again.';
+    render();
+    var el = document.getElementById('addt-in'); if (el) el.focus();
   });
 }
 
@@ -6095,7 +6593,25 @@ function handlePageAction(act, el) {
   if (act === 'addtsave') { addTaskSave(); return true; }
   if (act === 'addtchip') { addTaskChip(el.getAttribute('data-day')); return true; }
   if (act === 'addtdest') { addTaskSetDest(el.getAttribute('data-dest')); return true; }
+  if (act === 'addtlifewhen') { var ali = document.getElementById('addt-in'); if (ali) state.addTaskText = ali.value; state.addTaskLifeWhen = el.getAttribute('data-when'); render(); var ali2 = document.getElementById('addt-in'); if (ali2) ali2.focus(); return true; }
   if (act === 'newdaytoggle') { var ndid = el.getAttribute('data-id'); state.newDayOpen = (state.newDayOpen === ndid) ? null : ndid; render(); return true; }
+  // ── Life card (2026-11-22) ──
+  if (act === 'lifeopen') { state.lifeOpen = true; render(); return true; }
+  if (act === 'lifewhen') { var lci = document.getElementById('lc-in'); if (lci) state.lifeAddText = lci.value; state.lifeAddWhen = el.getAttribute('data-when'); render(); var lci2 = document.getElementById('lc-in'); if (lci2) lci2.focus(); return true; }
+  if (act === 'lifeadd') { lifeAdd(); return true; }
+  if (act === 'lifenotyetfold') { state.lifeNotYetOpen = !state.lifeNotYetOpen; render(); return true; }
+  if (act === 'lifethis') { lifeSchedule(el.getAttribute('data-id'), thisWeekendSaturday(todayISO())); return true; }
+  if (act === 'lifenext') { lifeSchedule(el.getAttribute('data-id'), nextWeekendSaturday(todayISO())); return true; }
+  if (act === 'lifenotyet') { lifeMoveSomeday(el.getAttribute('data-id')); return true; }
+  if (act === 'lifedrop') { lifeDrop(el.getAttribute('data-id')); return true; }
+  if (act === 'lifefdate') { var lfid = el.getAttribute('data-id'); state.lifeDateOpen = (state.lifeDateOpen === lfid) ? null : lfid; render(); var lde = document.querySelector('.lc-date[data-lifedate="' + cssEsc(lfid) + '"]'); if (lde) lde.focus(); return true; }
+  if (act === 'lifesortopen') { state.lifeSortOpen = true; state.lifeSortTotal = lifeSortQueue((state.items || []).filter(function (it) { return !optimistic[it.id]; }), todayISO()).length; render(); return true; }
+  if (act === 'lifesortclose') { state.lifeSortOpen = false; state.lifeSortTotal = 0; state.lifeSortDateOpen = null; render(); return true; }
+  if (act === 'lifesortthis') { lifeSchedule(el.getAttribute('data-id'), thisWeekendSaturday(todayISO())); return true; }
+  if (act === 'lifesortweekday') { var lswid = el.getAttribute('data-id'); state.lifeSortDateOpen = (state.lifeSortDateOpen === lswid) ? null : lswid; render(); var lsde = document.querySelector('.lc-date[data-lifesortdate="' + cssEsc(lswid) + '"]'); if (lsde) lsde.focus(); return true; }
+  if (act === 'lifesortnotyet') { lifeMoveSomeday(el.getAttribute('data-id')); return true; }
+  if (act === 'lifesortdone') { markDone(el.getAttribute('data-id'), 'task'); return true; }
+  if (act === 'lifesortdrop') { lifeDrop(el.getAttribute('data-id')); return true; }
   if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
   if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
   if (act === 'editwait') {
@@ -7482,6 +7998,8 @@ document.addEventListener('keydown', function (e) {
   }
   // "Add something to do" input: Enter saves.
   if (e.target && e.target.id === 'addt-in' && e.key === 'Enter') { e.preventDefault(); addTaskSave(); return; }
+  // Life card "Add something for life" input: Enter saves.
+  if (e.target && e.target.id === 'lc-in' && e.key === 'Enter') { e.preventDefault(); lifeAdd(); return; }
   // Keep-for-grading course picker open: digits 1..n pick a course; any other
   // single letter is swallowed so it cannot fire an area/then sort key.
   if (state.view === 'home' && state.emailKeepOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -7517,6 +8035,27 @@ document.addEventListener('keydown', function (e) {
       if (am) { e.preventDefault(); var nid = npRow.getAttribute('data-id'); state.areaPlaceOpen = { id: nid, area: am }; render(); var rf = document.querySelector('.anp-row[data-id="' + cssEsc(nid) + '"]'); if (rf) rf.focus(); return; }
     }
   }
+  // Life clean-out box (2026-11-22): one letter answers the on-screen item —
+  // w This weekend · d A weekday (date input) · n Not yet · x Done · Backspace Drop.
+  // Esc closes the box. Only when NOT typing; placed BEFORE the email sort keys so a
+  // shared letter (d) answers the clean-out, not the email box.
+  if (state.view === 'home' && state.lifeSortOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    var aeL = document.activeElement;
+    var typingL = aeL && (aeL.tagName === 'INPUT' || aeL.tagName === 'TEXTAREA' || aeL.tagName === 'SELECT' || aeL.isContentEditable);
+    if (e.key === 'Escape') { e.preventDefault(); state.lifeSortOpen = false; state.lifeSortTotal = 0; state.lifeSortDateOpen = null; render(); return; }
+    if (!typingL) {
+      var qL = lifeSortQueue((state.items || []).filter(function (it) { return !optimistic[it.id]; }), todayISO());
+      var curL = qL.length ? qL[0] : null;
+      if (curL) {
+        var kL = String(e.key).toLowerCase();
+        if (e.key === 'Backspace') { e.preventDefault(); lifeDrop(curL.id); return; }
+        if (kL === 'w') { e.preventDefault(); lifeSchedule(curL.id, thisWeekendSaturday(todayISO())); return; }
+        if (kL === 'd') { e.preventDefault(); state.lifeSortDateOpen = curL.id; render(); var deL = document.querySelector('.lc-date[data-lifesortdate]'); if (deL) deL.focus(); return; }
+        if (kL === 'n') { e.preventDefault(); lifeMoveSomeday(curL.id); return; }
+        if (kL === 'x') { e.preventDefault(); markDone(curL.id, 'task'); return; }
+      }
+    }
+  }
   // Today email sort box (dual-mode): one letter sorts the on-screen email —
   // t a f s c set the area, r/d/n the kind/done. Only when NOT typing and focus is
   // inside the box OR on the bare page (no input/textarea/contenteditable focused).
@@ -7527,7 +8066,7 @@ document.addEventListener('keydown', function (e) {
   // box). Esc is handled above.
   // "w" opens the sort box's Reword form (ignored while another inline form is open).
   if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey &&
-      !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId &&
+      !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId && !state.lifeSortOpen &&
       String(e.key).toLowerCase() === 'w') {
     var aeW = document.activeElement;
     var typingW = aeW && (aeW.tagName === 'INPUT' || aeW.tagName === 'TEXTAREA' || aeW.tagName === 'SELECT' || aeW.isContentEditable);
@@ -7537,7 +8076,7 @@ document.addEventListener('keydown', function (e) {
     if (!typingW && curW && (inBoxW || onBodyW)) { e.preventDefault(); makeTaskOpen(curW, 'task', 'sort'); return; }
   }
   // While the "Reword" form is open the single-letter sort keys are suppressed too.
-  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId) {
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId && !state.lifeSortOpen) {
     var aeE = document.activeElement;
     var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
     var inBoxE = aeE && aeE.closest && aeE.closest('#esort');
@@ -7638,6 +8177,22 @@ document.addEventListener('input', function (e) {
   else if (t && t.id === 'addt-in') { state.addTaskText = t.value; }
   else if (t && t.classList && t.classList.contains('addt-day')) { state.addTaskDay = t.value; }
   else if (t && t.classList && t.classList.contains('addt-projsel')) { addTaskSetProject(t.value); }
+  // Life card: the add text + its native date sub-inputs update state without a
+  // re-render (so focus/caret stay put). The re-home/clean-out date pickers schedule
+  // on change (below), not here.
+  else if (t && t.id === 'lc-in') { state.lifeAddText = t.value; }
+  else if (t && t.id === 'lc-date') { state.lifeAddDate = t.value; }
+  else if (t && t.id === 'addt-lifedate') { state.addTaskLifeDate = t.value; }
+});
+// Life re-home / clean-out date pickers: a committed date (change) schedules at once
+// (calendar:false lives inside lifeSchedule). The card add-line date (#lc-date,
+// #addt-lifedate) carries no data-life*date attr, so it is handled by the input
+// listener above and read on Save instead.
+document.addEventListener('change', function (e) {
+  var t = e.target;
+  if (!t || !t.classList || !t.classList.contains('lc-date')) return;
+  var sid = t.getAttribute('data-lifedate') || t.getAttribute('data-lifesortdate');
+  if (sid && t.value) lifeSchedule(sid, t.value);
 });
 function rerenderKeepFocus(id) {
   render();

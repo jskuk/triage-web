@@ -1047,24 +1047,36 @@
     }
 
     // — task writes (data.json) —
-    if (path === '/api/capture') return resp(await updateJson('data.json', a => {
-      if (body.capture_src && a.some(i => i.capture_src === body.capture_src)) return a;
-      const list = body.list || 'inbox';
-      const rec = { id: genId(), text: (body.text || '').trim(), url: (body.url || '').trim() || null,
-        nextStep: (body.nextStep || '').trim() || null, memo: (body.memo || '').trim() || null,
-        list, created: nowIso(),
-        domain: ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(body.text),
-        ...(body.unsorted ? { unsorted: true } : {}) };
-      // Pass-through parity with records.make_task: carry `source` (the voice/
-      // email provenance Home's "Captured today" strip reads) and `capture_src`
-      // (the dedupe key checked above) when present. Absent → omitted, not null.
-      if ((body.source || '').trim()) rec.source = body.source.trim();
-      if ((body.capture_src || '').trim()) rec.capture_src = body.capture_src.trim();
-      // Lane stamp (Phase 1) — a task gets the 4-rung ladder; a tab-sweep item
-      // never does (mirror records.make_task). Trust a valid explicit lane, else
-      // the instant heuristic.
-      if (list !== 'tabs') rec.lane = LANES.includes(body.lane) ? body.lane : heuristicLane(body.text, body.url);
-      a.push(rec); return a; }, []), 201);
+    // Returns the CREATED record (server parity: _handle_capture responds with the
+    // item), so the Today "Add something to do" + Life-card adds can thread the new
+    // id into their chained /api/task/update and /api/schedule calls. A capture_src
+    // dedupe returns the existing record (200, like the server), not a duplicate.
+    if (path === '/api/capture') {
+      let created = null, deduped = false;
+      await updateJson('data.json', a => {
+        if (body.capture_src) {
+          const dup = a.find(i => i.capture_src === body.capture_src);
+          if (dup) { created = dup; deduped = true; return a; }
+        }
+        const list = body.list || 'inbox';
+        const rec = { id: genId(), text: (body.text || '').trim(), url: (body.url || '').trim() || null,
+          nextStep: (body.nextStep || '').trim() || null, memo: (body.memo || '').trim() || null,
+          list, created: nowIso(),
+          domain: ['work', 'life'].includes(body.domain) ? body.domain : heuristicDomain(body.text),
+          ...(body.unsorted ? { unsorted: true } : {}) };
+        // Pass-through parity with records.make_task: carry `source` (the voice/
+        // email provenance Home's "Captured today" strip reads) and `capture_src`
+        // (the dedupe key checked above) when present. Absent → omitted, not null.
+        if ((body.source || '').trim()) rec.source = body.source.trim();
+        if ((body.capture_src || '').trim()) rec.capture_src = body.capture_src.trim();
+        // Lane stamp (Phase 1) — a task gets the 4-rung ladder; a tab-sweep item
+        // never does (mirror records.make_task). Trust a valid explicit lane, else
+        // the instant heuristic.
+        if (list !== 'tabs') rec.lane = LANES.includes(body.lane) ? body.lane : heuristicLane(body.text, body.url);
+        a.push(rec); created = rec; return a;
+      }, []);
+      return resp(created, deduped ? 200 : 201);
+    }
     const setField = (fn) => updateJson('data.json', a => { const it = a.find(i => i.id === body.id); if (it) fn(it); return a; }, []);
     if (path === '/api/move') { await setField(i => i.list = body.list); return resp({ ok: true }); }
     if (path === '/api/done') {
