@@ -342,6 +342,36 @@
       plate_project_id: (t.plate_project_id || null) || (todayPlan.plate || null),
       next_project_id: todayPlan.next || null, one_thing: ot, plate_plan: plan };
   }
+  // ── standing.json — the written "Where things stand" page (2026-11-23) ──
+  // Mirror server._read_standing: absent/corrupt/never-written → a 200 empty shell;
+  // else the doc + computed stale (date != today local) + age_days. The hosted shell
+  // READS it and records TICKS; it NEVER writes the page itself (/api/standing is
+  // Mac/EA-only; falls through to 404 here).
+  function standingShell() {
+    return { date: null, written_at: null, by: null,
+      week: { title: '', read: '', days: [] },
+      dont_forget: { today: [], next7: [], heads_up: [] },
+      email: { today: [], later: [], no_action: [] },
+      research: { read: '', rows: [] }, held: '', ticks: {} };
+  }
+  function standingAllItems(doc) {
+    const out = [], df = doc.dont_forget || {}, em = doc.email || {};
+    for (const k of ['today', 'next7', 'heads_up']) for (const it of (df[k] || [])) if (it && typeof it === 'object') out.push(it);
+    for (const k of ['today', 'later', 'no_action']) for (const it of (em[k] || [])) if (it && typeof it === 'object') out.push(it);
+    return out;
+  }
+  async function readStanding() {
+    const todayY = todayLocal();
+    const doc = await readJson('standing.json', null);
+    if (!doc || typeof doc !== 'object' || !doc.date) {
+      return Object.assign(standingShell(), { stale: false, age_days: 0 });
+    }
+    const out = Object.assign(standingShell(), doc);
+    out.stale = doc.date !== todayY;
+    const dd = ymdDelta(todayY, doc.date);
+    out.age_days = dd == null ? 0 : dd;
+    return out;
+  }
   // ── Research blocks (FSP, 2026-11) — mirror server.py's /api/research-week ──
   // ISO year+week for a local 'YYYY-MM-DD' (standard nearest-Thursday algorithm).
   function isoWeekOfYMD(ymd) {
@@ -912,6 +942,12 @@
     // the rollover and today's plate/next resolve from it when the record has none.
     if (path === '/api/today' && method === 'GET') {
       return resp(await readToday());
+    }
+    // The written "Where things stand" page (2026-11-23) — READ-ONLY mirror of GET
+    // /api/standing. The phone shows the page and records ticks; it never writes the
+    // page (POST /api/standing is Mac/EA-only — 404 here).
+    if (path === '/api/standing' && method === 'GET') {
+      return resp(await readStanding());
     }
     // briefings/*.md — the EA's "Ask EA" return channel, newest first, ≤20. A
     // Dropbox folder listing per load is acceptable here (small, one section).
@@ -1961,6 +1997,71 @@
       base.set_at = nowIso();
       await upload('today.json', JSON.stringify(base), 'overwrite');
       return resp(await readToday());
+    }
+    // Standing-page tick (2026-11-23) — mirror server._handle_standing_tick. Record
+    // or remove a tick; a ref tick routes through the SAME data.json/deadlines.json
+    // writes /api/done + /api/deadlines/update make. The hosted shell never writes the
+    // page itself, only its ticks. 400 missing key / 404 no page / unknown key.
+    if (path === '/api/standing/tick') {
+      const key = (body.key || '').trim();
+      if (!key) return resp({ error: 'key required' }, 400);
+      const done = !!body.done;
+      const doc = await readJson('standing.json', null);
+      if (!doc || typeof doc !== 'object' || !doc.date) return resp({ error: 'no page' }, 404);
+      const item = standingAllItems(doc).find(it => it.key === key);
+      if (!item) return resp({ error: 'unknown key' }, 404);
+      const ref = (item.ref && typeof item.ref === 'object') ? item.ref : null;
+      const ticks = (doc.ticks && typeof doc.ticks === 'object') ? doc.ticks : {};
+      // Apply the ref write through the stores (same shape the server writes). The
+      // browser cannot delete a Google event, so a hosted deadline-done leaves the ⏰
+      // marker for the Mac (documented, benign — same as /api/done hosted).
+      async function applyRef(on, prev) {
+        if (!ref) return { prev: null, applied: false };
+        const rid = ref.id;
+        if (ref.kind === 'task') {
+          if (on) {
+            let priorList = null, pid = null;
+            await updateJson('data.json', a => { const it = a.find(i => i.id === rid && i.list !== 'done'); if (it) { priorList = it.list; it.list = 'done'; it.completed = nowIso(); pid = it.project_id || null; } return a; }, []);
+            if (priorList === null) return { prev: null, applied: false };
+            if (pid) { try { await updateJson('projects.json', a => { const p = a.find(x => x.id === pid); if (p) p.last_movement = nowIso(); return a; }, []); } catch {} }
+            try { await updateJson('deadlines.json', a => { const d = a.find(x => x.linked_task_id === rid && (x.status === 'open' || x.status === 'upcoming')); if (d) d.status = 'done'; return a; }, []); } catch {}
+            return { prev: { prior_list: priorList }, applied: true };
+          }
+          const to = (prev && prev.prior_list) || 'inbox';
+          await updateJson('data.json', a => { const it = a.find(i => i.id === rid); if (it) { it.list = to; it.completed = null; } return a; }, []);
+          return { prev: null, applied: false };
+        }
+        if (ref.kind === 'deadline') {
+          if (on) {
+            let prior = null, linked = null;
+            await updateJson('deadlines.json', a => { const d = a.find(x => x.id === rid); if (d) { prior = d.status; d.status = 'done'; linked = d.linked_task_id || null; } return a; }, []);
+            if (linked) { try { await updateJson('data.json', a => { const t = a.find(i => i.id === linked && i.list !== 'done'); if (t) { t.list = 'done'; t.completed = nowIso(); } return a; }, []); } catch {} }
+            return { prev: { prior_status: prior }, applied: prior !== null };
+          }
+          await updateJson('deadlines.json', a => { const d = a.find(x => x.id === rid); if (d) d.status = (prev && prev.prior_status) || 'open'; return a; }, []);
+          return { prev: null, applied: false };
+        }
+        if (ref.kind === 'start') {
+          if (on) {
+            let prior = null;
+            await updateJson('deadlines.json', a => { const d = a.find(x => x.id === rid); if (d) { prior = d.started_at || null; d.started_at = nowIso(); } return a; }, []);
+            return { prev: { prior_started_at: prior }, applied: true };
+          }
+          await updateJson('deadlines.json', a => { const d = a.find(x => x.id === rid); if (d) { if (prev && prev.prior_started_at) d.started_at = prev.prior_started_at; else delete d.started_at; } return a; }, []);
+          return { prev: null, applied: false };
+        }
+        return { prev: null, applied: false };
+      }
+      if (done) {
+        const r = await applyRef(true, null);
+        ticks[key] = { at: nowIso(), ref: ref, applied: r.applied, prev: r.prev };
+      } else {
+        const entry = ticks[key];
+        if (ref) await applyRef(false, entry && entry.prev);
+        delete ticks[key];
+      }
+      await updateJson('standing.json', d => { d.ticks = ticks; return d; }, standingShell());
+      return resp(await readStanding());
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —

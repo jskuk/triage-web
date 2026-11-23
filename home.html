@@ -52,6 +52,43 @@
        the --t-* and --area-* tokens were added light-only). */
     --life: #2f7d5b;
     --life-soft: #e6f3ec;
+    /* "Where things stand" standing-page tokens (2026-11-23). Scoped to the .st-*
+       landing page so it can honour light AND dark (the contract for this page)
+       WITHOUT touching the other eight views, which stay light-only — the dark
+       override below redefines only these --st-* tokens and the .st-wrap paints its
+       own background, so no other view is affected. Block-kind left-border hues
+       reuse the area palette so the two boards read as one system. */
+    --st-bg: #ffffff;
+    --st-ink: #37352f;
+    --st-muted: #787774;
+    --st-line: rgba(38, 60, 92, 0.12);
+    --st-tint: #f1f5fa;
+    --st-card: #fbfcfe;
+    --st-accent: #3d5fc4;
+    --st-flag: #7a5bc0;
+    --k-research: #b23f5e;
+    --k-review:  #b0672a;
+    --k-teaching:#3d5fc4;
+    --k-admin:   #8b93a7;
+    --k-fixed:   #4c7a5a;
+  }
+  /* Dark theme for the standing page ONLY (its own --st-* tokens + .st-wrap bg). */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --st-bg: #1a1c22;
+      --st-ink: #e7e8ea;
+      --st-muted: #9aa0ac;
+      --st-line: rgba(180, 196, 220, 0.16);
+      --st-tint: #222530;
+      --st-card: #23262f;
+      --st-accent: #8aa2ec;
+      --st-flag: #b79bec;
+      --k-research: #e07d97;
+      --k-review:  #d79a5f;
+      --k-teaching:#8aa2ec;
+      --k-admin:   #9aa3b7;
+      --k-fixed:   #86b79a;
+    }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--page); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
@@ -1024,6 +1061,68 @@
     .co-acts { width: 100%; }
     .co-btn { flex: 1; }
   }
+
+  /* ---------- "Where things stand" standing page (2026-11-23) ---------- */
+  .st-wrap { background: var(--st-bg); color: var(--st-ink); margin: -8px -4px 0; padding: 4px 4px 40px; border-radius: 10px; }
+  .st-h1 { font-size: 26px; font-weight: 650; margin: 8px 0 2px; color: var(--st-ink); }
+  .st-by { font-size: 13px; color: var(--st-muted); margin: 0 0 16px; }
+  .st-emailsort { display: inline-block; font-size: 13px; color: var(--st-accent); text-decoration: none; margin: -8px 0 16px; }
+  .st-emailsort:hover { text-decoration: underline; }
+  .st-sec { margin: 0 0 26px; }
+  .st-h2 { font-size: 16px; font-weight: 650; margin: 0 0 10px; color: var(--st-ink); display: flex; align-items: center; gap: 8px; }
+  .st-n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: var(--st-tint); color: var(--st-accent); font-size: 12px; font-weight: 700; }
+  .st-read { font-size: 14px; line-height: 1.55; color: var(--st-ink); background: var(--st-tint); border-radius: 8px; padding: 11px 14px; margin: 0 0 12px; }
+  .st-sub { font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--st-muted); margin: 14px 0 5px; }
+  .st-dayline { font-size: 13px; font-weight: 650; color: var(--st-ink); margin: 9px 0 3px; }
+  /* list line + checkbox */
+  .st-line { display: flex; align-items: flex-start; gap: 10px; padding: 5px 0; }
+  .st-check { flex: none; width: 18px; height: 18px; margin-top: 1px; border: 1.6px solid var(--st-line); border-radius: 5px; background: var(--st-bg); cursor: pointer; position: relative; }
+  /* A transparent 40px overlay centred on the 18px box gives a ≥40px tap target on
+     the phone without resizing the visible checkbox (clicks on the pseudo count as
+     clicks on the button). */
+  .st-check::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; }
+  .st-check[aria-checked="true"] { background: var(--st-accent); border-color: var(--st-accent); }
+  .st-check[aria-checked="true"]::after { content: ""; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .st-t { font-size: 14px; line-height: 1.5; color: var(--st-ink); }
+  .st-lead { font-weight: 650; }
+  .st-line.done .st-t { text-decoration: line-through; color: var(--st-muted); }
+  .st-line.flag .st-t { color: var(--st-flag); }
+  .st-startnow { color: var(--st-flag); font-weight: 650; }
+  .st-rmeta { color: var(--st-muted); font-size: 12.5px; }
+  .st-empty { font-size: 14px; color: var(--st-muted); margin: 2px 0; }
+  /* the week grid */
+  .st-legend { display: flex; flex-wrap: wrap; gap: 12px; margin: 2px 0 12px; }
+  .st-leg { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--st-muted); }
+  .st-leg i { width: 10px; height: 10px; border-radius: 3px; }
+  .st-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .st-day { border: 1px solid var(--st-line); border-radius: 9px; background: var(--st-card); padding: 9px; min-width: 0; }
+  .st-day-h { font-size: 12.5px; font-weight: 650; color: var(--st-ink); margin-bottom: 7px; }
+  .st-day-note { font-weight: 500; color: var(--st-muted); }
+  .st-block { border-left: 3px solid var(--st-line); padding: 3px 0 3px 8px; margin: 6px 0; }
+  .st-when { font-size: 11px; color: var(--st-muted); }
+  .st-bt { font-size: 12.5px; line-height: 1.4; color: var(--st-ink); }
+  .k-research i, .st-block.k-research { border-left-color: var(--k-research); } .st-leg.k-research i { background: var(--k-research); }
+  .k-review i, .st-block.k-review { border-left-color: var(--k-review); } .st-leg.k-review i { background: var(--k-review); }
+  .k-teaching i, .st-block.k-teaching { border-left-color: var(--k-teaching); } .st-leg.k-teaching i { background: var(--k-teaching); }
+  .k-admin i, .st-block.k-admin { border-left-color: var(--k-admin); } .st-leg.k-admin i { background: var(--k-admin); }
+  .k-fixed i, .st-block.k-fixed { border-left-color: var(--k-fixed); } .st-leg.k-fixed i { background: var(--k-fixed); }
+  /* research table (scrolls sideways on a phone inside its own container) */
+  .st-rwrap { overflow-x: auto; border: 1px solid var(--st-line); border-radius: 9px; }
+  .st-rtable { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13px; }
+  .st-rtable th, .st-rtable td { text-align: left; vertical-align: top; padding: 8px 11px; border-bottom: 1px solid var(--st-line); color: var(--st-ink); }
+  .st-rtable thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--st-muted); font-weight: 650; background: var(--st-tint); }
+  .st-rtable tbody th { font-weight: 650; }
+  .st-rtable tr:last-child th, .st-rtable tr:last-child td { border-bottom: 0; }
+  .st-held { font-size: 13px; color: var(--st-muted); font-style: italic; margin: 0 0 18px; }
+  .st-doors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; padding-top: 10px; border-top: 1px solid var(--st-line); }
+  .st-door { color: var(--st-muted); text-decoration: none; }
+  .st-door:hover { color: var(--st-accent); text-decoration: underline; }
+  .st-dot { color: var(--st-muted); }
+  @media (hover: none) and (pointer: coarse) { .st-line { padding: 8px 0; } }
+  @media (max-width: 720px) {
+    .st-grid { grid-template-columns: 1fr; }
+    .st-wrap { margin: -8px 0 0; }
+  }
 </style>
 </head>
 <body>
@@ -1045,14 +1144,15 @@
 <div class="shell">
   <aside class="side">
     <div class="ws"><span class="ws-mark"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Triage</div>
-    <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+    <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
     <a class="nav" data-view="cleanout" href="#cleanout" id="nav-cleanout" style="display:none"><svg><use href="#i-sweep"/></svg>Clean out<span class="n" id="nav-cleanout-n"></span></a>
     <a class="nav work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
+    <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
     <a class="nav" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks<span class="n" id="nav-tasks-n"></span></a>
     <a class="nav" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps<span class="n" id="nav-sweeps-n"></span></a>
-    <a class="nav" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
     <a class="nav" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
     <a class="nav" data-view="kitchen" href="#kitchen"><svg><use href="#i-kitchen"/></svg>Kitchen</a>
+    <a class="nav" data-view="today" href="#today"><svg><use href="#i-home"/></svg>Old Today</a>
     <a class="nav cn-nav" data-view="class-notes" href="#class-notes"><svg><use href="#i-notes"/></svg>Class notes</a>
 
     <div id="side-focus-wrap" style="display:none">
@@ -1067,7 +1167,7 @@
 
   <div class="main">
     <div class="topbar">
-      <span class="crumb"><b id="crumb">Today</b></span>
+      <span class="crumb"><b id="crumb">Home</b></span>
       <div class="seg lens-seg lens-seg-m" aria-label="Work or life"><button data-lens="work">Work</button><button data-lens="life">Life</button><button data-lens="all">All</button></div>
       <span class="status" id="status" style="display:none">
         <button id="status-btn" aria-expanded="false"><span class="status-dot"></span><span id="status-label"></span></button>
@@ -1084,13 +1184,14 @@
 </div>
 
 <nav class="tabbar">
-  <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+  <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Home</a>
   <a class="nav-tab" data-view="cleanout" href="#cleanout" id="navtab-cleanout" style="display:none"><svg><use href="#i-sweep"/></svg>Clean out</a>
   <a class="nav-tab work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
+  <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
   <a class="nav-tab" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks</a>
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
-  <a class="nav-tab" data-view="projects" href="#projects"><svg><use href="#i-areas"/></svg>Projects</a>
   <a class="nav-tab" data-view="library" href="#library"><svg><use href="#i-lib"/></svg>Library</a>
+  <a class="nav-tab" data-view="today" href="#today"><svg><use href="#i-home"/></svg>Old Today</a>
   <a class="nav-tab cn-nav" data-view="class-notes" href="#class-notes"><svg><use href="#i-notes"/></svg>Notes</a>
 </nav>
 
@@ -3225,6 +3326,103 @@ function cleanoutUndoPlan(kind, action, rec) {
   }
   return null;
 }
+
+// ── "Where things stand" — the written standing landing page (2026-11-23) ──
+// John: the EA's written weekly page beat Triage's live Home. The front page is now
+// that page. These pure helpers back the byline, the Next-7-days grouping, the live
+// Reviews list (the whole referee surface), the block kind colour, and emptiness.
+var ST_WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var ST_WD_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+var ST_KINDS = ['research', 'review', 'teaching', 'admin', 'fixed'];
+function stLocalDate(ymd) {   // a YYYY-MM-DD → a local-midnight Date (no TZ roll), null if bad
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ymd || ''));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+}
+function stLocalYMD(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function stDayLabel(ymd) {   // "Tue 11/24"
+  var d = stLocalDate(ymd); if (!d) return '';
+  return ST_WD[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
+}
+function stDayLabelFull(ymd) {   // "Saturday 11/21"
+  var d = stLocalDate(ymd); if (!d) return '';
+  return ST_WD_FULL[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
+}
+function stTimeLabel(date) {   // "10:45am" (local)
+  if (!(date instanceof Date) || isNaN(date.getTime())) return '';
+  var h = date.getHours(), m = date.getMinutes(), ap = h < 12 ? 'am' : 'pm';
+  var h12 = h % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + String(m).padStart(2, '0') + ap;
+}
+function standingIsEmpty(doc) { return !doc || !doc.date; }
+// The muted header line: who wrote it and when. Stale/empty take precedence over by.
+function standingByline(doc, now) {
+  doc = doc || {};
+  if (standingIsEmpty(doc)) {
+    return 'Nothing written yet. It is written each morning at 7, or when you check in with the EA.';
+  }
+  var todayY = stLocalYMD(now instanceof Date ? now : new Date());
+  var stale = doc.stale === true || (!!doc.date && doc.date !== todayY);
+  if (stale) {
+    return 'This page is from ' + stDayLabelFull(doc.date) + '. It has not been rewritten since.';
+  }
+  if (doc.by === 'auto') {
+    return 'Written automatically this morning from Triage. A check-in with the EA refreshes it from your email.';
+  }
+  var when = doc.written_at ? new Date(doc.written_at) : null;
+  var dayLbl = (when && !isNaN(when.getTime()))
+    ? (ST_WD[when.getDay()] + ' ' + (when.getMonth() + 1) + '/' + when.getDate())
+    : stDayLabel(doc.date);
+  var timeLbl = stTimeLabel(when);
+  return 'Written by your EA, ' + dayLbl + (timeLbl ? ' ' + timeLbl : '') + '.';
+}
+// Next-7-days lines, grouped so consecutive same-day lines sit under ONE bold day.
+function standingNext7Groups(items) {
+  var out = [];
+  (items || []).forEach(function (it) {
+    if (!it) return;
+    var day = it.day || '';
+    var last = out[out.length - 1];
+    if (last && last.day === day) { last.items.push(it); }
+    else { out.push({ day: day, label: day ? stDayLabel(day) : '', items: [it] }); }
+  });
+  return out;
+}
+function standingKindClass(kind) { return ST_KINDS.indexOf(kind) >= 0 ? kind : 'admin'; }
+// Reviews — computed LIVE from the stores (never from standing.json). Every open,
+// non-proposed deadline with area==='referee', soonest first; then open referee
+// TASKS not linked to a listed deadline, under "No date". The whole referee surface.
+function reviewsList(deadlines, items, today) {
+  var dls = (deadlines || []).filter(function (d) {
+    return d && d.status !== 'done' && !d.proposed && (d.area || '') === 'referee';
+  });
+  dls.sort(function (a, b) {
+    return String(a.due_date || '9999-99-99').localeCompare(String(b.due_date || '9999-99-99'));
+  });
+  var linked = {};
+  var dated = dls.map(function (d) {
+    if (d.linked_task_id) linked[d.linked_task_id] = true;
+    var lead = (typeof d.lead_time_days === 'number' && d.lead_time_days > 0) ? d.lead_time_days : 14;
+    var delta = d.due_date ? dayDelta(d.due_date, today) : null;
+    var startDay = null;
+    var base = d.due_date ? stLocalDate(d.due_date) : null;
+    if (base) startDay = stLocalYMD(new Date(base.getFullYear(), base.getMonth(), base.getDate() - lead));
+    var started = !!d.started_at;
+    var startArrived = startDay ? (dayDelta(startDay, today) <= 0) : false;
+    return {
+      id: d.id, store: 'deadline', title: d.title || '', due_date: d.due_date || null,
+      duePhrase: d.due_date ? ('due ' + stDayLabel(d.due_date)) : '',
+      daysPhrase: delta == null ? '' : (delta === 0 ? 'today' : delta > 0 ? (delta + (delta === 1 ? ' day' : ' days')) : ((-delta) + ' days late')),
+      startPhrase: startDay ? ('start by ' + stDayLabel(startDay)) : '',
+      startNow: startArrived && !started, started: started
+    };
+  });
+  var noDate = (items || []).filter(function (t) {
+    return t && t.list !== 'done' && t.list !== 'tabs' && (t.area || '') === 'referee' && !linked[t.id];
+  }).map(function (t) { return { id: t.id, store: 'task', title: t.text || '' }; });
+  return { dated: dated, noDate: noDate };
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -3340,6 +3538,9 @@ var state = {
   // briefingOpen/adminOpen/slippedOpen = per-row toggles; notTodayVer bumps when the
   // localStorage "not today" set changes so render re-reads it.
   semesterPlan: null, today: { date: null, items: [] }, briefings: [],
+  // The written "Where things stand" landing page (2026-11-23): the server-owned doc
+  // + server-managed ticks. Rendered by homeHtml(); ticked lines strike optimistically.
+  standing: null,
   block: null, blockPanel: null, memoOpen: false, changesOpen: false,
   briefingOpen: {}, adminOpen: false, slippedOpen: null, notTodayVer: 0,
   // pending = capture/ files not yet filed (Today's "waiting to be filed" rows);
@@ -3480,6 +3681,10 @@ function fetchAll() {
     // ideas), today's negotiated portion, and the EA's briefings. All degrade to a
     // shell/empty on 404 so a not-yet-merged server never blanks the page.
     apiJson('/api/semester-plan'), apiJson('/api/today'), apiJson('/api/briefings'),
+    // The written "Where things stand" page (2026-11-23) — the landing view. Absent/
+    // corrupt → a 200 empty shell (the page shows "Nothing written yet"); 404 until
+    // merged → the fetchAll coercion leaves state.standing null (same empty render).
+    apiJson('/api/standing'),
     // Pending captures (2026-11-19): capture/ files not yet filed by a router, shown
     // at the top of "Captured today" as "waiting to be filed". Hosted → dbx.js lists
     // the Dropbox capture/ folder. Email-stuck signal (LOCAL only; dbx.js returns
@@ -3508,8 +3713,9 @@ function fetchAll() {
     state.semesterPlan = (res[12] && res[12].data && typeof res[12].data === 'object' && !Array.isArray(res[12].data)) ? res[12].data : null;
     state.today = (res[13] && res[13].data && typeof res[13].data === 'object' && Array.isArray(res[13].data.items)) ? res[13].data : { date: null, items: [] };
     state.briefings = Array.isArray(res[14] && res[14].data) ? res[14].data : [];
-    state.pending = Array.isArray(res[15] && res[15].data) ? res[15].data : [];
-    state.emailHealth = (res[16] && res[16].data && typeof res[16].data === 'object' && !Array.isArray(res[16].data)) ? res[16].data : null;
+    state.standing = (res[15] && res[15].data && typeof res[15].data === 'object' && !Array.isArray(res[15].data)) ? res[15].data : null;
+    state.pending = Array.isArray(res[16] && res[16].data) ? res[16].data : [];
+    state.emailHealth = (res[17] && res[17].data && typeof res[17].data === 'object' && !Array.isArray(res[17].data)) ? res[17].data : null;
     if (state.view === 'kitchen') ensureRecipes();
     if (state.view === 'work' && state.areaBoardLoaded) ensureAreaBoard(true);   // LOCAL only
     ensureGradingReminder();   // FERPA: LOCAL only (never fetched on the hosted shell)
@@ -3558,9 +3764,10 @@ function render() {
       : state.view === 'class-notes' ? classNotesHtml()
       : state.view === 'work' ? workHtml()
       : state.view === 'cleanout' ? cleanoutHtml()
+      : state.view === 'today' ? oldTodayHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes', work: 'Work', cleanout: 'Clean out' }[state.view] || 'Today';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes', work: 'Work', cleanout: 'Clean out', today: 'Old Today' }[state.view] || 'Home';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -3671,6 +3878,190 @@ function currentSweepCounts() {
   return sweepCounts(items, dl, meetings, projects, todayISO(), opps, readlater, garden, state.changes || []);
 }
 
+/* ---- "Where things stand" standing page (2026-11-23) — the landing view ---- */
+// John: the EA's written weekly page was "100 times better than current Triage".
+// The front page is that page: WRITTEN (by the EA at check-in / the morning job),
+// organised by time, each thing once, asking only a tick. Triage is the store
+// behind it. Order: header + byline, (email-to-sort line), The week, 1·Don't forget,
+// Reviews (live, the referee surface), 2·Email, 3·Research, held, quiet doors.
+function homeHtml() {
+  var doc = state.standing || { date: null };
+  var today = todayISO();
+  var h = '<div class="st-wrap">';
+  h += '<h1 class="st-h1">Where things stand</h1>';
+  h += '<p class="st-by">' + escapeHtml(standingByline(doc, new Date())) + '</p>';
+  try { h += standingEmailSortLine(); } catch (e) {}
+  if (standingIsEmpty(doc)) {
+    // Nothing written yet: still show the live Reviews + the doors so the page works.
+    try { h += standingReviewsSection(today); } catch (e) { reportUiError('st-reviews: ' + e.stack); }
+    try { h += standingDoorsHtml(); } catch (e) {}
+    return h + '</div>';
+  }
+  try { h += standingWeekSection(doc.week); } catch (e) { reportUiError('st-week: ' + e.stack); }
+  try { h += standingDontForgetSection(doc); } catch (e) { reportUiError('st-df: ' + e.stack); }
+  try { h += standingReviewsSection(today); } catch (e) { reportUiError('st-reviews: ' + e.stack); }
+  try { h += standingEmailSection(doc); } catch (e) { reportUiError('st-email: ' + e.stack); }
+  try { h += standingResearchSection(doc.research); } catch (e) { reportUiError('st-research: ' + e.stack); }
+  try { h += standingHeldHtml(doc.held); } catch (e) {}
+  try { h += standingDoorsHtml(); } catch (e) {}
+  return h + '</div>';
+}
+// One quiet line under the header when unsorted email exists (same count the old
+// Today's sort box uses). Links to #today. Suppressed at zero; works LOCAL + hosted.
+function standingEmailSortLine() {
+  if (!state.areaBoardLoaded || !state.areaBoard) return '';
+  var done = state.emailSortDone || {};
+  var n = emailSortQueue(state.areaBoard.not_placed).filter(function (it) { return !done[it.id] && !optimistic[it.id]; }).length;
+  if (!n) return '';
+  return '<a class="st-emailsort" href="#today">' + n + ' new email' + (n === 1 ? '' : 's') + ' to sort</a>';
+}
+// A ticked line in standing.json: ticked when doc.ticks[key] exists (server-managed).
+function standingTicked(key) {
+  var t = state.standing && state.standing.ticks;
+  return !!(t && Object.prototype.hasOwnProperty.call(t, key));
+}
+// One list line with a checkbox (Don't-forget / Email). A tick toggles through
+// POST /api/standing/tick (no 5s defer; un-tick is the undo). flag → the flag colour.
+function standingLineHtml(it) {
+  if (!it || !it.key) return '';
+  var on = standingTicked(it.key);
+  var lead = it.lead ? '<b class="st-lead">' + escapeHtml(it.lead) + '</b> ' : '';
+  var cls = 'st-line' + (on ? ' done' : '') + (it.flag ? ' flag' : '');
+  return '<div class="' + cls + '" data-standing-key="' + escapeHtml(it.key) + '">' +
+    '<button class="st-check" role="checkbox" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="done" data-standing-tick="' + escapeHtml(it.key) + '"></button>' +
+    '<span class="st-t">' + lead + escapeHtml(it.text) + '</span></div>';
+}
+function standingLinesHtml(items) {
+  return (items || []).map(standingLineHtml).join('');
+}
+// The week: a tinted read paragraph, a small legend, a 5-column Mon..Fri grid of
+// day cards; each block has a muted "when", text, and a left border by kind.
+function standingWeekSection(week) {
+  week = week || {};
+  var days = Array.isArray(week.days) ? week.days : [];
+  if (!week.title && !week.read && !days.length) return '';
+  var h = '<section class="st-sec st-week">';
+  if (week.title) h += '<h2 class="st-h2">' + escapeHtml(week.title) + '</h2>';
+  if (week.read) h += '<p class="st-read">' + escapeHtml(week.read) + '</p>';
+  var LEG = [['research', 'research'], ['review', 'review'], ['teaching', 'teaching'], ['admin', 'admin'], ['fixed', 'fixed']];
+  h += '<div class="st-legend">' + LEG.map(function (k) {
+    return '<span class="st-leg k-' + k[0] + '"><i></i>' + escapeHtml(k[1]) + '</span>';
+  }).join('') + '</div>';
+  h += '<div class="st-grid">';
+  days.forEach(function (d) {
+    d = d || {};
+    h += '<div class="st-day"><div class="st-day-h">' + escapeHtml(stDayLabel(d.date) || (d.date || '')) +
+      (d.note ? ' <span class="st-day-note">' + escapeHtml(d.note) + '</span>' : '') + '</div>';
+    (Array.isArray(d.blocks) ? d.blocks : []).forEach(function (b) {
+      b = b || {};
+      var lead = b.lead ? '<b>' + escapeHtml(b.lead) + '</b> ' : '';
+      h += '<div class="st-block k-' + standingKindClass(b.kind) + '">' +
+        (b.when ? '<div class="st-when">' + escapeHtml(b.when) + '</div>' : '') +
+        '<div class="st-bt">' + lead + escapeHtml(b.text) + '</div></div>';
+    });
+    h += '</div>';
+  });
+  return h + '</div></section>';
+}
+// 1 · Don't forget — three labelled lists: Today, Next 7 days (grouped by bold day),
+// Early heads-up.
+function standingDontForgetSection(doc) {
+  var df = (doc && doc.dont_forget) || {};
+  var today = df.today || [], next7 = df.next7 || [], heads = df.heads_up || [];
+  if (!today.length && !next7.length && !heads.length) return '';
+  var h = '<section class="st-sec"><h2 class="st-h2"><span class="st-n">1</span> Don’t forget</h2>';
+  if (today.length) {
+    h += '<div class="st-sub">Today</div>' + standingLinesHtml(today);
+  }
+  if (next7.length) {
+    h += '<div class="st-sub">Next 7 days</div>';
+    standingNext7Groups(next7).forEach(function (g) {
+      if (g.label) h += '<div class="st-dayline">' + escapeHtml(g.label) + '</div>';
+      h += standingLinesHtml(g.items);
+    });
+  }
+  if (heads.length) {
+    h += '<div class="st-sub">Early heads-up</div>' + standingLinesHtml(heads);
+  }
+  return h + '</section>';
+}
+// Reviews — the simple referee list, computed LIVE. Ticked = done through the
+// existing deadline/task done path (the page's normal 5s Undo toast).
+function standingReviewsSection(today) {
+  var rv = reviewsList(lensDeadlines().filter(function (d) { return !optimistic[d.id]; }),
+                       lensItems().filter(function (i) { return !optimistic[i.id]; }), today);
+  var h = '<section class="st-sec st-reviews"><h2 class="st-h2">Reviews</h2>';
+  if (!rv.dated.length && !rv.noDate.length) {
+    return h + '<p class="st-empty">No reviews owed.</p></section>';
+  }
+  rv.dated.forEach(function (r) {
+    var meta = [];
+    if (r.duePhrase) meta.push('<span>' + escapeHtml(r.duePhrase) + '</span>');
+    if (r.daysPhrase) meta.push('<span>' + escapeHtml(r.daysPhrase) + '</span>');
+    if (r.startNow) meta.push('<span class="st-startnow">Start now</span>');
+    else if (r.startPhrase) meta.push('<span>' + escapeHtml(r.startPhrase) + '</span>');
+    h += '<div class="st-line st-review" data-review-id="' + escapeHtml(r.id) + '" data-review-store="deadline">' +
+      '<button class="st-check" role="checkbox" aria-checked="false" aria-label="done" data-review-check="' + escapeHtml(r.id) + '" data-review-store="deadline"></button>' +
+      '<span class="st-t">' + escapeHtml(r.title) + (meta.length ? ' <span class="st-rmeta">' + meta.join(' · ') + '</span>' : '') + '</span></div>';
+  });
+  if (rv.noDate.length) {
+    h += '<div class="st-sub">No date</div>';
+    rv.noDate.forEach(function (r) {
+      h += '<div class="st-line st-review" data-review-id="' + escapeHtml(r.id) + '" data-review-store="task">' +
+        '<button class="st-check" role="checkbox" aria-checked="false" aria-label="done" data-review-check="' + escapeHtml(r.id) + '" data-review-store="task"></button>' +
+        '<span class="st-t">' + escapeHtml(r.title) + '</span></div>';
+    });
+  }
+  return h + '</section>';
+}
+// 2 · Email — Today's emails / Later this week / No action.
+function standingEmailSection(doc) {
+  var em = (doc && doc.email) || {};
+  var t = em.today || [], l = em.later || [], na = em.no_action || [];
+  if (!t.length && !l.length && !na.length) return '';
+  var h = '<section class="st-sec"><h2 class="st-h2"><span class="st-n">2</span> Email</h2>';
+  if (t.length) h += '<div class="st-sub">Today’s emails</div>' + standingLinesHtml(t);
+  if (l.length) h += '<div class="st-sub">Later this week</div>' + standingLinesHtml(l);
+  if (na.length) h += '<div class="st-sub">No action</div>' + standingLinesHtml(na);
+  return h + '</section>';
+}
+// 3 · Research — a tinted read paragraph, then a table that scrolls sideways on a
+// phone inside its own container.
+function standingResearchSection(research) {
+  research = research || {};
+  var rows = Array.isArray(research.rows) ? research.rows : [];
+  if (!research.read && !rows.length) return '';
+  var h = '<section class="st-sec"><h2 class="st-h2"><span class="st-n">3</span> Research</h2>';
+  if (research.read) h += '<p class="st-read">' + escapeHtml(research.read) + '</p>';
+  if (rows.length) {
+    h += '<div class="st-rwrap"><table class="st-rtable"><thead><tr>' +
+      '<th>Project</th><th>Goal</th><th>Where it stands</th><th>Next move</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      r = r || {};
+      h += '<tr><th>' + escapeHtml(r.name || '') + '</th><td>' + escapeHtml(r.goal || '') +
+        '</td><td>' + escapeHtml(r.stands || '') + '</td><td>' + escapeHtml(r.next || '') + '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  return h + '</section>';
+}
+function standingHeldHtml(held) {
+  held = (held || '').trim();
+  if (!held) return '';
+  return '<p class="st-held">' + escapeHtml(held) + '</p>';
+}
+// One quiet row of plain links: Work · Projects · Clean out (only while it has items)
+// · The old Today page.
+function standingDoorsHtml() {
+  var links = [
+    '<a class="st-door" href="#work">Work</a>',
+    '<a class="st-door" href="#projects">Projects</a>'
+  ];
+  if (cleanoutLiveTotal() > 0) links.push('<a class="st-door" href="#cleanout">Clean out</a>');
+  links.push('<a class="st-door" href="#today">The old Today page</a>');
+  return '<div class="st-doors">' + links.join('<span class="st-dot">·</span>') + '</div>';
+}
+
 /* ---- Home ---- */
 // The "Today" main page (2026-11-18 audit). The rebuild's landing view: research
 // on top (the meal), a NEGOTIATED day's portion below (the vegetables, portioned so
@@ -3682,7 +4073,9 @@ function currentSweepCounts() {
 // John). Order is fixed: header, Research (the meal), Work today (Reply/Do), the
 // Research whiteboard, then the EA's memo/briefings, the quiet doors, and the
 // system-change receipts moved to the bottom (quiet, Q1 "nothing vanishes").
-function homeHtml() {
+// RENAMED oldTodayHtml 2026-11-23: the landing view is now the written "Where things
+// stand" standing page (homeHtml, below); this moves to "#today" ("Old Today").
+function oldTodayHtml() {
   var h = '';
   h += '<h1>' + escapeHtml(longDate()) + '</h1>';
   var sub = state.memo && state.memo.day_line ? state.memo.day_line : '';
@@ -7380,6 +7773,9 @@ function workHtml() {
   if (!state.areaBoardLoaded) return '<div class="empty" style="padding:48px 0">Loading your work…</div>';
   var board = state.areaBoard || { areas: [], not_placed: [] };
   var today = todayISO();
+  // Referee is no longer a Work board (2026-11-23): its whole surface is the Reviews
+  // list on the Home page. A remembered 'referee' tab falls back to the master board.
+  if (state.areaOpen === 'referee') state.areaOpen = null;
   var h = '<div class="awrap">';
   h += '<div class="ahead"><h1>Work by area</h1><p class="asub">Everything with a deadline, on one screen. A dot means something changed since you last looked: a new email, or a date that moved. Tap a name to open its area.</p></div>';
   h += workTabsHtml(state.areaOpen);
@@ -7419,13 +7815,16 @@ function newTaskDayHtml(it) {
 function workTabsHtml(active) {
   var h = '<div class="atabs">';
   h += '<button class="atab' + (!active ? ' on' : '') + '" data-pact="areaopen" data-area="">Master board</button>';
-  AREA_TABS.forEach(function (t) {
+  // Referee is not a Work tab (2026-11-23): its items live in the Home Reviews list.
+  AREA_TABS.filter(function (t) { return t.key !== 'referee'; }).forEach(function (t) {
     h += '<button class="atab' + (active === t.key ? ' on' : '') + '" style="--ac:' + areaColorVar(t.key) + '" data-pact="areaopen" data-area="' + t.key + '">' + escapeHtml(t.name) + '</button>';
   });
   return h + '</div>';
 }
 function workMasterHtml(board, today) {
-  var rows = masterBoardRows(board, today, teachingRowOrder());
+  // Referee rows are excluded (2026-11-23): the whole referee surface is the Home
+  // Reviews list. The board data (areas/board) is untouched; only the view drops it.
+  var rows = masterBoardRows(board, today, teachingRowOrder()).filter(function (r) { return r.area !== 'referee'; });
   if (!rows.length) {
     return '<div class="aempty"><b>Nothing is on the board yet.</b> Place a few items in the <b>Not placed</b> list below, and anything with a deadline will show up here.</div>';
   }
@@ -8235,6 +8634,26 @@ function dismissProposal(id) {
       .catch(function () { delete optimistic[id]; fetchAll(); });
   }, function () { delete optimistic[id]; render(); });
 }
+// Standing-page tick (2026-11-23): optimistic strike, POST /api/standing/tick; on
+// failure un-strike + the shared "That did not save" line. No 5s defer — un-tick is
+// the undo. The server returns the fresh doc (incl. the applied ref write).
+function standingTick(key) {
+  if (!state.standing) return;
+  var ticks = state.standing.ticks || (state.standing.ticks = {});
+  var prior = ticks[key];
+  var wasOn = Object.prototype.hasOwnProperty.call(ticks, key);
+  var done = !wasOn;
+  if (done) ticks[key] = { at: new Date().toISOString(), applied: false, prev: null };
+  else delete ticks[key];
+  render();
+  apiJson('/api/standing/tick', { method: 'POST', body: { key: key, done: done } }).then(function (r) {
+    if (r.ok && r.data && typeof r.data === 'object' && r.data.ticks) { state.standing = r.data; render(); }
+    else throw new Error('tick failed');
+  }).catch(function () {
+    if (wasOn) ticks[key] = prior; else delete ticks[key];
+    showToast(AREA_SAVE_FAIL, null); render();
+  });
+}
 function confirmProposal(id) { api('/api/task/confirm', { method: 'POST', body: { id: id } }).then(fetchAll); }
 function scheduleDay(id, day) { flushPending(); api('/api/schedule', { method: 'POST', body: { id: id, day: day, calendar: false } }).then(fetchAll); }
 function moveList(id, list) { flushPending(); api('/api/move', { method: 'POST', body: { id: id, list: list } }).then(fetchAll); }
@@ -8602,6 +9021,13 @@ document.addEventListener('click', function (e) {
   // but after the task-row data-act handling? No — these never carry data-act.
   var pact = el.closest && el.closest('[data-pact]');
   if (pact) { e.preventDefault(); if (handlePageAction(pact.getAttribute('data-pact'), pact)) return; }
+  // Standing page: a Don't-forget/Email line tick (POST /api/standing/tick) and a
+  // live Reviews line done (the existing deadline/task done path + 5s Undo). Neither
+  // is a .row, so the row handler below won't catch them.
+  var stTick = el.closest && el.closest('[data-standing-tick]');
+  if (stTick) { e.preventDefault(); standingTick(stTick.getAttribute('data-standing-tick')); return; }
+  var stRev = el.closest && el.closest('[data-review-check]');
+  if (stRev) { e.preventDefault(); markDone(stRev.getAttribute('data-review-check'), stRev.getAttribute('data-review-store') === 'deadline' ? 'deadline' : 'task'); return; }
   // Today's-portion done circle (not a .row, so the row handler below won't catch it)
   var pcheck = el.closest && el.closest('[data-portion-check]');
   if (pcheck) { var pr = pcheck.closest('.prow'); if (pr) { e.stopPropagation(); markDone(pr.getAttribute('data-id'), pr.getAttribute('data-kind')); } return; }
@@ -8893,7 +9319,7 @@ function defaultLens() {
 function applyHash() {
   var h = (location.hash || '').replace('#', '');
   if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
-  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen', 'work', 'cleanout'];   // Work + Clean out are dual-mode (via dbx.js)
+  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen', 'work', 'cleanout', 'today'];   // Work + Clean out + Old Today are dual-mode (via dbx.js)
   if (LOCAL) views.push('class-notes');   // FERPA: Class notes is LOCAL-only, never reachable on the hosted shell
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
@@ -8904,8 +9330,9 @@ function applyHash() {
   if (state.view === 'kitchen') ensureRecipes();
   if (state.view === 'class-notes') ensureClassNotes();
   if (state.view === 'work') { state.areaOpen = readRememberedAreaTab(); ensureAreaBoard(); }
-  // The Today (home) page's email sort box reads the same board (dual-mode).
-  if (state.view === 'home') ensureAreaBoard();
+  // The standing page's "N email to sort" line + the Old Today sort box both read the
+  // same board (dual-mode).
+  if (state.view === 'home' || state.view === 'today') ensureAreaBoard();
   if (state.view !== 'sweeps') {
     // leaving the Sweeps area: close any open queue and sync counts if changed.
     state.sweepQueue = null; state.sweepPick = null;
