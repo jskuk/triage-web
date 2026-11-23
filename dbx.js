@@ -1198,6 +1198,11 @@
             it.area = 'teaching'; it.area_by = 'john';
             it.row = aCourseInTitle(it.row || '') || aCourseInTitle(it.text || '') || AREA_DEFAULT_ROW;
           } else if (keptOp === 'clear') { delete it.kept; delete it.kept_at; }
+          // Clean-out "Keep" review stamp (2026-11-23): true stamps reviewed_at, false
+          // clears it; absent leaves it untouched. "Keep" sends the unchanged text, so
+          // textChanged is false and text_by is never touched. Mirror the server.
+          if (body.reviewed === true) it.reviewed_at = nowIso();
+          else if (body.reviewed === false) delete it.reviewed_at;
           found = it;
         }
         return a;
@@ -1351,6 +1356,9 @@
           d[k] = fields[k];
         }
         aApplyOps(d, aeD.ops);
+        // Clean-out "Keep" review stamp (2026-11-23): optional `reviewed` in fields
+        // (not in `allowed`) — true stamps reviewed_at, false clears it. Mirror server.
+        if ('reviewed' in fields) { if (fields.reviewed) d.reviewed_at = nowIso(); else delete d.reviewed_at; }
         if (finishing) { d.status = 'done'; linked = d.linked_task_id || null; }
         return a;
       }, []);
@@ -1430,7 +1438,10 @@
           p[k] = v;
           const hasNote = (typeof v === 'string') ? v.trim() : !!v;
           if (k === 'state_note' && hasNote) { p.state_updated = nowIso(); p.last_movement = nowIso(); }
-          if (k === 'stage' && v) p.last_movement = nowIso(); } }
+          if (k === 'stage' && v) p.last_movement = nowIso(); }
+        // Clean-out "Alive" review stamp (2026-11-23): optional `reviewed` in fields
+        // (not in `allowed`) — true stamps reviewed_at, false clears it; not movement.
+        if (body.fields && 'reviewed' in body.fields) { if (body.fields.reviewed) p.reviewed_at = nowIso(); else delete p.reviewed_at; } }
         return a; }, []);
       return resp({ ok: true });
     }

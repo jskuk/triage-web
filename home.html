@@ -991,6 +991,39 @@
   @media (hover: none) and (pointer: coarse) {
     .ekey kbd, .anp-keys button u { display: none; }
   }
+  /* ── Clean out (2026-11-23): one plain page, three lists, ~1s/line. No cards, no
+       areas, no new colours — the existing tokens only. ── */
+  .co-wrap { max-width: 720px; }
+  .co-sticky { position: sticky; top: 0; z-index: 5; background: var(--page); padding: 10px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+  .co-progress { font-size: 16px; font-weight: 600; color: var(--text); }
+  .co-instr { font-size: 13px; color: var(--text-2); margin-top: 3px; }
+  .co-sec { margin: 14px 0 6px; }
+  .co-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--text); cursor: pointer; padding: 6px 0; background: none; border: 0; width: 100%; text-align: left; }
+  .co-head .co-caret { color: var(--text-3); font-size: 12px; transition: transform .12s; }
+  .co-sec.closed .co-caret { transform: rotate(-90deg); }
+  .co-sec.closed .co-list { display: none; }
+  .co-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 8px; border-radius: var(--radius); border: 1px solid transparent; }
+  .co-row + .co-row { border-top: 1px solid var(--line); border-top-left-radius: 0; border-top-right-radius: 0; }
+  .co-row.co-focus { border-color: var(--t-accent); background: var(--t-accent-soft); }
+  .co-row.co-done { opacity: .5; }
+  .co-main { flex: 1; min-width: 0; }
+  .co-title { font-size: 14px; color: var(--text); word-break: break-word; }
+  .co-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+  .co-err { font-size: 12px; color: var(--red); margin-top: 3px; }
+  .co-acts { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .co-btn { min-height: 40px; min-width: 52px; padding: 0 10px; border: 1px solid var(--line); background: var(--page); border-radius: var(--radius); color: var(--text); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  .co-btn:hover { background: var(--hover); }
+  .co-btn.danger { color: var(--red); }
+  .co-btn kbd { font: inherit; font-size: 11px; color: var(--text-3); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
+  .co-chip { font-size: 12px; color: var(--text-2); }
+  .co-undo { background: none; border: 0; color: var(--t-accent); font-size: 13px; cursor: pointer; min-height: 40px; padding: 0 6px; }
+  .co-nextmove { color: var(--text-3); }
+  @media (hover: none) and (pointer: coarse) { .co-btn kbd, .co-hint { display: none; } }
+  @media (max-width: 720px) {
+    .co-row { flex-wrap: wrap; }
+    .co-acts { width: 100%; }
+    .co-btn { flex: 1; }
+  }
 </style>
 </head>
 <body>
@@ -1013,6 +1046,7 @@
   <aside class="side">
     <div class="ws"><span class="ws-mark"><svg viewBox="0 0 12 12"><path d="M2.5 6.2l2.3 2.3 4.7-5" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Triage</div>
     <a class="nav" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+    <a class="nav" data-view="cleanout" href="#cleanout" id="nav-cleanout" style="display:none"><svg><use href="#i-sweep"/></svg>Clean out<span class="n" id="nav-cleanout-n"></span></a>
     <a class="nav work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
     <a class="nav" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks<span class="n" id="nav-tasks-n"></span></a>
     <a class="nav" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps<span class="n" id="nav-sweeps-n"></span></a>
@@ -1051,6 +1085,7 @@
 
 <nav class="tabbar">
   <a class="nav-tab" data-view="home" href="#home"><svg><use href="#i-home"/></svg>Today</a>
+  <a class="nav-tab" data-view="cleanout" href="#cleanout" id="navtab-cleanout" style="display:none"><svg><use href="#i-sweep"/></svg>Clean out</a>
   <a class="nav-tab work-nav" data-view="work" href="#work"><svg><use href="#i-areas"/></svg>Work</a>
   <a class="nav-tab" data-view="tasks" href="#tasks"><svg><use href="#i-tasks"/></svg>Tasks</a>
   <a class="nav-tab" data-view="sweeps" href="#sweeps"><svg><use href="#i-sweep"/></svg>Sweeps</a>
@@ -3097,6 +3132,99 @@ function scheduleOkMsg(iso) {
 // The shared "a write failed" line for every Work-view card action, so nothing
 // disappears-then-returns silently (2026-11-22 bug: a save gave no sign either way).
 var AREA_SAVE_FAIL = 'That did not save. Try again.';
+
+// ── Clean out (2026-11-23, John: "I scratch off all the irrelevant tasks first.
+// So you start off fresh.") — one plain page, three lists, ~1s/line. A record is
+// stamped `reviewed_at` by Keep/Alive so it never returns here; nothing else reads
+// that field. All three lists are pure membership + ordering (tested). ──
+
+// Things: every OPEN task (list not done, not a tab-sweep collection) with no
+// review stamp, OLDEST first. No area/lane/proposed/kept special cases — John
+// wanted one sweep of everything old.
+function cleanoutThings(items) {
+  var out = (items || []).filter(function (t) {
+    return t && t.list !== 'done' && t.list !== 'tabs' && !t.reviewed_at;
+  });
+  out.sort(function (a, b) {
+    return (Date.parse(a.created || '') || 8.64e15) - (Date.parse(b.created || '') || 8.64e15);
+  });
+  return out;
+}
+// Deadlines: every not-done deadline with no review stamp, SOONEST date first
+// (so past-due sorts to the top), undated last.
+function cleanoutDeadlines(deadlines, today) {
+  var out = (deadlines || []).filter(function (d) {
+    return d && d.status !== 'done' && !d.reviewed_at;
+  });
+  out.sort(function (a, b) {
+    return String(a.due_date || '9999-99-99').localeCompare(String(b.due_date || '9999-99-99'));
+  });
+  return out;
+}
+// Projects: every project not done and with no review stamp, ALPHABETICAL. (items
+// + today are passed so the renderer can compute each one's next move; they do not
+// affect membership.)
+function cleanoutProjects(projects, items, today) {
+  var out = (projects || []).filter(function (p) {
+    return p && p.status !== 'done' && !p.reviewed_at;
+  });
+  out.sort(function (a, b) {
+    return String(a.title || '').toLowerCase().localeCompare(String(b.title || '').toLowerCase());
+  });
+  return out;
+}
+// The sticky "N to look at. M handled." + each section's remaining count. `acted`
+// is an id→true map of committed (non-undone) actions over the snapshot.
+function cleanoutCounts(things, deadlines, projects, acted) {
+  acted = acted || {};
+  things = things || []; deadlines = deadlines || []; projects = projects || [];
+  var handled = 0, tL = 0, dL = 0, pL = 0;
+  things.forEach(function (r) { if (acted[r.id]) handled++; else tL++; });
+  deadlines.forEach(function (r) { if (acted[r.id]) handled++; else dL++; });
+  projects.forEach(function (r) { if (acted[r.id]) handled++; else pL++; });
+  return { total: things.length + deadlines.length + projects.length,
+    handled: handled, things: tL, deadlines: dL, projects: pL };
+}
+// The FORWARD write for one clean-out action. `kind` ∈ thing|deadline|project;
+// `action` ∈ keep|done|drop (thing/deadline) or alive|park|done (project). Returns
+// {route, body} or null. The "Keep" on a thing sends the record's OWN text
+// unchanged (never a reword), so an email task keeps its text_by.
+function cleanoutPlan(kind, action, rec) {
+  var id = rec && rec.id;
+  if (kind === 'thing') {
+    if (action === 'keep') return { route: '/api/task/update', body: { id: id, text: (rec.text || ''), reviewed: true } };
+    if (action === 'done') return { route: '/api/done', body: { id: id } };
+    if (action === 'drop') return { route: '/api/delete', body: { id: id } };
+  } else if (kind === 'deadline') {
+    if (action === 'keep') return { route: '/api/deadlines/update', body: { id: id, fields: { reviewed: true } } };
+    if (action === 'done') return { route: '/api/deadlines/update', body: { id: id, fields: { status: 'done' } } };
+    if (action === 'drop') return { route: '/api/deadlines/delete', body: { id: id } };
+  } else if (kind === 'project') {
+    if (action === 'alive') return { route: '/api/projects/update', body: { id: id, fields: { reviewed: true } } };
+    if (action === 'park') return { route: '/api/projects/update', body: { id: id, fields: { status: 'paused' } } };
+    if (action === 'done') return { route: '/api/projects/update', body: { id: id, fields: { status: 'done' } } };
+  }
+  return null;
+}
+// The INVERSE write for an Undo, from the record snapshot kept in memory. Keep/Alive
+// → reviewed:false; Done(thing) → reopen to the prior list via /api/move; Done(dl) →
+// restore the prior status; Park/Done(project) → restore the prior status. DROP has
+// no inverse plan here (LOCAL it is undone via /api/changes/undo, hosted it was
+// deferred so Undo just cancels before the write) → returns null.
+function cleanoutUndoPlan(kind, action, rec) {
+  var id = rec && rec.id;
+  if (kind === 'thing') {
+    if (action === 'keep') return { route: '/api/task/update', body: { id: id, text: (rec.text || ''), reviewed: false } };
+    if (action === 'done') return { route: '/api/move', body: { id: id, list: (rec.list || 'inbox') } };
+  } else if (kind === 'deadline') {
+    if (action === 'keep') return { route: '/api/deadlines/update', body: { id: id, fields: { reviewed: false } } };
+    if (action === 'done') return { route: '/api/deadlines/update', body: { id: id, fields: { status: (rec.status || 'open') } } };
+  } else if (kind === 'project') {
+    if (action === 'alive') return { route: '/api/projects/update', body: { id: id, fields: { reviewed: false } } };
+    if (action === 'park' || action === 'done') return { route: '/api/projects/update', body: { id: id, fields: { status: (rec.status || 'active') } } };
+  }
+  return null;
+}
 /* <<<END PURE>>> */
 
 /* ===== display helpers (browser side) ===== */
@@ -3429,9 +3557,10 @@ function render() {
       : state.view === 'kitchen' ? kitchenHtml()
       : state.view === 'class-notes' ? classNotesHtml()
       : state.view === 'work' ? workHtml()
+      : state.view === 'cleanout' ? cleanoutHtml()
       : homeHtml();
     document.getElementById('crumb').textContent =
-      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes', work: 'Work' }[state.view] || 'Today';
+      { tasks: 'Tasks', sweeps: 'Sweeps', projects: 'Projects', library: 'Library', kitchen: 'Kitchen', 'class-notes': 'Class notes', work: 'Work', cleanout: 'Clean out' }[state.view] || 'Today';
   } catch (e) { reportUiError('page: ' + e.stack); }
   try { if (!LOCAL) fixHostedLinks(); } catch (e) {}
   try { markNav(); } catch (e) {}
@@ -3477,6 +3606,15 @@ function renderSidebar() {
   var sweepsN = sweepTotal();
   document.getElementById('nav-tasks-n').textContent = tasksN ? String(tasksN) : '';
   document.getElementById('nav-sweeps-n').textContent = sweepsN ? String(sweepsN) : '';
+  // Clean out (2026-11-23): the nav entry shows only while there is something old to
+  // clear. The count is the LIVE total (not the frozen snapshot), so it falls as
+  // John stamps items reviewed/done/dropped across reloads.
+  var coN = cleanoutLiveTotal();
+  var coSide = document.getElementById('nav-cleanout'), coSideN = document.getElementById('nav-cleanout-n');
+  if (coSide) coSide.style.display = coN > 0 ? '' : 'none';
+  if (coSideN) coSideN.textContent = coN > 0 ? String(coN) : '';
+  var coTab = document.getElementById('navtab-cleanout');
+  if (coTab) coTab.style.display = coN > 0 ? '' : 'none';
   // focus projects
   var focus = (state.projects || []).filter(function (p) { return p && p.focus && p.status !== 'done' && inDomain(p, state.lens); });
   var wrap = document.getElementById('side-focus-wrap');
@@ -6737,6 +6875,11 @@ function handleRecipeAction(act, rid) {
 
 /* ---- page-level action dispatch (Areas / Library / Kitchen) ---- */
 function handlePageAction(act, el) {
+  // ── Clean out (2026-11-23) ──
+  if (act === 'cofold') { var sk = el.getAttribute('data-sec'); state.cleanoutFold[sk] = !state.cleanoutFold[sk]; render(); return true; }
+  if (act === 'cofocus') { state.cleanoutFocus = el.getAttribute('data-id'); render(); return true; }
+  if (act === 'coact') { cleanoutAct(el.getAttribute('data-kind'), el.getAttribute('data-action'), el.getAttribute('data-id')); return true; }
+  if (act === 'coundo') { cleanoutUndo(el.getAttribute('data-id')); return true; }
   // ── Today-page actions ──
   if (act === 'changesexpand') { state.changesOpen = true; render(); return true; }
   if (act === 'changescollapse') { state.changesOpen = false; render(); return true; }
@@ -8098,6 +8241,288 @@ function moveList(id, list) { flushPending(); api('/api/move', { method: 'POST',
 function setLane(id, lane) { flushPending(); api('/api/set-lane', { method: 'POST', body: { id: id, lane: lane } }).then(fetchAll); }
 function saveNextStep(id, text) { api('/api/update-nextstep', { method: 'POST', body: { id: id, nextStep: text } }).then(fetchAll); }
 
+/* ===== Clean out view (2026-11-23) ===== */
+// One plain page, three lists. Writes go out IMMEDIATELY (John taps fast down a
+// list) serialized through a small queue so rapid taps never race; a tapped line
+// greys in place with its result + an Undo link and stays until the next full
+// reload (the view renders from a SNAPSHOT taken on entry, so nothing re-sorts
+// under his finger). Undo: Keep/Alive/Done/Park reverse with an inverse write that
+// works both LOCAL + hosted (reviewed:false / reopen-move / status-restore); Drop
+// LOCAL deletes at once and Undo reverses it via the change log, Drop HOSTED is
+// DEFERRED ~8s (dbx.js has no re-create route) so its Undo just cancels in-window.
+function cleanoutEnter() {
+  state.cleanoutSnap = null;      // rebuilt by cleanoutBuild once data is loaded
+  state.cleanoutActed = {};
+  state.cleanoutErr = {};
+  state.cleanoutFocus = null;
+  state.cleanoutLast = null;
+  if (!state.cleanoutFold) state.cleanoutFold = {};
+}
+function cleanoutBuild() {
+  var today = todayISO();
+  state.cleanoutSnap = {
+    things: cleanoutThings(state.items || []),
+    deadlines: cleanoutDeadlines(state.deadlines || [], today),
+    projects: cleanoutProjects(state.projects || [], state.items || [], today)
+  };
+  if (!state.cleanoutFocus) {
+    var first = state.cleanoutSnap.things[0] || state.cleanoutSnap.deadlines[0] || state.cleanoutSnap.projects[0];
+    state.cleanoutFocus = first ? first.id : null;
+  }
+}
+// The LIVE count behind the nav badge (not the frozen snapshot), so it falls as
+// John reviews/closes/drops across reloads.
+function cleanoutLiveTotal() {
+  var today = todayISO();
+  return cleanoutThings(state.items || []).length +
+    cleanoutDeadlines(state.deadlines || [], today).length +
+    cleanoutProjects(state.projects || [], state.items || [], today).length;
+}
+function cleanoutOrder() {
+  var s = state.cleanoutSnap; if (!s) return [];
+  return s.things.map(function (r) { return { id: r.id, kind: 'thing', rec: r }; })
+    .concat(s.deadlines.map(function (r) { return { id: r.id, kind: 'deadline', rec: r }; }))
+    .concat(s.projects.map(function (r) { return { id: r.id, kind: 'project', rec: r }; }));
+}
+function cleanoutRec(id) {
+  var ord = cleanoutOrder();
+  for (var i = 0; i < ord.length; i++) if (ord[i].id === id) return ord[i].rec;
+  return null;
+}
+function cleanoutOrigin(rec) {
+  if (rec.source === 'email') return 'from email';
+  if (rec.domain === 'life') return 'life';
+  return 'you added';
+}
+function cleanoutDayChip(rec) {
+  var s = rec && rec.scheduled;
+  if (!s) return '';
+  var md = areaMonthDay(s); var wd = areaWeekday(s);
+  return md ? (wd ? wd + ' ' + md : md) : '';
+}
+function cleanoutDuePhrase(d, today) {
+  var due = d.due_date; if (!due) return 'no date set';
+  var delta = dayDelta(due, today);
+  var md = areaMonthDay(due) || due;
+  if (delta == null) return 'no date set';
+  if (delta < 0) return 'was due ' + md;
+  if (delta === 0) return 'due today';
+  return 'due ' + md;
+}
+function cleanoutActedLabel(action) {
+  return { keep: 'Kept', alive: 'Alive', park: 'Parked', done: 'Done', drop: 'Dropped' }[action] || 'Done';
+}
+
+// Serialize every clean-out write so fast taps never race on the same store.
+var _cleanoutQ = Promise.resolve();
+function cleanoutEnqueue(fn) { var p = _cleanoutQ.then(fn, fn); _cleanoutQ = p.catch(function () {}); return p; }
+
+function cleanoutAct(kind, action, id) {
+  if (!state.cleanoutSnap) return;
+  if (state.cleanoutActed[id]) return;         // already handled this line
+  var rec = cleanoutRec(id); if (!rec) return;
+  var plan = cleanoutPlan(kind, action, rec); if (!plan) return;
+  delete state.cleanoutErr[id];
+  state.cleanoutActed[id] = { kind: kind, action: action, rec: rec, label: cleanoutActedLabel(action) };
+  state.cleanoutLast = id;
+  cleanoutAdvanceFocus(id);
+  render();
+  // Drop on the hosted shell: no re-create route on dbx.js, so DEFER the delete
+  // (grey now, write in ~8s or on unload); Undo before then simply cancels it.
+  if (action === 'drop' && !LOCAL) {
+    var ent = state.cleanoutActed[id];
+    ent.deferred = true;
+    ent.dropTimer = setTimeout(function () { cleanoutCommitDrop(id); }, 8000);
+    return;
+  }
+  cleanoutEnqueue(function () {
+    return apiJson(plan.route, { method: 'POST', body: plan.body }).then(function (res) {
+      if (!res.ok) { cleanoutFail(id); }
+    }).catch(function () { cleanoutFail(id); });
+  });
+}
+function cleanoutCommitDrop(id) {
+  var ent = state.cleanoutActed[id]; if (!ent) return;
+  ent.dropTimer = null; ent.deferred = false; ent.undoDisabled = true;
+  var plan = cleanoutPlan(ent.kind, 'drop', ent.rec);
+  cleanoutEnqueue(function () {
+    return apiJson(plan.route, { method: 'POST', body: plan.body }).then(function (res) {
+      if (!res.ok) cleanoutFail(id);
+    }).catch(function () { cleanoutFail(id); });
+  });
+  render();
+}
+function cleanoutFail(id) {
+  var ent = state.cleanoutActed[id];
+  if (ent && ent.dropTimer) { clearTimeout(ent.dropTimer); }
+  delete state.cleanoutActed[id];
+  if (state.cleanoutLast === id) state.cleanoutLast = null;
+  state.cleanoutErr[id] = AREA_SAVE_FAIL;
+  render();
+}
+function cleanoutClearActed(id) {
+  delete state.cleanoutActed[id];
+  if (state.cleanoutLast === id) state.cleanoutLast = null;
+  render();
+}
+function cleanoutUndo(id) {
+  var ent = state.cleanoutActed[id]; if (!ent) return;
+  // A deferred hosted drop still in its window: cancel, nothing was written.
+  if (ent.deferred && ent.dropTimer) {
+    clearTimeout(ent.dropTimer); ent.dropTimer = null;
+    cleanoutClearActed(id); return;
+  }
+  if (ent.action === 'drop') {
+    if (ent.undoDisabled || !LOCAL) { state.cleanoutErr[id] = 'Dropped (undo only on your Mac).'; render(); return; }
+    // LOCAL committed delete: reverse via the change log, which re-inserts the
+    // kept record — the same path the Home "Changed by the system" Undo uses.
+    cleanoutEnqueue(function () {
+      return apiJson('/api/changes?actor=user&limit=40').then(function (res) {
+        var lines = (res && Array.isArray(res.data)) ? res.data : [];
+        var hit = null;
+        for (var i = 0; i < lines.length; i++) { var ln = lines[i]; if (ln && ln.id === id && ln.action === 'delete') { hit = ln; break; } }
+        if (!hit) throw new Error('no receipt');
+        return apiJson('/api/changes/undo', { method: 'POST', body: { ts: hit.ts, id: id } }).then(function (u) {
+          if (!u.ok) throw new Error('undo failed');
+          cleanoutClearActed(id);
+        });
+      }).catch(function () { state.cleanoutErr[id] = AREA_SAVE_FAIL; render(); });
+    });
+    return;
+  }
+  var plan = cleanoutUndoPlan(ent.kind, ent.action, ent.rec);
+  if (!plan) { cleanoutClearActed(id); return; }
+  cleanoutEnqueue(function () {
+    return apiJson(plan.route, { method: 'POST', body: plan.body }).then(function (res) {
+      if (!res.ok) { state.cleanoutErr[id] = AREA_SAVE_FAIL; render(); return; }
+      cleanoutClearActed(id);
+    }).catch(function () { state.cleanoutErr[id] = AREA_SAVE_FAIL; render(); });
+  });
+}
+function cleanoutAdvanceFocus(fromId) {
+  var order = cleanoutOrder(), idx = -1, i;
+  for (i = 0; i < order.length; i++) if (order[i].id === fromId) { idx = i; break; }
+  for (i = idx + 1; i < order.length; i++) if (!state.cleanoutActed[order[i].id]) { state.cleanoutFocus = order[i].id; return; }
+  for (i = idx - 1; i >= 0; i--) if (!state.cleanoutActed[order[i].id]) { state.cleanoutFocus = order[i].id; return; }
+  state.cleanoutFocus = fromId;
+}
+function cleanoutMoveFocus(dir) {
+  var order = cleanoutOrder(); if (!order.length) return;
+  var idx = -1, i;
+  for (i = 0; i < order.length; i++) if (order[i].id === state.cleanoutFocus) { idx = i; break; }
+  var n = (idx < 0) ? 0 : idx + dir;
+  if (n < 0) n = 0; if (n >= order.length) n = order.length - 1;
+  state.cleanoutFocus = order[n].id; render();
+  var el = document.getElementById('co-' + order[n].id);
+  if (el) try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+}
+function cleanoutKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return false;
+  var ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return false;
+  if (e.key === 'ArrowDown') { e.preventDefault(); cleanoutMoveFocus(1); return true; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); cleanoutMoveFocus(-1); return true; }
+  var k = String(e.key).toLowerCase();
+  if (k === 'u') { e.preventDefault(); if (state.cleanoutLast) cleanoutUndo(state.cleanoutLast); return true; }
+  var fid = state.cleanoutFocus; if (!fid || state.cleanoutActed[fid]) return false;
+  var ord = cleanoutOrder(), cur = null, i;
+  for (i = 0; i < ord.length; i++) if (ord[i].id === fid) { cur = ord[i]; break; }
+  if (!cur) return false;
+  if (cur.kind === 'project') {
+    if (k === 'k') { e.preventDefault(); cleanoutAct('project', 'alive', fid); return true; }
+    if (k === 'p') { e.preventDefault(); cleanoutAct('project', 'park', fid); return true; }
+    if (k === 'd') { e.preventDefault(); cleanoutAct('project', 'done', fid); return true; }
+  } else {
+    if (k === 'k') { e.preventDefault(); cleanoutAct(cur.kind, 'keep', fid); return true; }
+    if (k === 'd') { e.preventDefault(); cleanoutAct(cur.kind, 'done', fid); return true; }
+    if (k === 'x') { e.preventDefault(); cleanoutAct(cur.kind, 'drop', fid); return true; }
+  }
+  return false;
+}
+// flush any deferred (hosted) drops on unload, so a close never loses the intent.
+window.addEventListener('beforeunload', function () {
+  var acted = state.cleanoutActed || {};
+  Object.keys(acted).forEach(function (id) {
+    var ent = acted[id];
+    if (ent && ent.deferred && ent.dropTimer) {
+      clearTimeout(ent.dropTimer); ent.dropTimer = null;
+      var plan = cleanoutPlan(ent.kind, 'drop', ent.rec);
+      try { api(plan.route, { method: 'POST', body: plan.body }); } catch (e) {}
+    }
+  });
+});
+
+function cleanoutHtml() {
+  if (!state.cleanoutFold) state.cleanoutFold = {};
+  if (!state.cleanoutActed) state.cleanoutActed = {};
+  if (!state.cleanoutErr) state.cleanoutErr = {};
+  if (!state.cleanoutSnap) cleanoutBuild();
+  var s = state.cleanoutSnap, today = todayISO();
+  var acted = state.cleanoutActed || {};
+  var c = cleanoutCounts(s.things, s.deadlines, s.projects, acted);
+  var h = '<div class="co-wrap">';
+  h += '<div class="co-sticky"><div class="co-progress">' + c.total + ' to look at. ' + c.handled + ' handled.</div>' +
+    '<div class="co-instr">Keep = still real. Done = finished. Drop = never mind. Skip anything you are unsure about; it stays.' +
+    '<span class="co-hint"> Arrows move · k keep · d done · x drop · p park · u undo.</span></div></div>';
+  if (!c.total) return h + '<div class="empty" style="padding:40px 0">Nothing to clean out. You are fresh.</div></div>';
+  h += cleanoutSection('things', 'Things', c.things, s.things.map(function (r) { return cleanoutThingRow(r, today); }));
+  h += cleanoutSection('deadlines', 'Deadlines', c.deadlines, s.deadlines.map(function (r) { return cleanoutDeadlineRow(r, today); }));
+  h += cleanoutSection('projects', 'Projects', c.projects, s.projects.map(function (r) { return cleanoutProjectRow(r, today); }));
+  return h + '</div>';
+}
+function cleanoutSection(key, label, left, rows) {
+  if (!rows.length) return '';
+  var closed = state.cleanoutFold[key] ? ' closed' : '';
+  return '<section class="co-sec' + closed + '" data-cosec="' + key + '">' +
+    '<button class="co-head" data-pact="cofold" data-sec="' + key + '"><span class="co-caret">▾</span>' +
+    escapeHtml(label) + ' (' + left + ' left)</button><div class="co-list">' + rows.join('') + '</div></section>';
+}
+function cleanoutRowShell(id, titleHtml, metaHtml, buttonsHtml) {
+  var ent = state.cleanoutActed[id];
+  var cls = 'co-row' + (ent ? ' co-done' : '') + (state.cleanoutFocus === id && !ent ? ' co-focus' : '');
+  var acts;
+  if (ent) {
+    var undo = ent.undoDisabled ? '' : '<button class="co-undo" data-pact="coundo" data-id="' + escapeHtml(id) + '">Undo</button>';
+    acts = '<span class="co-chip">' + escapeHtml(ent.label) + '</span>' + undo;
+  } else {
+    acts = buttonsHtml;
+  }
+  var err = state.cleanoutErr[id] ? '<div class="co-err">' + escapeHtml(state.cleanoutErr[id]) + '</div>' : '';
+  return '<div class="' + cls + '" id="co-' + escapeHtml(id) + '" data-pact="cofocus" data-id="' + escapeHtml(id) + '">' +
+    '<div class="co-main"><div class="co-title">' + titleHtml + '</div><div class="co-meta">' + metaHtml + '</div>' + err + '</div>' +
+    '<div class="co-acts">' + acts + '</div></div>';
+}
+function cleanoutBtns(kind, a1, l1, a2, l2, a3, l3, id) {
+  function b(action, label, key, danger) {
+    return '<button class="co-btn' + (danger ? ' danger' : '') + '" data-pact="coact" data-kind="' + kind +
+      '" data-action="' + action + '" data-id="' + escapeHtml(id) + '">' + label +
+      '<kbd class="co-hint">' + key + '</kbd></button>';
+  }
+  return b(a1.action, l1, a1.key, a1.danger) + b(a2.action, l2, a2.key, a2.danger) + b(a3.action, l3, a3.key, a3.danger);
+}
+function cleanoutThingRow(r, today) {
+  var meta = [escapeHtml(lifeAge(r.created, today)), escapeHtml(cleanoutOrigin(r))];
+  var day = cleanoutDayChip(r); if (day) meta.push(escapeHtml(day));
+  var buttons = cleanoutBtns('thing',
+    { action: 'keep', key: 'k' }, 'Keep', { action: 'done', key: 'd' }, 'Done',
+    { action: 'drop', key: 'x', danger: true }, 'Drop', r.id);
+  return cleanoutRowShell(r.id, escapeHtml(displayText(r)), meta.join(' · '), buttons);
+}
+function cleanoutDeadlineRow(d, today) {
+  var buttons = cleanoutBtns('deadline',
+    { action: 'keep', key: 'k' }, 'Keep', { action: 'done', key: 'd' }, 'Done',
+    { action: 'drop', key: 'x', danger: true }, 'Drop', d.id);
+  return cleanoutRowShell(d.id, escapeHtml(d.title || 'Deadline'), escapeHtml(cleanoutDuePhrase(d, today)), buttons);
+}
+function cleanoutProjectRow(p, today) {
+  var nm = projectNextMove(state.items || [], p.id, today);
+  var meta = nm ? ('<span class="co-nextmove">' + escapeHtml(displayText(nm)) + '</span>') : '<span class="co-nextmove">no next move</span>';
+  var buttons = cleanoutBtns('project',
+    { action: 'alive', key: 'k' }, 'Alive', { action: 'park', key: 'p' }, 'Park',
+    { action: 'done', key: 'd' }, 'Done', p.id);
+  return cleanoutRowShell(p.id, escapeHtml(p.title || 'Project'), meta, buttons);
+}
+
 /* ===== events ===== */
 function canAutoRefresh() {
   if (state.openRow) return false;
@@ -8274,6 +8699,9 @@ document.addEventListener('keydown', function (e) {
       if (am) { e.preventDefault(); var nid = npRow.getAttribute('data-id'); state.areaPlaceOpen = { id: nid, area: am }; render(); var rf = document.querySelector('.anp-row[data-id="' + cssEsc(nid) + '"]'); if (rf) rf.focus(); return; }
     }
   }
+  // Clean out (2026-11-23): Arrows move the focused line, k/d/x (p in Projects) act,
+  // u undoes the last action. Ignored while a field is focused (there are none).
+  if (state.view === 'cleanout') { if (cleanoutKey(e)) return; }
   // Life clean-out box (2026-11-22): one letter answers the on-screen item —
   // w This weekend · d A weekday (date input) · n Not yet · x Done · Backspace Drop.
   // Esc closes the box. Only when NOT typing; placed BEFORE the email sort keys so a
@@ -8465,10 +8893,14 @@ function defaultLens() {
 function applyHash() {
   var h = (location.hash || '').replace('#', '');
   if (h === 'areas') h = 'projects';   // legacy #areas still resolves; #projects is canonical
-  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen', 'work'];   // Work is dual-mode (hosted board via dbx.js)
+  var views = ['tasks', 'sweeps', 'projects', 'library', 'kitchen', 'work', 'cleanout'];   // Work + Clean out are dual-mode (via dbx.js)
   if (LOCAL) views.push('class-notes');   // FERPA: Class notes is LOCAL-only, never reachable on the hosted shell
   state.view = views.indexOf(h) >= 0 ? h : 'home';
   state.openRow = null;
+  // Clean out (2026-11-23): build a STABLE snapshot on entry so lines never reflow
+  // or re-sort under John's finger, and reset what he has touched; leaving + coming
+  // back rebuilds it (reviewed items are then gone). See cleanoutEnter().
+  if (state.view === 'cleanout') cleanoutEnter();
   if (state.view === 'kitchen') ensureRecipes();
   if (state.view === 'class-notes') ensureClassNotes();
   if (state.view === 'work') { state.areaOpen = readRememberedAreaTab(); ensureAreaBoard(); }
