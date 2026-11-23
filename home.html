@@ -3894,7 +3894,7 @@ function homeHtml() {
   if (standingIsEmpty(doc)) {
     // Nothing written yet: still show the live Reviews + the doors so the page works.
     try { h += standingReviewsSection(today); } catch (e) { reportUiError('st-reviews: ' + e.stack); }
-    try { h += '<div class="st-research-live">' + researchMealHtml() + '</div>'; } catch (e) { reportUiError('st-research: ' + e.stack); }
+    try { h += '<div class="st-research-live">' + whiteboardHtml() + '</div>'; } catch (e) { reportUiError('st-research: ' + e.stack); }
     try { h += standingDoorsHtml(); } catch (e) {}
     return h + '</div>';
   }
@@ -3902,10 +3902,10 @@ function homeHtml() {
   try { h += standingDontForgetSection(doc); } catch (e) { reportUiError('st-df: ' + e.stack); }
   try { h += standingReviewsSection(today); } catch (e) { reportUiError('st-reviews: ' + e.stack); }
   try { h += standingEmailSection(doc); } catch (e) { reportUiError('st-email: ' + e.stack); }
-  // Research is the old Today's research card, live from the project records (John,
+  // Research is the old Today's Research whiteboard, live from the project records (John,
   // 2026-11-23: "For research, you should maintain the old dashboard"). The written
   // doc.research rows are no longer shown (standingResearchSection is kept, unused).
-  try { h += '<div class="st-research-live">' + researchMealHtml() + '</div>'; } catch (e) { reportUiError('st-research: ' + e.stack); }
+  try { h += '<div class="st-research-live">' + whiteboardHtml() + '</div>'; } catch (e) { reportUiError('st-research: ' + e.stack); }
   try { h += standingHeldHtml(doc.held); } catch (e) {}
   try { h += standingDoorsHtml(); } catch (e) {}
   return h + '</div>';
