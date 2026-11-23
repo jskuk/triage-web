@@ -631,8 +631,20 @@
   .t2-nm-form { display: flex; gap: 6px; }
   .t2-nm-form input { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
   .t2-nm-form button, .pd-edit button { font-size: 13px; color: var(--t-accent); padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; }
-  .t2-btn { justify-self: start; font: inherit; font-weight: 600; color: #fff; background: var(--t-mark); border-radius: 8px; padding: 9px 14px; }
+  .t2-btn { justify-self: start; font: inherit; font-weight: 600; color: #fff; background: var(--t-mark); border-radius: 8px; padding: 9px 14px; cursor: pointer; min-height: 40px; }
   .t2-btn.ghost { background: transparent; color: var(--t-accent); border: 1px solid var(--line); font-weight: 500; }
+  .t2-through { font-size: 13px; color: var(--text-2); margin: 2px 0 0; }
+  .t2-change, .t2-next-acts { margin-top: 10px; }
+  .t2-next-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .t2-chooser { border: 1px solid var(--t-accent); border-radius: 10px; padding: 12px 14px; margin-top: 14px; display: grid; gap: 8px; background: var(--page); }
+  .t2-chooser-head { font-size: 13px; font-weight: 600; color: var(--text); }
+  .t2-chooser-empty { font-size: 14px; color: var(--text-2); }
+  .t2-choice { display: grid; gap: 1px; text-align: left; justify-self: stretch; font: inherit; background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; cursor: pointer; min-height: 40px; }
+  .t2-choice:hover { border-color: var(--t-accent); background: var(--t-accent-soft); }
+  .t2-choice-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .t2-choice-move { font-size: 13px; color: var(--text-2); }
+  .t2-until-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .t2-choice-cancel { justify-self: start; }
   .t2-weekrow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 14px; }
   .t2-wd { background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; color: var(--text-2); min-width: 0; }
   .t2-wd b { display: block; color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -729,6 +741,10 @@
   .anew-head { margin-bottom: 4px; }
   .anp-day { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -3px 0 7px; }
   .anp-day > button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--text-2); cursor: pointer; }
+  .anp-manage { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -3px 0 11px; }
+  .anp-manage .anp-age { font-size: 12px; color: var(--text-3); margin-right: auto; }
+  .anp-manage > button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--text-2); cursor: pointer; }
+  .anp-manage > button.danger { color: var(--red); }
   /* Life card (2026-11-22, mockups/life-card.html). One calm card below Research:
      which weekend, not which list. No board, no rows, no areas. */
   .lc-sec { margin-bottom: 20px; }
@@ -1845,9 +1861,11 @@ function plateOrder(projects, plan, today) {
 }
 // Resolve today's plate + the "next up" card. An explicit per-day pick (plateId)
 // wins when it resolves to a non-done project; otherwise the default is the first
-// of plateOrder. nextUp is the first ordered candidate that is not the plate.
-// Returns {plate, next} (either may be null when there is no candidate).
-function platePick(projects, plan, today, plateId) {
+// of plateOrder. A pinned NEXT (nextId, 2026-11-23) wins for the "next up" card when
+// it resolves to a non-done project that differs from the plate; otherwise next is
+// the first ordered candidate that is not the plate. Keeps the old 4-arg behavior
+// identical when nextId is absent. Returns {plate, next} (either may be null).
+function platePick(projects, plan, today, plateId, nextId) {
   var order = plateOrder(projects, plan, today);
   var plate = null;
   if (plateId) {
@@ -1855,10 +1873,82 @@ function platePick(projects, plan, today, plateId) {
   }
   if (!plate) plate = order.length ? order[0] : null;
   var next = null;
-  for (var i = 0; i < order.length; i++) {
-    if (!plate || order[i].id !== plate.id) { next = order[i]; break; }
+  if (nextId) {
+    var pinned = (projects || []).find(function (p) { return p && p.id === nextId && p.status !== 'done'; }) || null;
+    if (pinned && (!plate || pinned.id !== plate.id)) next = pinned;
+  }
+  if (!next) {
+    for (var i = 0; i < order.length; i++) {
+      if (!plate || order[i].id !== plate.id) { next = order[i]; break; }
+    }
   }
   return { plate: plate, next: next };
+}
+// The ordered rows for the "Change the plate" picker (2026-11-23): every open,
+// non-paused, non-done research project (areas excluded), projects WITH a named
+// next move first, then alphabetical by title. Each row carries the project's next
+// move (the task object, or null) so the view can show it muted. Pure.
+function plateChoices(projects, items, today) {
+  var rows = (projects || []).filter(function (p) {
+    return p && p.status !== 'done' && p.status !== 'paused' && p.kind !== 'area';
+  }).map(function (p) {
+    return { id: p.id, title: (p.title || 'Project'), move: projectNextMove(items, p.id, today) };
+  });
+  rows.sort(function (a, b) {
+    var am = a.move ? 0 : 1, bm = b.move ? 0 : 1;
+    if (am !== bm) return am - bm;
+    return String(a.title).toLowerCase().localeCompare(String(b.title).toLowerCase());
+  });
+  return rows;
+}
+// Local weekday (0=Sun..6=Sat) of a 'YYYY-MM-DD' string, built from LOCAL parts
+// (never toISOString); -1 on junk.
+function _plateWday(iso) {
+  var p = String(iso || '').split('-');
+  if (p.length !== 3) return -1;
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return isNaN(d.getTime()) ? -1 : d.getDay();
+}
+var PLATE_SHORT_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// "For how long" choices (2026-11-23): "Just today" (default, Enter) + one per
+// remaining WEEKDAY of THIS week after today, labeled by day name ("Through Wed").
+// None on a Friday or on a weekend (nothing weekday-remaining this week).
+function plateUntilChoices(today) {
+  var out = [{ until: today, label: 'Just today', today: true }];
+  var wd = _plateWday(today);
+  if (wd >= 1 && wd <= 5) {                       // Mon..Fri
+    for (var n = 1; n <= (5 - wd); n++) {         // up to this week's Friday
+      var iso = addDaysISO(today, n);
+      if (!iso) break;
+      out.push({ until: iso, label: 'Through ' + PLATE_SHORT_DOW[_plateWday(iso)] });
+    }
+  }
+  return out;
+}
+// The "On the plate through Wed" day label: the furthest future date in the plan
+// whose given slot is this pid; '' when the plan does not cover a later day. Pure.
+function plateThroughLabel(plan, pid, slot, today) {
+  if (!plan || !pid) return '';
+  slot = (slot === 'next') ? 'next' : 'plate';
+  var best = '';
+  Object.keys(plan).forEach(function (d) {
+    var e = plan[d];
+    if (!e || e[slot] !== pid) return;
+    if (d > today && (!best || d > best)) best = d;
+  });
+  var w = best ? _plateWday(best) : -1;
+  return w < 0 ? '' : PLATE_SHORT_DOW[w];
+}
+// The result-toast line for a plate/next write (2026-11-23). "NARS survey analysis
+// is today's plate." / "... through Wed." Pure (today = 'YYYY-MM-DD').
+function plateResultLine(title, slot, until, today) {
+  var base = (slot === 'next') ? ' is up next' : ' is today’s plate';
+  var tail = '';
+  if (until && until > today) {
+    var w = _plateWday(until);
+    if (w >= 0) tail = ' through ' + PLATE_SHORT_DOW[w];
+  }
+  return String(title || 'Project') + base + tail + '.';
 }
 
 // A "reply" item: answered by sending a message. Email reply-needed tasks (tier
@@ -2357,6 +2447,13 @@ function newNotPlaced(notPlaced) {
   });
   return { mine: mine, rest: rest };
 }
+// The "New, pick an area" group newest-first (fewest days waiting first). A months-old
+// item with no area still shows here (nothing disappears silently — the group holds any
+// non-email unplaced task John added), but ordering + the shown age make an old one
+// obviously not "just added". Pure.
+function newTasksOrder(items) {
+  return (items || []).slice().sort(function (a, b) { return (a.days_waiting || 0) - (b.days_waiting || 0); });
+}
 // Split a ranked reply list into the head shown by default + the hidden remainder,
 // for the "Show all N replies" control. n = head size. Pure.
 function replySplit(rows, n, expanded) {
@@ -2512,10 +2609,10 @@ function lifeSortQueue(items, today) {
 }
 // "added today" / "added 3 days ago" / "added 2 months ago" — a calm age for the
 // clean-out, from LOCAL date parts (never toISOString). Pure.
-function lifeAge(created, today) {
-  var c = _lifeParse(created), t = _lifeParse(today);
-  if (!c || !t) return 'added recently';
-  var days = Math.round((t.getTime() - c.getTime()) / 86400000);
+// Calm relative wording from a whole-day count (the board's `days_waiting` is already
+// such a count, so the Work "New, pick an area" group reuses this directly). Pure.
+function agePhrase(days) {
+  if (days == null || isNaN(days)) return 'added recently';
   if (days <= 0) return 'added today';
   if (days === 1) return 'added yesterday';
   if (days < 30) return 'added ' + days + ' days ago';
@@ -2523,6 +2620,11 @@ function lifeAge(created, today) {
   if (months < 12) return 'added ' + months + ' month' + (months === 1 ? '' : 's') + ' ago';
   var years = Math.round(days / 365);
   return 'added ' + years + ' year' + (years === 1 ? '' : 's') + ' ago';
+}
+function lifeAge(created, today) {
+  var c = _lifeParse(created), t = _lifeParse(today);
+  if (!c || !t) return 'added recently';
+  return agePhrase(Math.round((t.getTime() - c.getTime()) / 86400000));
 }
 // Adding a Life item: capture (domain life) then, per the "when", schedule a weekend
 // Saturday / a date (/api/schedule calendar:false — never a calendar event), or move
@@ -3609,16 +3711,19 @@ function researchMealHtml() {
   // Today's plate (one project, big accent card) + the next-up card.
   var all = lensProjects();
   var plateId = (state.today && state.today.plate_project_id) || '';
-  var pick = platePick(all, plan, today, plateId);
+  var nextId = (state.today && state.today.next_project_id) || '';
+  var pick = platePick(all, plan, today, plateId, nextId);
   if (!pick.plate) {
     h += '<div class="t2-plate-empty">No project on today’s plate yet. ' +
-      '<a href="#projects">Pick one in Projects</a> to start the meal.</div>';
+      '<button class="t2-btn ghost" data-pact="platechoose" data-slot="plate">Choose a project</button></div>';
   } else {
     h += '<div class="t2-meal">';
     h += plateCardHtml(pick.plate, today, true);
     if (pick.next) h += plateCardHtml(pick.next, today, false);
     h += '</div>';
   }
+  // The "Change" picker / "for how long" step (opens below the meal).
+  h += plateChooserHtml(today);
   // Week row (Mon..Fri) from the research-block log.
   h += weekRowHtml(today);
   // Ideas: not yet projects.
@@ -3643,6 +3748,11 @@ function plateCardHtml(p, today, main) {
   var mins = researchMinutesFor(p.id);
   var chip = mins > 0 ? '<span class="t2-chip">' + escapeHtml(fmtHM(mins)) + ' this week</span>' : '';
   h += '<h3 class="t2-card-h">' + escapeHtml(p.title || 'Project') + chip + '</h3>';
+  // "On the plate through Wed" — a quiet line only when the plan covers later days.
+  if (main) {
+    var through = plateThroughLabel((state.today && state.today.plate_plan) || null, p.id, 'plate', today);
+    if (through) h += '<div class="t2-through">On the plate through ' + escapeHtml(through) + '.</div>';
+  }
   // Runway: the nearest (else latest) outcome + a progress bar.
   var outs = outcomesFor(p.id);
   var rep = outs.length ? _repOutcome(outs, today) : null;
@@ -3677,13 +3787,62 @@ function plateCardHtml(p, today, main) {
     if (sug) h += '<div class="t2-kv"><span class="t2-k">One way in</span><span>' + escapeHtml(sug.replace(/^One way in:\s*/, '')) + '</span></div>';
     // Block timer (existing), bound to the plate project.
     h += blockAreaHtml(p, nm);
+    // Change today's plate (opens the picker).
+    h += '<button class="t2-btn ghost t2-change" data-pact="platechoose" data-slot="plate">Change</button>';
   } else {
     var blk2 = (p.blocker || '').trim();
     if (blk2) h += '<div class="t2-kv"><span class="t2-k">In the way</span><span>' + escapeHtml(blk2) + '</span></div>';
     var nm2 = projectNextMove(state.items, p.id, today);
     if (nm2) h += '<div class="t2-kv"><span class="t2-k">Next move</span><span class="t2-move">' + escapeHtml(displayText(normTaskRow(nm2, null, today))) + '</span></div>';
+    h += '<div class="t2-next-acts">';
     h += '<button class="t2-btn ghost" data-pact="plateset" data-pid="' + escapeHtml(p.id) + '">Make this today’s plate</button>';
+    h += '<button class="t2-btn ghost" data-pact="platechoose" data-slot="next">Change</button>';
+    h += '</div>';
   }
+  h += '</div>';
+  return h;
+}
+// The "Change the plate" picker (2026-11-23). Two steps: pick a project, then
+// choose "for how long". Driven by state.plateChoose = {slot} and, after a pick,
+// state.plateUntil = {slot, pid}. Renders below the meal; '' when neither is open.
+function plateChooserHtml(today) {
+  if (state.plateUntil) return plateUntilHtml(today);
+  if (!state.plateChoose) return '';
+  var slot = (state.plateChoose.slot === 'next') ? 'next' : 'plate';
+  var rows = plateChoices(lensProjects(), state.items, today);
+  var h = '<div class="t2-chooser" role="group" aria-label="Choose a project">';
+  h += '<div class="t2-chooser-head">' + (slot === 'next' ? 'Pin the second project' : 'Choose today’s plate') + '</div>';
+  if (!rows.length) {
+    h += '<div class="t2-chooser-empty">No open research project to choose.</div>';
+  } else {
+    rows.forEach(function (r) {
+      var moveTxt = r.move ? displayText(normTaskRow(r.move, null, today)) : 'no next move named yet';
+      h += '<button class="t2-choice" data-pact="platepick" data-slot="' + escapeHtml(slot) + '" data-pid="' + escapeHtml(r.id) + '">' +
+        '<span class="t2-choice-title">' + escapeHtml(r.title) + '</span>' +
+        '<span class="t2-choice-move">' + escapeHtml(moveTxt) + '</span></button>';
+    });
+  }
+  h += '<button class="t2-btn ghost t2-choice-cancel" data-pact="platecancel">Cancel</button>';
+  h += '</div>';
+  return h;
+}
+// The "for how long" step: Just today (default/Enter) + a button per remaining
+// weekday of this week.
+function plateUntilHtml(today) {
+  var pu = state.plateUntil;
+  if (!pu) return '';
+  var proj = projectById(pu.pid);
+  var slot = (pu.slot === 'next') ? 'next' : 'plate';
+  var h = '<div class="t2-chooser" role="group" aria-label="For how long">';
+  h += '<div class="t2-chooser-head">' + escapeHtml((proj && proj.title) || 'Project') +
+    (slot === 'next' ? ' — up next for how long?' : ' — on the plate for how long?') + '</div>';
+  h += '<div class="t2-until-row">';
+  plateUntilChoices(today).forEach(function (c) {
+    h += '<button class="t2-btn' + (c.today ? '' : ' ghost') + '" data-pact="plateuntil" data-until="' +
+      escapeHtml(c.until) + '">' + escapeHtml(c.label) + '</button>';
+  });
+  h += '</div>';
+  h += '<button class="t2-btn ghost t2-choice-cancel" data-pact="platecancel">Cancel</button>';
   h += '</div>';
   return h;
 }
@@ -5216,12 +5375,26 @@ function todayReorder(id, dir) {
 }
 
 // ── Today rebuild (2026-11-19) writes ──
-// Set today's research plate project (the big accent card). Preserves items.
-function setPlate(pid) {
-  api('/api/today/plate', { method: 'POST', body: { project_id: pid } }).then(function (res) {
-    if (res && res.ok && res.data) state.today = res.data;
+// Pin today's research plate (slot 'plate', the big accent card) or the second
+// project (slot 'next'). `until` ('YYYY-MM-DD', optional) spans the plan through a
+// later weekday. Shows a result toast, or the shared failure line on failure
+// (2026-11-23). Preserves items + the rest of the plan server-side.
+function setPlate(pid, until, slot) {
+  slot = (slot === 'next') ? 'next' : 'plate';
+  var proj = projectById(pid);
+  var title = (proj && proj.title) || 'Project';
+  var body = { project_id: pid, slot: slot };
+  if (until) body.until = until;
+  api('/api/today/plate', { method: 'POST', body: body }).then(function (res) {
+    if (res && res.ok && res.data) {
+      state.today = res.data;
+      showToast(plateResultLine(title, slot, until, todayISO()), null);
+    } else {
+      showToast(AREA_SAVE_FAIL, null);
+    }
+    state.plateChoose = null; state.plateUntil = null;
     render();
-  }).catch(function () { render(); });
+  }).catch(function () { showToast(AREA_SAVE_FAIL, null); render(); });
 }
 // Star "the one thing today" (toggle: starring the stored one clears it → default).
 function setOneThing(id, kind) {
@@ -6573,6 +6746,12 @@ function handlePageAction(act, el) {
   if (act === 'pdnmadd') { pdNmAdd(el.getAttribute('data-pid')); return true; }
   // ── Today rebuild (2026-11-19) actions ──
   if (act === 'plateset') { setPlate(el.getAttribute('data-pid')); return true; }
+  // "Change the plate" picker (2026-11-23): open the list, pick a project, choose
+  // for how long, or cancel.
+  if (act === 'platechoose') { state.plateChoose = { slot: el.getAttribute('data-slot') || 'plate' }; state.plateUntil = null; render(); return true; }
+  if (act === 'platepick') { state.plateUntil = { slot: el.getAttribute('data-slot') || 'plate', pid: el.getAttribute('data-pid') }; state.plateChoose = null; render(); return true; }
+  if (act === 'plateuntil') { if (state.plateUntil) setPlate(state.plateUntil.pid, el.getAttribute('data-until'), state.plateUntil.slot); return true; }
+  if (act === 'platecancel') { state.plateChoose = null; state.plateUntil = null; render(); return true; }
   if (act === 'onething') { setOneThing(el.getAttribute('data-id'), el.getAttribute('data-kind')); return true; }
   if (act === 'workmore') { var wc = el.getAttribute('data-col'); state.workExpanded[wc] = !state.workExpanded[wc]; render(); return true; }
   if (act === 'esortarea') { esortSetArea(el.getAttribute('data-id'), el.getAttribute('data-area')); return true; }
@@ -6884,11 +7063,26 @@ function detailHtml(r, opt) {
     '<button data-act="move" data-list="someday">Someday</button>' +
     '<button data-act="move" data-list="waiting">Waiting</button>' +
     '<button class="danger" data-act="del">Delete</button></div>';
-  if (opt.task) {
-    h += '<div class="acts"><span class="lane-lbl">Lane:</span>' +
-      LANES.map(function (l) {
-        return '<button class="lanepill' + (r.lane === l ? ' on ' + l : '') + '" data-act="lane" data-lane="' + l + '">' + escapeHtml(LANE_LABEL[l]) + '</button>';
+  // The per-item picker on the (retiring) Tasks view is the WORK AREAS, not the old
+  // lanes (2026-11-22, John: the four lane buttons — one of them "Admin", which is NOT
+  // the Admin area — misled; AUDIT-2026-11.md). Lanes stay in the data + the memo
+  // ranking + this page's lane GROUPING; only the per-item lane picker is gone. A life
+  // item has no area, so it gets no area buttons here.
+  if (opt.task && !isLifeItem(r)) {
+    h += '<div class="acts"><span class="mv-lbl">Area:</span>' +
+      AREA_PLACE_KEYS.map(function (p) {
+        return '<button class="lanepill' + ((r.area || '') === p.area ? ' on' : '') + '" data-act="taskarea" data-area="' + p.area + '">' + escapeHtml(p.label) + '</button>';
       }).join('') + '</div>';
+    // Once an area with FIXED rows (teaching / research) is set, show the row select
+    // inline (same allowedRows source the Work card uses), so the right course/project
+    // can be chosen here too.
+    if (r.area === 'teaching' || r.area === 'research') {
+      h += '<div class="acts"><span class="mv-lbl">Row:</span>' +
+        '<select class="trow-sel" aria-label="Row">' + allowedRows(r.area).map(function (rw) {
+          return '<option value="' + escapeHtml(rw) + '"' + ((r.row || '') === rw ? ' selected' : '') + '>' + escapeHtml(rw) + '</option>';
+        }).join('') + '</select>' +
+        '<button data-act="taskrowsave">Save row</button></div>';
+    }
   }
   // "Reword" (2026-11-22) — on a Today REPLY row, turn the email into a task with
   // John's own words (Reply → Do, can take a day, still opens the email). Dual-mode.
@@ -7007,9 +7201,21 @@ function readRememberedAreaTab() {
 function rememberAreaTab(key) {
   try { if (key) localStorage.setItem('triage-work-area', key); else localStorage.removeItem('triage-work-area'); } catch (e) {}
 }
-// Teaching rows are a FIXED set (config.CLASS_COURSES); take their order from the
-// (LOCAL) class-notes course registry, primed on boot. [] → the board's own order.
-function teachingRowOrder() { return (((state.classNotes && state.classNotes.courses) || []).map(function (c) { return c.key; })); }
+// Teaching rows are a FIXED set (config.CLASS_COURSES course KEYS). Source order,
+// most authoritative first: the board's own `courses` list (always present, hosted
+// too), then the LOCAL class-notes course registry (primed on boot, never hosted),
+// then the distinct non-General teaching rows already on the board. The board source
+// is why the picker is right even when class notes have not loaded (the bug John hit
+// 2026-11-23: an honors item could only be filed "General" because this read ONLY the
+// class-notes registry). [] → the board's own row order.
+function teachingRowOrder() {
+  var board = state.areaBoard || {};
+  if (Array.isArray(board.courses) && board.courses.length) return board.courses.slice();
+  var cn = ((state.classNotes && state.classNotes.courses) || []).map(function (c) { return c.key; }).filter(Boolean);
+  if (cn.length) return cn;
+  var tarea = ((board.areas) || []).filter(function (a) { return a.area === 'teaching'; })[0];
+  return ((tarea && tarea.rows) || []).map(function (r) { return r.row; }).filter(function (r) { return r && r !== 'General'; });
+}
 function recordById(id) {
   var t = (state.items || []).filter(function (x) { return x.id === id; })[0];
   if (t) return { rec: t, store: 'task' };
@@ -7044,12 +7250,22 @@ function workHtml() {
 // Email items are excluded (they belong to the Today sort box). Each row keeps the
 // area-letter buttons (npplace) + a "Give it a day" control (2026-11-22).
 function newTasksHtml(board) {
-  var mine = newNotPlaced((board && board.not_placed) || []).mine.filter(function (it) { return !optimistic[it.id]; });
+  var mine = newTasksOrder(newNotPlaced((board && board.not_placed) || []).mine.filter(function (it) { return !optimistic[it.id]; }));
   if (!mine.length) return '';
   var h = '<section class="anp anew"><div class="anp-head anew-head">New, pick an area <span>' + mine.length + '</span></div>';
-  h += '<p class="anp-hint">You added these. File each one: <b>t</b> teaching &middot; <b>a</b> advising &middot; <b>f</b> referee &middot; <b>s</b> admin &middot; <b>c</b> research. Or give it a day.</p>';
-  mine.forEach(function (it) { h += npRowHtml(it) + newTaskDayHtml(it); });
+  h += '<p class="anp-hint">You added these. File each one: <b>t</b> teaching &middot; <b>a</b> advising &middot; <b>f</b> referee &middot; <b>s</b> admin &middot; <b>c</b> research. Or give it a day. Done or Delete when it no longer belongs here.</p>';
+  mine.forEach(function (it) { h += npRowHtml(it) + newTaskDayHtml(it) + newTaskManageHtml(it); });
   return h + '</section>';
+}
+// Age + Done + Delete for a "New, pick an area" row (2026-11-23, John: these had no way
+// to be removed, and a months-old item showed up with no sign of its age). Done/Delete
+// reuse the Work card paths (areaDone / areaDelete: toast + 5s Undo, optimistic hide,
+// the shared failure line + un-hide on failure). The age ("added N ago") is muted.
+function newTaskManageHtml(it) {
+  var store = (recordById(it.id) || {}).store || 'task';
+  return '<div class="anp-manage"><span class="anp-age">' + escapeHtml(agePhrase(it.days_waiting)) + '</span>' +
+    '<button data-pact="acarddone" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Done</button>' +
+    '<button class="danger" data-pact="acarddel" data-id="' + escapeHtml(it.id) + '" data-store="' + escapeHtml(store) + '">Delete</button></div>';
 }
 function newTaskDayHtml(it) {
   var open = state.newDayOpen === it.id;
@@ -7363,6 +7579,16 @@ function saveAreaRow(id) {
   var f = recordById(id); state.areaMoveOpen = null;
   if (!f) { render(); return; }
   (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { row: v })).then(function () { ensureAreaBoard(true); fetchAll(); }).catch(function () { areaSaveFailed(id); });
+}
+// Save the teaching/research row chosen inline on the (retiring) Tasks view detail.
+// Reuses the area edit endpoint (marks row set by John); a visible toast + the shared
+// "That did not save. Try again." failure line, like the Work card.
+function saveTaskRow(id, row) {
+  var f = recordById(id);
+  if (!f) { render(); return; }
+  (function (c) { return api(c.path, { method: 'POST', body: c.body }); })(areaEditCall(f, id, { row: (row || '').trim() }))
+    .then(function () { showToast('Row saved', null); if (state.areaBoardLoaded) ensureAreaBoard(true); fetchAll(); })
+    .catch(function () { areaSaveFailed(id); });
 }
 // Changing a card's area moves it to another area's section, which can scroll off
 // screen, so confirm the move with a quiet toast (and the shared failure line).
@@ -7965,6 +8191,8 @@ document.addEventListener('click', function (e) {
     if (a === 'sched') scheduleDay(id, act.getAttribute('data-day'));
     else if (a === 'move') moveList(id, act.getAttribute('data-list'));
     else if (a === 'lane') setLane(id, act.getAttribute('data-lane'));
+    else if (a === 'taskarea') changeCardArea(id, act.getAttribute('data-area'));
+    else if (a === 'taskrowsave') { var trs = row.querySelector('.trow-sel'); saveTaskRow(id, trs ? trs.value : ''); }
     else if (a === 'del') deleteRow(id, 'task');
     else if (a === 'del-deadline') deleteRow(id, 'deadline');
     else if (a === 'confirm') confirmProposal(id);
@@ -7983,6 +8211,17 @@ document.addEventListener('click', function (e) {
 document.addEventListener('keydown', function (e) {
   // Escape closes the Areas overflow (⋯) menu first.
   if (e.key === 'Escape' && state.openProjectMenu) { e.preventDefault(); state.openProjectMenu = null; render(); return; }
+  // Escape closes the "Change the plate" picker; Enter (not while typing) takes the
+  // "Just today" default on the "for how long" step.
+  if (e.key === 'Escape' && (state.plateChoose || state.plateUntil)) { e.preventDefault(); state.plateChoose = null; state.plateUntil = null; render(); return; }
+  if (e.key === 'Enter' && state.plateUntil && state.view === 'home') {
+    var aeP = document.activeElement;
+    // Only take the "Just today" default when focus is NOT on a choice button
+    // (a focused button's own Enter → native click handles its data-until).
+    if (!aeP || (aeP.tagName !== 'INPUT' && aeP.tagName !== 'TEXTAREA' && aeP.tagName !== 'BUTTON' && !aeP.isContentEditable)) {
+      e.preventDefault(); setPlate(state.plateUntil.pid, todayISO(), state.plateUntil.slot); return;
+    }
+  }
   // Escape closes the Today sort box's Schedule form (Cancel).
   if (e.key === 'Escape' && state.emailScheduleOpen) { e.preventDefault(); esortScheduleCancel(); return; }
   // Escape closes the Work view board card's Schedule form (Cancel).

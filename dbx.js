@@ -291,6 +291,57 @@
     const p = x => String(x).padStart(2, '0');
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
+  // ── Plate plan (2026-11-23) — mirror server._prune_plate_plan / _plate_plan_days ──
+  // Keep only today-or-future entries (ISO dates sort lexically), normalized.
+  function prunePlatePlan(plan, todayYmd) {
+    const out = {};
+    if (!plan || typeof plan !== 'object') return out;
+    for (const k of Object.keys(plan)) {
+      const v = plan[k];
+      if (typeof k !== 'string' || k < todayYmd || !v || typeof v !== 'object') continue;
+      out[k] = { plate: v.plate || null, next: v.next || null, set_at: v.set_at || null };
+    }
+    return out;
+  }
+  // Weekday ISO dates from today through `until` (inclusive, cap 7 days). Sat/Sun
+  // skipped unless it is today itself. Blank/invalid/past until → just today.
+  function platePlanDays(todayYmd, untilYmd) {
+    const parts = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ''); return m ? [+m[1], +m[2], +m[3]] : null; };
+    const tp = parts(todayYmd); if (!tp) return [];
+    const base = new Date(tp[0], tp[1] - 1, tp[2]);
+    let span = ymdDelta(untilYmd, todayYmd);               // whole days until → today
+    if (span == null || span < 0) span = 0;
+    if (span > 6) span = 6;                                 // cap at 7 days inclusive
+    const out = [];
+    for (let n = 0; n <= span; n++) {
+      const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + n);
+      const wd = d.getDay();
+      if ((wd >= 1 && wd <= 5) || n === 0) {               // Mon-Fri, or today itself
+        const p = x => String(x).padStart(2, '0');
+        out.push(d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()));
+      }
+    }
+    return out;
+  }
+  // The resolved GET /api/today object (mirror server._read_today): the portion is
+  // same-day only; plate_plan rides through the rollover; plate/next resolve from it.
+  async function readToday() {
+    const todayY = todayLocal();
+    const empty = { date: null, items: [], set_at: null, plate_project_id: null, next_project_id: null, one_thing: null, plate_plan: {} };
+    const t = await readJson('today.json', null);
+    if (!t || typeof t !== 'object') return empty;
+    const plan = prunePlatePlan(t.plate_plan, todayY);
+    const todayPlan = plan[todayY] || {};
+    if (t.date !== todayY) {
+      return { date: null, items: [], set_at: null,
+        plate_project_id: todayPlan.plate || null, next_project_id: todayPlan.next || null,
+        one_thing: null, plate_plan: plan };
+    }
+    const ot = (t.one_thing && typeof t.one_thing === 'object' && t.one_thing.id) ? t.one_thing : null;
+    return { date: t.date, items: Array.isArray(t.items) ? t.items : [], set_at: t.set_at || null,
+      plate_project_id: (t.plate_project_id || null) || (todayPlan.plate || null),
+      next_project_id: todayPlan.next || null, one_thing: ot, plate_plan: plan };
+  }
   // ── Research blocks (FSP, 2026-11) — mirror server.py's /api/research-week ──
   // ISO year+week for a local 'YYYY-MM-DD' (standard nearest-Thursday algorithm).
   function isoWeekOfYMD(ymd) {
@@ -765,7 +816,11 @@
       outAreas.push({ area: a.key, name: a.name, count: total, kept_count: keptTotal, rows: rows });
     });
     notPlaced.sort(function (x, y) { var dw = (y.days_waiting || 0) - (x.days_waiting || 0); if (dw) return dw; var tx = x.title.toLowerCase(), ty = y.title.toLowerCase(); return tx < ty ? -1 : tx > ty ? 1 : 0; });
-    return { areas: outAreas, not_placed: notPlaced };
+    // The configured teaching-course KEYS (config order) — mirrors areas.build_board's
+    // top-level `courses` (teaching_rows minus "General") so the hosted row pickers do
+    // not depend on the LOCAL course registry (never served hosted). Course codes, not student data.
+    var courses = AREA_CLASS_COURSES.map(function (c) { return (c.key || '').trim(); }).filter(Boolean);
+    return { areas: outAreas, not_placed: notPlaced, courses: courses };
   }
 
   // ── route table ─────────────────────────────────────────────────
@@ -852,14 +907,11 @@
       return resp({ ...shell, ...p });
     }
     // today.json — the day's negotiated portion. Stale (date != today local) or
-    // absent → an empty shell (a new day starts empty), mirroring _read_today.
+    // absent → an empty PORTION (a new day starts empty), mirroring _read_today. The
+    // forward-looking plate_plan (2026-11-23) is date-independent: it rides through
+    // the rollover and today's plate/next resolve from it when the record has none.
     if (path === '/api/today' && method === 'GET') {
-      const empty = { date: null, items: [], set_at: null, plate_project_id: null, one_thing: null };
-      const t = await readJson('today.json', null);
-      if (!t || typeof t !== 'object' || t.date !== todayLocal()) return resp(empty);
-      const ot = (t.one_thing && typeof t.one_thing === 'object' && t.one_thing.id) ? t.one_thing : null;
-      return resp({ date: t.date, items: Array.isArray(t.items) ? t.items : [], set_at: t.set_at || null,
-        plate_project_id: t.plate_project_id || null, one_thing: ot });
+      return resp(await readToday());
     }
     // briefings/*.md — the EA's "Ask EA" return channel, newest first, ≤20. A
     // Dropbox folder listing per load is acceptable here (small, one section).
@@ -1830,36 +1882,65 @@
       clean.sort((a, b) => a.order - b.order);
       clean.forEach((it, n) => { it.order = n; });
       // Preserve the per-day choices (plate / one thing); a bare set only sends items.
+      // The forward plate_plan (date-independent) always rides through.
+      const todayY = todayLocal();
       const prev = await readJson('today.json', null);
-      const keep = (prev && typeof prev === 'object' && prev.date === date) ? prev : {};
+      const same = (prev && typeof prev === 'object' && date === todayY);
+      const keep = same ? prev : {};
       const rec = { date, items: clean, set_at: nowIso(),
         plate_project_id: keep.plate_project_id || null,
-        one_thing: (keep.one_thing && keep.one_thing.id) ? keep.one_thing : null };
+        one_thing: (keep.one_thing && keep.one_thing.id) ? keep.one_thing : null,
+        plate_plan: prunePlatePlan(prev && prev.plate_plan, todayY) };
       await upload('today.json', JSON.stringify(rec), 'overwrite');
-      return resp(rec);
+      return resp(await readToday());
     }
     if (path === '/api/today/remove') {
       const iid = (body.id != null && body.id !== '') ? String(body.id).trim() : '';
       if (!iid) return resp({ error: 'id is required' }, 400);
       const cur = await readJson('today.json', null);
-      if (!cur || typeof cur !== 'object' || cur.date !== todayLocal()) return resp({ date: null, items: [], set_at: null, plate_project_id: null, one_thing: null });
+      const todayY = todayLocal();
+      if (!cur || typeof cur !== 'object' || cur.date !== todayY) return resp(await readToday());
       const items = (Array.isArray(cur.items) ? cur.items : []).filter(x => String(x.id) !== iid);
       items.forEach((it, n) => { it.order = n; });
       const rec = { date: cur.date, items, set_at: nowIso(),
         plate_project_id: cur.plate_project_id || null,
-        one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null };
+        one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null,
+        plate_plan: prunePlatePlan(cur.plate_plan, todayY) };
       await upload('today.json', JSON.stringify(rec), 'overwrite');
-      return resp(rec);
+      return resp(await readToday());
     }
-    // Per-day choices (2026-11-19, the Today rebuild). Both read-modify-write the
-    // today record preserving items; "" / no id clears back to the computed default.
+    // Per-day choices (2026-11-19, the Today rebuild). one-thing read-modify-writes
+    // the today record preserving items; "" / no id clears back to the default.
+    // The plate route (2026-11-23) also accepts {until, slot} and writes a WEEKDAY
+    // plan (slot "plate"|"next") that survives the day rollover; project_id="" clears
+    // that slot for today only. Mirror server._handle_today_plate / _one_thing.
     if (path === '/api/today/plate' || path === '/api/today/one-thing') {
+      const todayY = todayLocal();
       const cur = await readJson('today.json', null);
-      const base = (cur && typeof cur === 'object' && cur.date === todayLocal())
-        ? { date: cur.date, items: Array.isArray(cur.items) ? cur.items : [], plate_project_id: cur.plate_project_id || null, one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null }
-        : { date: todayLocal(), items: [], plate_project_id: null, one_thing: null };
+      const plan = prunePlatePlan(cur && cur.plate_plan, todayY);
+      const base = (cur && typeof cur === 'object' && cur.date === todayY)
+        ? { date: cur.date, items: Array.isArray(cur.items) ? cur.items : [], plate_project_id: cur.plate_project_id || null, one_thing: (cur.one_thing && cur.one_thing.id) ? cur.one_thing : null, plate_plan: plan }
+        : { date: todayY, items: [], plate_project_id: (plan[todayY] || {}).plate || null, one_thing: null, plate_plan: plan };
       if (path === '/api/today/plate') {
-        base.plate_project_id = (body.project_id || '').trim() || null;
+        const pid = (body.project_id || '').trim() || null;
+        let slot = (body.slot || 'plate').trim().toLowerCase();
+        if (slot !== 'plate' && slot !== 'next') slot = 'plate';
+        if (pid === null) {
+          const entry = plan[todayY] || {};
+          const other = slot === 'plate' ? 'next' : 'plate';
+          const keep = entry[other] || null;
+          if (keep) plan[todayY] = { plate: other === 'plate' ? keep : null, next: other === 'next' ? keep : null, set_at: nowIso() };
+          else delete plan[todayY];
+          if (slot === 'plate') base.plate_project_id = null;
+        } else {
+          for (const diso of platePlanDays(todayY, (body.until || '').trim())) {
+            const entry = plan[diso] || {};
+            entry[slot] = pid;
+            plan[diso] = { plate: entry.plate || null, next: entry.next || null, set_at: nowIso() };
+          }
+          if (slot === 'plate') base.plate_project_id = pid;
+        }
+        base.plate_plan = plan;
       } else {
         const iid = (body.id != null && body.id !== '') ? String(body.id).trim() : '';
         let kind = (body.kind || 'task').trim().toLowerCase();
@@ -1868,7 +1949,7 @@
       }
       base.set_at = nowIso();
       await upload('today.json', JSON.stringify(base), 'overwrite');
-      return resp(base);
+      return resp(await readToday());
     }
 
     // — draft outbox (A2: CAS append; only the Mac agent marks entries) —
