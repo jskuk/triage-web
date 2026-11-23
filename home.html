@@ -693,6 +693,35 @@
   .esch-cancel { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; min-height: 38px; }
   .esort-ok { font-size: 13px; color: var(--text); border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .esch-undo { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 12px; border: 1px solid var(--t-accent); background: var(--page); color: var(--t-accent); cursor: pointer; }
+  /* "Reword" / "Make it a task" inline form (2026-11-22) + "From email" origin line */
+  .esort-reword { font: inherit; font-size: 12px; padding: 2px 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--text-2); cursor: pointer; margin-left: 6px; }
+  .esort-reword kbd { font: inherit; font-size: 11px; background: var(--gray-bg); border-radius: 4px; padding: 0 4px; margin-right: 4px; }
+  .from-email { font-size: 12px; color: var(--text-3); }
+  .mtf { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 10px; margin-top: 4px; }
+  .mtf label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+  .mtf-wide { flex: 1 1 100%; }
+  .mtf input { font: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 40px; }
+  .mtf-day { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; flex: 1 1 100%; }
+  .mtf-chip, .achipbtn { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; min-height: 40px; }
+  .mtf-chip.on, .achipbtn.on { border-color: var(--t-accent); background: var(--t-soft); color: var(--t-accent); }
+  .mtf-acts { display: flex; gap: 8px; flex: 1 1 100%; }
+  .mtf-save { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--t-accent); background: var(--t-accent); color: #fff; cursor: pointer; min-height: 40px; }
+  .mtf-cancel { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--page); color: var(--text); cursor: pointer; min-height: 40px; }
+  /* "Add something to do" line (Today, bottom of Do) */
+  .addt { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 10px; }
+  .addt-row { display: flex; gap: 8px; }
+  .addt-in { flex: 1 1 auto; font: inherit; font-size: 14px; color: var(--text); background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-height: 40px; }
+  .addt-save { font: inherit; font-weight: 600; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--t-accent); background: var(--t-accent); color: #fff; cursor: pointer; min-height: 40px; }
+  .addt-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .addt-proj { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); font-weight: 600; }
+  .addt-proj label { display: flex; flex-direction: column; gap: 3px; }
+  .addt-proj select { font: inherit; font-size: 14px; text-transform: none; letter-spacing: 0; color: var(--text); background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; min-height: 40px; }
+  .addt-proj.quiet { color: var(--text-3); }
+  /* Work view "New, pick an area" top group + the per-row day control */
+  .anew { margin-bottom: 16px; }
+  .anew-head { margin-bottom: 4px; }
+  .anp-day { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -3px 0 7px; }
+  .anp-day > button { font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 12px; border: 1px solid var(--line); background: var(--page); color: var(--text-2); cursor: pointer; }
   /* 3. Research whiteboard */
   .t2-boardwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--t-board); -webkit-overflow-scrolling: touch; }
   .t2-board { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
@@ -1024,6 +1053,7 @@ function normTaskRow(t, linkedDeadline, today) {
     url: t.url || '', source: t.source || '', nextStep: cleanNext(t.nextStep), memo: t.memo || '',
     list: t.list, proposed: isProposedTask(t), suggested: false, target: target,
     tier: t.tier || '', area: t.area || '', row: t.row || '', kept: t.kept || '',
+    text_by: t.text_by || '', orig_text: t.orig_text || '',
     project_id: t.project_id || null,
     est_minutes: (typeof t.est_minutes === 'number' && t.est_minutes > 0) ? t.est_minutes : null,
     dateStr: dateStr, days: dateStr ? dayDelta(dateStr, today) : null,
@@ -1791,6 +1821,10 @@ function platePick(projects, plan, today, plateId) {
 function isReplyRow(r) {
   if (!r || r.kind !== 'task') return false;
   if (r.tier === 'reply_needed') return true;
+  // A John-worded title (he reworded the email through "Make it a task") is judged
+  // on TIER ALONE — a leftover "Reply…" wording must never drag it back to Reply
+  // (2026-11-22). So an item he confirmed as a task lands in Do, not Reply.
+  if (r.text_by === 'john') return false;
   return /^reply\b/i.test(String(r.text || '').trim());
 }
 // "Presses today" for the Do column: due today or overdue, OR someone is waiting,
@@ -2144,6 +2178,136 @@ function cardActions(store, areaKey) {
   if (store === 'task' && areaKey === 'teaching') { a.push('keep'); }
   a.push('arearow', 'delete', 'tasks');
   return a;
+}
+
+// ── "Make it a task" / "Reword" + "Add a task" (2026-11-22, John) ──
+// An email card titled by the system ("Reply: … Re: …") is sometimes not a reply at
+// all; "Make it a task" rewords it with John's own words on the SAME record (Reply →
+// Do, can take a day, still opens the email). Pure helpers (the DOM wiring lives
+// outside the PURE block).
+//
+// The form prefill: the title minus a leading "Reply:"/"Reply to X:", then the shared
+// stripLeadPrefix (Action:/Re:/Fwd:/…). The cursor selects all so John types over it.
+function rewordPrefill(title) {
+  var t = String(title == null ? '' : title).replace(/^\s*reply\b[^:]*:\s*/i, '');
+  return stripLeadPrefix(t);
+}
+// Add N days to a 'YYYY-MM-DD' using LOCAL calendar parts (never toISOString, which
+// rolls an evening date onto tomorrow). "" for a malformed input.
+function addDaysISO(today, n) {
+  var p = String(today || '').split('-');
+  if (p.length !== 3) return '';
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+    '-' + String(d.getDate()).padStart(2, '0');
+}
+function chipTomorrow(today) { return addDaysISO(today, 1); }
+// The next Monday (strictly in the future — today-if-Monday jumps to next week), from
+// LOCAL parts. Tested with a Saturday and a Sunday fixture.
+function chipNextMonday(today) {
+  var p = String(today || '').split('-');
+  if (p.length !== 3) return '';
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  if (isNaN(d.getTime())) return '';
+  var add = ((1 - d.getDay()) + 7) % 7; if (add === 0) add = 7;
+  return addDaysISO(today, add);
+}
+// The form's rendered values — a pure projection so a re-render rebuilds the same
+// typed text/day and never loses them.
+function makeTaskFormView(id, form) {
+  var f = form || {};
+  return { id: id, text: f.text || '', day: f.day || '' };
+}
+// The call(s) a "Make it a task" / "Reword" Save makes: a /api/task/update that
+// carries the task tier (the SAME value the sort box's Task choice sets, via
+// emailSortAction('d')) unless opts.noTier (a "Reword" of an already-task, no tier
+// change) [+ the lit area for the sort box], and a day /api/schedule with
+// calendar:false when a day is set (never a calendar event). Pure.
+function makeTaskPlan(id, text, day, opts) {
+  opts = opts || {};
+  var body = { id: id, text: text };
+  if (!opts.noTier) body.tier = emailSortAction('d').tier;   // action_needed
+  if (opts.area) body.area = opts.area;
+  var plan = { update: { path: '/api/task/update', body: body } };
+  if (day) plan.schedule = { path: '/api/schedule', body: { id: id, day: day, calendar: false } };
+  return plan;
+}
+
+// ── "Add something to do" line (Today, bottom of Do; 2026-11-22, John) ──
+// A capture goes to a work AREA or to a PROJECT (John is retiring the Tasks view, so
+// NO surface here points there). Destination chips: the five work areas, then Project
+// (a select of open projects), then Life. Pure.
+function addTaskAreaChips() {
+  var out = AREA_PLACE_KEYS.map(function (p) { return { key: p.area, label: p.label }; });
+  out.push({ key: 'project', label: 'Project' });
+  out.push({ key: 'life', label: 'Life' });
+  return out;
+}
+// Open, non-paused, non-done projects (not areas), alphabetical by title — the list
+// the Project select offers. Pure.
+function addTaskProjects(projects) {
+  return (projects || []).filter(function (p) {
+    return p && p.id && p.title && p.kind !== 'area' &&
+      p.status !== 'paused' && p.status !== 'done';
+  }).slice().sort(function (a, b) {
+    var ta = String(a.title).toLowerCase(), tb = String(b.title).toLowerCase();
+    return ta < tb ? -1 : ta > tb ? 1 : 0;
+  });
+}
+// The call sequence an "Add" Save makes, as a plan the caller threads the new id
+// through. dest: '' | work-area key | 'life' | 'project'. `project` = {id,title} when
+// dest==='project'.
+//   · PROJECT → /api/capture {text, project_id, lane:"dont_drop", list:"thisweek",
+//     filed_by:"today-add"} exactly as the project next-move add; then area:"research"
+//     + the project title row (research rows ARE project titles).
+//   · work AREA → /api/capture {text, list:"inbox", domain:"work", filed_by:…}; then
+//     /api/task/update {id,text,area}.
+//   · LIFE → /api/capture {…, domain:"life"}; no area.
+//   · none → /api/capture {…, list:"inbox"}; lands in the Work view's "New, pick an
+//     area" group.
+// A day (when set) → /api/schedule {id, day, calendar:false}. No AI, no Drop route.
+function addTaskPlan(text, day, dest, project) {
+  var plan = { day: day || '', area: '', row: '' };
+  if (dest === 'project' && project && project.id) {
+    plan.capture = { path: '/api/capture', body: { text: text, project_id: project.id, lane: 'dont_drop', list: 'thisweek', filed_by: 'today-add' } };
+    plan.area = 'research'; plan.row = project.title || '';
+    return plan;
+  }
+  var cap = { path: '/api/capture', body: { text: text, list: 'inbox', filed_by: 'today-add' } };
+  if (dest === 'life') { cap.body.domain = 'life'; plan.capture = cap; return plan; }
+  if (dest && dest !== 'project') { cap.body.domain = 'work'; plan.area = dest; plan.capture = cap; return plan; }
+  plan.capture = cap;   // no destination
+  return plan;
+}
+// A truthful one-line result naming where the just-added item will show. NEVER points
+// at the Tasks view (being retired). Pure + tested. today/day='YYYY-MM-DD'|'';
+// dest as above; project={title}; labelFor turns a day into "Mon, Nov 23".
+function addTaskResultLine(day, dest, project, today, labelFor) {
+  var when = day ? (labelFor ? labelFor(day) : day) : '';
+  if (dest === 'project' && project && project.title) {
+    return day
+      ? ('Added to ' + project.title + ' as a next move. Shows here on ' + when + '.')
+      : ('Added to ' + project.title + ' as a next move.');
+  }
+  if (dest === 'life') return day ? ('Added. Shows here on ' + when + '.') : 'Added to Life, no day yet.';
+  var isWork = dest && dest !== 'project' && dest !== 'life';
+  if (isWork) {
+    var areaName = emailAreaTag(dest);
+    return day ? ('Added. In ' + areaName + ', shows here on ' + when + '.') : ('Added. In ' + areaName + ', no day yet.');
+  }
+  return day ? ('Added. Shows here on ' + when + '. Pick its area on the Work page.') : 'Added. Pick its area on the Work page.';
+}
+// Split the board's not_placed into the tasks John added himself (not email — those
+// belong to the sort box) and the rest. The "new" ones ride a TOP group on the
+// master Work view so a just-added task is never buried in the bottom fold. Pure.
+function newNotPlaced(notPlaced) {
+  var mine = [], rest = [];
+  (notPlaced || []).forEach(function (it) {
+    if (it && it.id && !isEmailItem(it)) mine.push(it); else rest.push(it);
+  });
+  return { mine: mine, rest: rest };
 }
 // Split a ranked reply list into the head shown by default + the hidden remainder,
 // for the "Show all N replies" control. n = head size. Pure.
@@ -3418,6 +3582,7 @@ function emailSortBoxHtml() {
 
   var h = '<div class="esort" id="esort" aria-live="polite">';
   h += '<div class="esort-top"><div><span class="esort-sub">' + escapeHtml(cur.title || '(no subject)') + '</span>' +
+    ' <button class="esort-reword" data-pact="mtopen" data-id="' + escapeHtml(cur.id) + '" data-mode="task" data-surface="sort" title="Reword this in your own words"><kbd>w</kbd>Reword</button>' +
     (whoLine ? '<div class="esort-who">' + escapeHtml(whoLine) + '</div>' : '') + '</div>' +
     '<span class="esort-left">' + queue.length + ' to sort</span></div>';
   if (rec === undefined) {
@@ -3445,6 +3610,7 @@ function emailSortBoxHtml() {
   h += '</div>';
   if (state.emailScheduleOpen === cur.id) h += emailScheduleFormHtml(cur);
   if (state.emailKeepOpen === cur.id) h += emailKeepPickerHtml(cur);
+  if (state.makeTaskId === cur.id && state.makeTaskSurface === 'sort') h += makeTaskFormHtml(cur.id, state.makeTaskMode, state.makeTaskForm);
   h += scheduleResultLineHtml(cur.id);
   // A plain one-line note for this item: "Pick an area first." or a failed-save retry
   // line, so a write that did not land never disappears-then-returns silently.
@@ -3774,6 +3940,184 @@ function esortScheduleUndo(id) {
   apiJson('/api/meetings/delete', { method: 'POST', body: { id: mid } })
     .then(function () { fetchAll(); }).catch(function () { fetchAll(); });
 }
+// ── "Make it a task" / "Reword" inline form (Today reply row, board card, sort box) ──
+// Shared across the three surfaces (state.makeTaskSurface = 'today'|'card'|'sort').
+// mode 'task' sets the task tier on Save (Reply → Do); mode 'reword' leaves the tier
+// alone (an already-task). The write is DEFERRED behind the 5-second undo (as the sort
+// box does); a failed save reopens the form with his text intact.
+function makeTaskFormHtml(id, mode, form) {
+  var v = makeTaskFormView(id, form);
+  var today = todayISO();
+  var h = '<div class="mtf" id="mtf" data-id="' + escapeHtml(id) + '">';
+  h += '<label class="mtf-wide">Task<input class="mt-in" data-f="text" value="' + escapeHtml(v.text) + '"></label>';
+  h += '<div class="mtf-day"><label>Day<input class="mt-in" type="date" data-f="day" value="' + escapeHtml(v.day) + '"></label>' +
+    '<button class="mtf-chip" data-pact="mtchip" data-id="' + escapeHtml(id) + '" data-day="' + chipTomorrow(today) + '">Tomorrow</button>' +
+    '<button class="mtf-chip" data-pact="mtchip" data-id="' + escapeHtml(id) + '" data-day="' + chipNextMonday(today) + '">Mon</button></div>';
+  h += '<div class="mtf-acts"><button class="mtf-save" data-pact="mtsave" data-id="' + escapeHtml(id) + '">Save</button>' +
+    '<button class="mtf-cancel" data-pact="mtcancel">Cancel</button></div>';
+  if (state.makeTaskNote && state.makeTaskNote[id]) h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(state.makeTaskNote[id]) + '</div>';
+  return h + '</div>';
+}
+function makeTaskNote(id, msg) { state.makeTaskNote = state.makeTaskNote || {}; state.makeTaskNote[id] = msg; render(); }
+function makeTaskClearNote(id) { if (state.makeTaskNote && id) delete state.makeTaskNote[id]; }
+// Open the form on a surface, prefilled from the record's title (cursor selects all).
+function makeTaskOpen(id, mode, surface) {
+  var rec = recordById(id);
+  if (!rec || rec.store !== 'task') return;        // tasks only; never a deadline
+  state.makeTaskId = id;
+  state.makeTaskMode = (mode === 'reword') ? 'reword' : 'task';
+  state.makeTaskSurface = surface || 'today';
+  state.makeTaskForm = { text: rewordPrefill(rec.rec.text || ''), day: '' };
+  makeTaskClearNote(id);
+  if (surface === 'sort') { state.emailScheduleOpen = null; state.emailKeepOpen = null; }
+  render();
+  var el = document.querySelector('.mtf[data-id="' + cssEsc(id) + '"] .mt-in[data-f="text"]');
+  if (el) { el.focus(); try { el.select(); } catch (e) {} }
+}
+function makeTaskCancel() { var id = state.makeTaskId; state.makeTaskId = null; makeTaskClearNote(id); render(); }
+function makeTaskChip(id, day) {
+  state.makeTaskForm = state.makeTaskForm || {}; state.makeTaskForm.day = day; render();
+  var el = document.querySelector('.mtf[data-id="' + cssEsc(id) + '"] .mt-in[data-f="text"]');
+  if (el) { el.focus(); try { var n = el.value.length; el.setSelectionRange(n, n); } catch (e) {} }
+}
+// Execute the make-task plan: /api/task/update then (optional) /api/schedule. Rejects
+// on any non-ok so the caller can show the retry line.
+function runMakeTaskPlan(plan) {
+  return api(plan.update.path, { method: 'POST', body: plan.update.body }).then(function (r) {
+    if (!r || !r.ok) throw new Error('update');
+    if (plan.schedule) return api(plan.schedule.path, { method: 'POST', body: plan.schedule.body })
+      .then(function (r2) { if (!r2 || !r2.ok) throw new Error('schedule'); });
+  });
+}
+function makeTaskSave(id) {
+  var f = state.makeTaskForm || {};
+  var text = (f.text || '').trim();
+  if (!text) { makeTaskNote(id, 'Add a title first.'); return; }
+  var rec = recordById(id);
+  if (!rec || rec.store !== 'task') { makeTaskNote(id, 'That did not save. Try again.'); return; }
+  var mode = state.makeTaskMode || 'task';
+  var surface = state.makeTaskSurface || 'today';
+  var day = f.day || '';
+  var opts = {};
+  if (mode === 'reword') opts.noTier = true;
+  if (surface === 'sort') {
+    var litArea = (state.emailSortArea && state.emailSortArea[id]) || esortSuggestedArea(id);
+    if (litArea) { state.emailSortArea = state.emailSortArea || {}; state.emailSortArea[id] = litArea; opts.area = litArea; }
+  }
+  var plan = makeTaskPlan(id, text, day, opts);
+  state.makeTaskId = null;
+  makeTaskClearNote(id);
+  if (surface === 'sort') { state.emailSortDone = state.emailSortDone || {}; state.emailSortDone[id] = true; optimistic[id] = true; }
+  var label = (mode === 'reword' ? 'Reworded: ' : 'Now a task: ') + text;
+  render();
+  undoable(label, function () {
+    runMakeTaskPlan(plan).then(function () {
+      if (surface === 'sort') { delete optimistic[id]; }
+      if (state.areaBoardLoaded) ensureAreaBoard(true);
+      fetchAll();
+    }).catch(function () {
+      if (surface === 'sort') { if (state.emailSortDone) delete state.emailSortDone[id]; delete optimistic[id]; }
+      state.makeTaskId = id; state.makeTaskMode = mode; state.makeTaskSurface = surface;
+      state.makeTaskForm = { text: text, day: day };
+      makeTaskNote(id, 'That did not save. Try again.');
+    });
+  }, function () {
+    if (surface === 'sort') { if (state.emailSortDone) delete state.emailSortDone[id]; delete optimistic[id]; }
+    render();
+  });
+}
+
+// ── "Add something to do" line (Today, bottom of Do; 2026-11-22, John) ──
+// A capture here goes to a work AREA or a PROJECT (or Life) — never to the retired Tasks view
+// (John is retiring it). The input + day choice share the "Make it a task" form's code.
+function addTaskDayLabel(iso) {
+  var p = String(iso || '').split('-'); if (p.length !== 3) return String(iso || '');
+  var d = new Date(+p[0], +p[1] - 1, +p[2]); if (isNaN(d.getTime())) return String(iso || '');
+  return WD[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+}
+function addTaskLineHtml() {
+  var today = todayISO();
+  var dest = state.addTaskDest || '';
+  var proj = state.addTaskProject || null;
+  var h = '<div class="addt" id="addt">';
+  h += '<div class="addt-row"><input class="addt-in" id="addt-in" placeholder="Add something to do" value="' + escapeHtml(state.addTaskText || '') + '" aria-label="Add something to do">' +
+    '<button class="addt-save" data-pact="addtsave">Add</button></div>';
+  h += '<div class="mtf-day"><label>Day<input class="addt-day" type="date" value="' + escapeHtml(state.addTaskDay || '') + '" aria-label="Day"></label>' +
+    '<button class="mtf-chip' + (state.addTaskDay === chipTomorrow(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipTomorrow(today) + '">Tomorrow</button>' +
+    '<button class="mtf-chip' + (state.addTaskDay === chipNextMonday(today) ? ' on' : '') + '" data-pact="addtchip" data-day="' + chipNextMonday(today) + '">Mon</button></div>';
+  h += '<div class="addt-chips">';
+  addTaskAreaChips().forEach(function (c) {
+    h += '<button class="achipbtn' + (dest === c.key ? ' on' : '') + '" data-pact="addtdest" data-dest="' + escapeHtml(c.key) + '">' + escapeHtml(c.label) + '</button>';
+  });
+  h += '</div>';
+  if (dest === 'project') {
+    var projs = addTaskProjects(state.projects);
+    if (projs.length) {
+      h += '<div class="addt-proj"><label>Project<select class="addt-projsel" aria-label="Project"><option value="">Choose a project…</option>' +
+        projs.map(function (p) { return '<option value="' + escapeHtml(p.id) + '"' + ((proj && proj.id === p.id) ? ' selected' : '') + '>' + escapeHtml(p.title) + '</option>'; }).join('') +
+        '</select></label></div>';
+    } else { h += '<div class="addt-proj quiet">No open projects yet.</div>'; }
+  }
+  if (state.addTaskNote) h += '<div class="esort-ok" aria-live="polite">' + escapeHtml(state.addTaskNote) + '</div>';
+  return h + '</div>';
+}
+function addTaskSetDest(dest) {
+  state.addTaskDest = (state.addTaskDest === dest) ? '' : dest;
+  if (state.addTaskDest !== 'project') state.addTaskProject = null;
+  state.addTaskNote = '';
+  render();
+  var el = document.getElementById('addt-in'); if (el) el.focus();
+}
+function addTaskSetProject(id) {
+  var p = (state.projects || []).filter(function (x) { return x.id === id; })[0];
+  state.addTaskProject = p ? { id: p.id, title: p.title } : null;
+}
+function addTaskChip(day) {
+  state.addTaskDay = (state.addTaskDay === day) ? '' : day; render();
+  var el = document.getElementById('addt-in'); if (el) el.focus();
+}
+function runAddTaskPlan(plan, text) {
+  return apiJson(plan.capture.path, { method: 'POST', body: plan.capture.body }).then(function (res) {
+    if (!res || !(res.ok || res.status === 201) || !res.data || !res.data.id) throw new Error('capture');
+    var id = res.data.id;
+    var chain = Promise.resolve();
+    if (plan.area) {
+      var body = { id: id, text: text, area: plan.area };
+      if (plan.row) body.row = plan.row;
+      chain = chain.then(function () { return api('/api/task/update', { method: 'POST', body: body }).then(function (r) { if (!r || !r.ok) throw new Error('area'); }); });
+    }
+    if (plan.day) {
+      chain = chain.then(function () { return api('/api/schedule', { method: 'POST', body: { id: id, day: plan.day, calendar: false } }).then(function (r) { if (!r || !r.ok) throw new Error('day'); }); });
+    }
+    return chain;
+  });
+}
+function addTaskSave() {
+  var inp = document.getElementById('addt-in');
+  var text = ((inp ? inp.value : state.addTaskText) || '').trim();
+  if (!text) return;
+  var dayInp = document.querySelector('.addt-day');
+  var day = state.addTaskDay || (dayInp ? dayInp.value : '') || '';
+  var dest = state.addTaskDest || '';
+  var project = state.addTaskProject || null;
+  if (dest === 'project' && (!project || !project.id)) { state.addTaskNote = 'Choose a project first.'; render(); return; }
+  var plan = addTaskPlan(text, day, dest, project);
+  state.addTaskNote = '';
+  runAddTaskPlan(plan, text).then(function () {
+    state.addTaskText = ''; state.addTaskDay = ''; state.addTaskDest = ''; state.addTaskProject = null;
+    state.addTaskNote = addTaskResultLine(day, dest, project, todayISO(), addTaskDayLabel);
+    if (state.areaBoardLoaded) ensureAreaBoard(true);
+    render();
+    var el = document.getElementById('addt-in'); if (el) el.focus();
+    fetchAll().then(function () { var e2 = document.getElementById('addt-in'); if (e2) e2.focus(); });
+  }).catch(function () {
+    state.addTaskText = text;
+    state.addTaskNote = 'That did not save. Try again.';
+    render();
+    var el = document.getElementById('addt-in'); if (el) { el.focus(); try { var n = el.value.length; el.setSelectionRange(n, n); } catch (e) {} }
+  });
+}
+
 // ── Board card Schedule form (Work view, 2026-11-21) ──
 // The same inline Schedule form the sort box uses, opened INSIDE an open board card.
 // Only one card form at a time (state.cardScheduleId holds the one id). A board
@@ -3865,6 +4209,8 @@ function workColumnHtml(label, rows, key, today) {
         moreLabel + '</button>';
     }
   }
+  // "Add something to do" at the bottom of the Do column (2026-11-22).
+  if (key === 'do') h += addTaskLineHtml();
   return h + '</div>';
 }
 // A column total only when at least half the rows carry a real estimate (never
@@ -5740,6 +6086,16 @@ function handlePageAction(act, el) {
   if (act === 'eschundo') { esortScheduleUndo(el.getAttribute('data-id')); return true; }
   if (act === 'esortkeepcourse') { esortKeepSave(el.getAttribute('data-id'), el.getAttribute('data-course')); return true; }
   if (act === 'esortkeepcancel') { esortKeepCancel(); return true; }
+  // "Reword" / "Make it a task" (2026-11-22) — Today reply row, board card, sort box.
+  if (act === 'mtopen') { makeTaskOpen(el.getAttribute('data-id'), el.getAttribute('data-mode'), el.getAttribute('data-surface')); return true; }
+  if (act === 'mtsave') { makeTaskSave(el.getAttribute('data-id')); return true; }
+  if (act === 'mtcancel') { makeTaskCancel(); return true; }
+  if (act === 'mtchip') { makeTaskChip(el.getAttribute('data-id'), el.getAttribute('data-day')); return true; }
+  // "Add something to do" line (Today, bottom of Do) + the Work "New, pick an area" day control.
+  if (act === 'addtsave') { addTaskSave(); return true; }
+  if (act === 'addtchip') { addTaskChip(el.getAttribute('data-day')); return true; }
+  if (act === 'addtdest') { addTaskSetDest(el.getAttribute('data-dest')); return true; }
+  if (act === 'newdaytoggle') { var ndid = el.getAttribute('data-id'); state.newDayOpen = (state.newDayOpen === ndid) ? null : ndid; render(); return true; }
   if (act === 'nottodayfold') { state.notTodayOpen = !state.notTodayOpen; render(); return true; }
   if (act === 'wbstage') { setStage(el.getAttribute('data-pid'), el.getAttribute('data-stage')); return true; }
   if (act === 'editwait') {
@@ -5990,6 +6346,9 @@ function detailHtml(r, opt) {
   var h = '';
   if (r.memo) h += '<p>' + escapeHtml(r.memo) + '</p>';
   if (r.url) h += '<p><a class="link" href="' + escapeHtml(safeUrl(r.url)) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel(r)) + '</a></p>';
+  // "From email" origin line (2026-11-22): once John has reworded an email task, show
+  // the original SYSTEM title quietly above the actions.
+  if (r.orig_text) h += '<p class="from-email">From email: ' + escapeHtml(r.orig_text) + '</p>';
   if (r.suggested) {
     h += '<div class="acts">' +
       '<button class="primary" data-act="confirm">Confirm</button>' +
@@ -6014,6 +6373,15 @@ function detailHtml(r, opt) {
       LANES.map(function (l) {
         return '<button class="lanepill' + (r.lane === l ? ' on ' + l : '') + '" data-act="lane" data-lane="' + l + '">' + escapeHtml(LANE_LABEL[l]) + '</button>';
       }).join('') + '</div>';
+  }
+  // "Reword" (2026-11-22) — on a Today REPLY row, turn the email into a task with
+  // John's own words (Reply → Do, can take a day, still opens the email). Dual-mode.
+  if (state.view === 'home' && r.source === 'email' && isReplyRow(r)) {
+    if (state.makeTaskId === r.id && state.makeTaskSurface === 'today') {
+      h += makeTaskFormHtml(r.id, state.makeTaskMode, state.makeTaskForm);
+    } else {
+      h += '<div class="acts"><button data-pact="mtopen" data-id="' + escapeHtml(r.id) + '" data-mode="task" data-surface="today">Reword</button></div>';
+    }
   }
   // "Keep for grading" (FERPA, LOCAL only, 2026-11-19) — on Today's email rows, a
   // quiet secondary action that saves a class note carrying THIS email's Mail link.
@@ -6151,9 +6519,27 @@ function workHtml() {
   h += '<div class="ahead"><h1>Work by area</h1><p class="asub">Everything with a deadline, on one screen. A dot means something changed since you last looked: a new email, or a date that moved. Tap a name to open its area.</p></div>';
   h += workTabsHtml(state.areaOpen);
   if (state.areaOpen) h += workAreaHtml(board, state.areaOpen, today);
-  else { h += workMasterHtml(board, today); h += notPlacedHtml(board); }
+  else { h += newTasksHtml(board); h += workMasterHtml(board, today); h += notPlacedHtml(board); }
   h += '</div>';
   return h;
+}
+// The tasks John added himself that have no area yet ride a TOP group, open by
+// default, so a just-added task is never buried in the bottom "Not placed" fold.
+// Email items are excluded (they belong to the Today sort box). Each row keeps the
+// area-letter buttons (npplace) + a "Give it a day" control (2026-11-22).
+function newTasksHtml(board) {
+  var mine = newNotPlaced((board && board.not_placed) || []).mine.filter(function (it) { return !optimistic[it.id]; });
+  if (!mine.length) return '';
+  var h = '<section class="anp anew"><div class="anp-head anew-head">New, pick an area <span>' + mine.length + '</span></div>';
+  h += '<p class="anp-hint">You added these. File each one: <b>t</b> teaching &middot; <b>a</b> advising &middot; <b>f</b> referee &middot; <b>s</b> admin &middot; <b>c</b> research. Or give it a day.</p>';
+  mine.forEach(function (it) { h += npRowHtml(it) + newTaskDayHtml(it); });
+  return h + '</section>';
+}
+function newTaskDayHtml(it) {
+  var open = state.newDayOpen === it.id;
+  var h = '<div class="anp-day"><button data-pact="newdaytoggle" data-id="' + escapeHtml(it.id) + '">Give it a day</button>';
+  if (open) h += '<div class="aday">' + weekDays().map(function (d) { return '<button data-pact="acardday" data-id="' + escapeHtml(it.id) + '" data-day="' + d.iso + '">' + escapeHtml(d.label) + '</button>'; }).join('') + '</div>';
+  return h + '</div>';
 }
 function workTabsHtml(active) {
   var h = '<div class="atabs">';
@@ -6313,10 +6699,14 @@ function detailCardHtml(it, areaKey, today) {
   if (rec && (rec.source === 'email' || /^message:/i.test(rec.url || ''))) {
     h += '<div class="am"><a href="' + escapeHtml(safeUrl(rec.url || '')) + '" target="_blank" rel="noopener">' + escapeHtml(urlLabel({ url: rec.url || '', source: rec.source || '' })) + '</a></div>';
   }
+  // "From email" origin line (2026-11-22): the original system title, once reworded.
+  if (rec && rec.orig_text) h += '<div class="am from-email">From email: ' + escapeHtml(rec.orig_text) + '</div>';
   if (state.areaMoveOpen === it.id) h += areaMoveControlsHtml(it, areaKey);
   h += areaCardActionsHtml(it, store, areaKey);
   // The inline Schedule form (same form the sort box uses) + the shared result line.
   if (state.cardScheduleId === it.id) h += scheduleFormHtml(it.id, state.cardScheduleForm);
+  // The inline "Reword" / "Make it a task" form (shared with the Today row + sort box).
+  if (state.makeTaskId === it.id && state.makeTaskSurface === 'card') h += makeTaskFormHtml(it.id, state.makeTaskMode, state.makeTaskForm);
   h += scheduleResultLineHtml(it.id);
   return h + '</div>';
 }
@@ -6349,6 +6739,12 @@ function areaCardActionsHtml(it, store, areaKey) {
     else if (k === 'delete') h += '<button class="danger" data-pact="acarddel" data-id="' + id + '" data-store="' + st + '">Delete</button>';
     else if (k === 'tasks') h += '<a class="amore-tasks" href="#tasks">Open in Tasks</a>';
   });
+  // "Reword" (2026-11-22): rewrite the title in John's words. On a reply-tier card it
+  // also sets the task tier (Reply → Do); on an already-task card it only rewords.
+  if (store === 'task') {
+    var mtMode = (it.kind === 'reply') ? 'task' : 'reword';
+    h += '<button data-pact="mtopen" data-id="' + id + '" data-mode="' + mtMode + '" data-surface="card">Reword</button>';
+  }
   h += '</div>';
   if (state.areaSchedId === it.id && store !== 'deadline') {
     // Highlight the day this task is already allocated to (if any), so re-opening
@@ -7077,6 +7473,15 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && state.cardScheduleId) { e.preventDefault(); cardScheduleCancel(); return; }
   // Escape closes the keep-for-grading course picker.
   if (e.key === 'Escape' && state.emailKeepOpen) { e.preventDefault(); esortKeepCancel(); return; }
+  // Escape closes the "Reword" / "Make it a task" inline form.
+  if (e.key === 'Escape' && state.makeTaskId) { e.preventDefault(); makeTaskCancel(); return; }
+  // "Reword" form fields: Enter saves, Esc cancels.
+  if (e.target && e.target.classList && e.target.classList.contains('mt-in')) {
+    if (e.key === 'Enter') { e.preventDefault(); var mf = e.target.closest('.mtf'); if (mf) makeTaskSave(mf.getAttribute('data-id')); return; }
+    if (e.key === 'Escape') { e.preventDefault(); makeTaskCancel(); return; }
+  }
+  // "Add something to do" input: Enter saves.
+  if (e.target && e.target.id === 'addt-in' && e.key === 'Enter') { e.preventDefault(); addTaskSave(); return; }
   // Keep-for-grading course picker open: digits 1..n pick a course; any other
   // single letter is swallowed so it cannot fire an area/then sort key.
   if (state.view === 'home' && state.emailKeepOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -7120,7 +7525,19 @@ document.addEventListener('keydown', function (e) {
   // While the Schedule form is open, the single-letter sort keys must NOT fire (so
   // typing "r" in a field types an r, even with focus on a form button inside the
   // box). Esc is handled above.
-  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen && !state.emailKeepOpen) {
+  // "w" opens the sort box's Reword form (ignored while another inline form is open).
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey &&
+      !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId &&
+      String(e.key).toLowerCase() === 'w') {
+    var aeW = document.activeElement;
+    var typingW = aeW && (aeW.tagName === 'INPUT' || aeW.tagName === 'TEXTAREA' || aeW.tagName === 'SELECT' || aeW.isContentEditable);
+    var inBoxW = aeW && aeW.closest && aeW.closest('#esort');
+    var onBodyW = !aeW || aeW === document.body;
+    var curW = currentSortId();
+    if (!typingW && curW && (inBoxW || onBodyW)) { e.preventDefault(); makeTaskOpen(curW, 'task', 'sort'); return; }
+  }
+  // While the "Reword" form is open the single-letter sort keys are suppressed too.
+  if (state.view === 'home' && !e.metaKey && !e.ctrlKey && !e.altKey && !state.emailScheduleOpen && !state.emailKeepOpen && !state.makeTaskId) {
     var aeE = document.activeElement;
     var typingE = aeE && (aeE.tagName === 'INPUT' || aeE.tagName === 'TEXTAREA' || aeE.tagName === 'SELECT' || aeE.isContentEditable);
     var inBoxE = aeE && aeE.closest && aeE.closest('#esort');
@@ -7210,6 +7627,17 @@ document.addEventListener('input', function (e) {
     var add = document.getElementById('esch-add');
     if (add) add.disabled = !scheduleCanAdd(buf.day, buf.time);
   }
+  // "Reword" / "Make it a task" form fields: update state WITHOUT re-render (keep
+  // focus/caret), so a re-render rebuilds the typed values via makeTaskFormView.
+  else if (t && t.classList && t.classList.contains('mt-in')) {
+    state.makeTaskForm = state.makeTaskForm || {};
+    state.makeTaskForm[t.getAttribute('data-f')] = t.value;
+  }
+  // "Add something to do" line: the text + native day input update state without a
+  // re-render; the Project select re-renders the one row it affects.
+  else if (t && t.id === 'addt-in') { state.addTaskText = t.value; }
+  else if (t && t.classList && t.classList.contains('addt-day')) { state.addTaskDay = t.value; }
+  else if (t && t.classList && t.classList.contains('addt-projsel')) { addTaskSetProject(t.value); }
 });
 function rerenderKeepFocus(id) {
   render();

@@ -1112,8 +1112,22 @@
       await updateJson('data.json', a => {
         const it = a.find(i => i.id === itemId);
         if (it) {
+          const priorText = it.text;
+          const textChanged = (priorText || '') !== text;
+          const isEmail = it.source === 'email';
           it.text = text; aApplyOps(it, ae.ops);
-          if (newTier === 'reply_needed' || newTier === 'action_needed') it.tier = newTier;
+          // "Make it a task" / "Reword" (2026-11-22): stamp orig_text ONCE + text_by on
+          // an email task rename, recompute short unless John set it (short_by===john),
+          // so the agent never overwrites his words. Mirror server._handle_task_update.
+          if (textChanged && isEmail) {
+            if (!('orig_text' in it) && priorText) it.orig_text = priorText;
+            it.text_by = 'john';
+            if (it.short_by !== 'john') { const ns = aShortNameRule(text); if (ns) it.short = ns; }
+          }
+          if (newTier === 'reply_needed' || newTier === 'action_needed') {
+            it.tier = newTier;
+            if (!it.tier_by) it.tier_by = 'john';
+          }
           if (keptOp === 'set') {
             it.kept = 'grading';
             it.kept_at = nowIso();
